@@ -1,0 +1,7 @@
+http:
+  middlewares:
+    secureHeaders:
+      headers:
+        stsSeconds: 63072000
+        stsIncludeSubdomains: true
+        frameDeny: true

@@ -1,0 +1,73 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pressf}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pressfpass}
+      POSTGRES_DB: ${POSTGRES_DB:-pressf}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - pressf-net
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - pressf-net
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      WEBHOOK_URL: ${WEBHOOK_URL}
+      WEB_APP_URL: ${WEB_APP_URL}
+      BOT_USE_WEBHOOK: ${BOT_USE_WEBHOOK}
+      DEV_SKIP_VERIFY: ${DEV_SKIP_VERIFY}
+      DATABASE_URL: postgres://${POSTGRES_USER:-pressf}:${POSTGRES_PASSWORD:-pressfpass}@db:5432/${POSTGRES_DB:-pressf}
+      PORT: 3000
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "3000:3000"
+    networks:
+      - pressf-net
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      REDIS_URL: redis://redis:6379
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+    depends_on:
+      - backend
+      - redis
+    command: ["npm", "run", "worker"]
+    networks:
+      - pressf-net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - pressf-net
+
+volumes:
+  pgdata:
+
+networks:
+  pressf-net:
+    driver: bridge

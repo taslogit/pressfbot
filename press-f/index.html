@@ -1,0 +1,119 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f0d16" />
+    <title>PRESS F</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      // Force Dark Mode config immediately
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              bg: 'var(--color-bg)',
+              card: 'var(--color-card)',
+              primary: 'var(--color-text-primary)',
+              muted: 'var(--color-text-muted)',
+              border: 'var(--color-border)',
+              input: 'var(--color-input)',
+              accent: {
+                lime: '#B4FF00',
+                cyan: '#00E0FF',
+                pink: '#FF4DD2',
+                gold: '#FFD700',
+              }
+            },
+            animation: {
+              'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'spin-slow': 'spin 20s linear infinite',
+              'float': 'float 6s ease-in-out infinite',
+              'scan': 'scan 4s linear infinite',
+            },
+            keyframes: {
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-20px)' },
+              },
+              scan: {
+                '0%, 100%': { top: '0%' },
+                '50%': { top: '100%' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      :root {
+        /* Default Dark Theme to prevent flash */
+        --color-bg: #0f0d16;
+        --color-card: #1a1720;
+        --color-text-primary: #ffffff;
+        --color-text-muted: #9ca3af;
+        --color-border: rgba(255, 255, 255, 0.1);
+        --color-input: rgba(255, 255, 255, 0.05);
+      }
+      
+      body {
+        background-color: var(--color-bg);
+        color: var(--color-text-primary);
+        overflow-x: hidden;
+        /* Prevent elastic scrolling on iOS */
+        overscroll-behavior-y: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      
+      /* Hide scrollbar for clean mobile look */
+      ::-webkit-scrollbar {
+        width: 0px;
+        background: transparent;
+      }
+
+      .gpu-accelerated {
+        transform: translateZ(0);
+        will-change: transform, opacity;
+      }
+      
+      button {
+        touch-action: manipulation;
+        user-select: none;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "framer-motion": "https://aistudiocdn.com/framer-motion@^12.23.25",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.6",
+    "canvas-confetti": "https://aistudiocdn.com/canvas-confetti@^1.9.4",
+    "qrcode.react": "https://aistudiocdn.com/qrcode.react@^4.2.0",
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script>
+       // Immediate init to prevent white flash
+       if (window.Telegram && window.Telegram.WebApp) {
+           window.Telegram.WebApp.ready();
+           window.Telegram.WebApp.expand();
+           try {
+             window.Telegram.WebApp.setHeaderColor('#0f0d16');
+             window.Telegram.WebApp.setBackgroundColor('#0f0d16');
+           } catch(e) {}
+       }
+    </script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

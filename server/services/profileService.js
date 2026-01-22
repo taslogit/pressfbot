@@ -1,0 +1,29 @@
+const normalizeProfile = (row) => ({
+  avatar: row.avatar || 'default',
+  bio: row.bio || 'No bio yet.',
+  level: row.level || 1,
+  title: row.title || 'Newbie',
+  gifts: row.gifts || [],
+  achievements: row.achievements || [],
+  perks: row.perks || [],
+  contracts: row.contracts || [],
+  reputation: row.reputation || 0,
+  karma: row.karma || 50,
+  stats: row.stats || { beefsWon: 0, leaksDropped: 0, daysAlive: 1 },
+  tonAddress: row.ton_address || null
+});
+
+const normalizeSettings = (row) => ({
+  deadManSwitchDays: row.dead_man_switch_days || 30,
+  lastCheckIn: row.last_check_in?.getTime() || Date.now(),
+  lastDailyClaim: row.last_daily_claim?.getTime() || 0,
+  funeralTrack: row.funeral_track || 'astronomia',
+  language: row.language || 'en',
+  theme: row.theme || 'dark',
+  soundEnabled: row.sound_enabled !== false,
+  notificationsEnabled: row.notifications_enabled !== false,
+  telegramNotificationsEnabled: row.telegram_notifications_enabled !== false,
+  checkinReminderIntervalMinutes: row.checkin_reminder_interval_minutes || 60
+});
+
+module.exports = { normalizeProfile, normalizeSettings };

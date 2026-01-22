@@ -1,0 +1,393 @@
+// Duels API routes
+const express = require('express');
+const router = express.Router();
+const { v4: uuidv4 } = require('uuid');
+const { z, validateBody } = require('../validation');
+const { normalizeDuel } = require('../services/duelsService');
+const { sendError } = require('../utils/errors');
+const VALID_DUEL_STATUSES = ['pending', 'active', 'completed', 'shame'];
+const VALID_DUEL_SORT = ['created_at', 'deadline', 'title', 'status'];
+
+const duelSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().optional(),
+  stake: z.string().optional(),
+  opponent: z.string().optional(),
+  opponentId: z.union([z.string(), z.number()]).optional(),
+  deadline: z.string().optional(),
+  status: z.enum(['pending', 'active', 'completed', 'shame']).optional(),
+  isPublic: z.boolean().optional(),
+  isTeam: z.boolean().optional(),
+  witnessCount: z.number().int().nonnegative().optional(),
+  loser: z.union([z.string(), z.number()]).optional(),
+  isFavorite: z.boolean().optional()
+});
+
+const createDuelsRoutes = (pool) => {
+  // GET /api/duels - Get all duels for user
+  router.get('/', async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+
+      const userId = req.userId;
+      if (!userId) {
+        return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+      }
+
+      const limitRaw = req.query.limit;
+      const offsetRaw = req.query.offset;
+      const status = req.query.status;
+      const isPublicRaw = req.query.isPublic;
+      const isFavoriteRaw = req.query.isFavorite;
+      const query = req.query.q;
+      const sortBy = req.query.sortBy || 'created_at';
+      const orderRaw = req.query.order || 'desc';
+      const order = String(orderRaw).toLowerCase();
+
+      const limit = limitRaw ? Number(limitRaw) : 50;
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid limit', {
+          field: 'limit',
+          min: 1,
+          max: 100
+        });
+      }
+
+      const offset = offsetRaw ? Number(offsetRaw) : 0;
+      if (!Number.isInteger(offset) || offset < 0) {
+        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid offset', {
+          field: 'offset',
+          min: 0
+        });
+      }
+
+      if (status && !VALID_DUEL_STATUSES.includes(status)) {
+        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid status', {
+          field: 'status',
+          allowed: VALID_DUEL_STATUSES
+        });
+      }
+
+      let isPublic;
+      if (isPublicRaw !== undefined) {
+        if (isPublicRaw === 'true') {
+          isPublic = true;
+        } else if (isPublicRaw === 'false') {
+          isPublic = false;
+        } else {
+          return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid isPublic', {
+            field: 'isPublic',
+            allowed: ['true', 'false']
+          });
+        }
+      }
+
+      let isFavorite;
+      if (isFavoriteRaw !== undefined) {
+        if (isFavoriteRaw === 'true') {
+          isFavorite = true;
+        } else if (isFavoriteRaw === 'false') {
+          isFavorite = false;
+        } else {
+          return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid isFavorite', {
+            field: 'isFavorite',
+            allowed: ['true', 'false']
+          });
+        }
+      }
+
+      if (!VALID_DUEL_SORT.includes(sortBy)) {
+        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid sortBy', {
+          field: 'sortBy',
+          allowed: VALID_DUEL_SORT
+        });
+      }
+
+      if (order !== 'asc' && order !== 'desc') {
+        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid order', {
+          field: 'order',
+          allowed: ['asc', 'desc']
+        });
+      }
+
+      const conditions = ['(challenger_id = $1 OR opponent_id = $1)'];
+      const values = [userId];
+      let paramIndex = 2;
+
+      if (status) {
+        conditions.push(`status = $${paramIndex++}`);
+        values.push(status);
+      }
+      if (isPublic !== undefined) {
+        conditions.push(`is_public = $${paramIndex++}`);
+        values.push(isPublic);
+      }
+      if (isFavorite !== undefined) {
+        conditions.push(`is_favorite = $${paramIndex++}`);
+        values.push(isFavorite);
+      }
+      if (query) {
+        conditions.push(`(
+          title ILIKE $${paramIndex}
+          OR opponent_name ILIKE $${paramIndex}
+          OR stake ILIKE $${paramIndex}
+        )`);
+        values.push(`%${query}%`);
+        paramIndex += 1;
+      }
+
+      values.push(limit, offset);
+      const orderDir = order.toUpperCase();
+      const result = await pool.query(
+        `SELECT * FROM duels WHERE ${conditions.join(' AND ')}
+         ORDER BY ${sortBy} ${orderDir} NULLS LAST
+         LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
+        values
+      );
+
+      const duels = result.rows.map(normalizeDuel);
+
+      return res.json({ ok: true, duels, meta: { limit, offset, sortBy, order, q: query || '' } });
+    } catch (error) {
+      console.error('Get duels error:', error);
+      return sendError(res, 500, 'DUELS_FETCH_FAILED', 'Failed to fetch duels');
+    }
+  });
+
+  // POST /api/duels - Create new duel
+  router.post('/', validateBody(duelSchema), async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+
+      const userId = req.userId;
+      if (!userId) {
+        return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+      }
+
+      const {
+        id,
+        title,
+        stake,
+        opponent,
+        opponentId,
+        deadline,
+        status = 'pending',
+        isPublic = false,
+        isTeam = false,
+        witnessCount = 0,
+        loser,
+        isFavorite = false
+      } = req.body;
+
+      const duelId = id || `duel_${Date.now()}_${uuidv4()}`;
+      const deadlineValue = deadline ? new Date(deadline) : new Date();
+      const opponentIdValue = opponentId ? Number(opponentId) : (Number(opponent) || null);
+      const opponentNameValue = opponentIdValue ? null : (opponent || null);
+      const loserIdValue = loser ? Number(loser) : null;
+
+      await pool.query(
+        `INSERT INTO duels (
+          id, challenger_id, opponent_id, opponent_name, title, stake, deadline,
+          status, is_public, is_team, witness_count, loser_id, is_favorite
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        ON CONFLICT (id) DO UPDATE SET
+          opponent_id = EXCLUDED.opponent_id,
+          opponent_name = EXCLUDED.opponent_name,
+          title = EXCLUDED.title,
+          stake = EXCLUDED.stake,
+          deadline = EXCLUDED.deadline,
+          status = EXCLUDED.status,
+          is_public = EXCLUDED.is_public,
+          is_team = EXCLUDED.is_team,
+          witness_count = EXCLUDED.witness_count,
+          loser_id = EXCLUDED.loser_id,
+          is_favorite = EXCLUDED.is_favorite,
+          updated_at = now()`,
+        [
+          duelId,
+          userId,
+          opponentIdValue,
+          opponentNameValue,
+          title || 'Untitled Duel',
+          stake || '',
+          deadlineValue,
+          status,
+          isPublic,
+          isTeam,
+          witnessCount,
+          loserIdValue,
+          isFavorite
+        ]
+      );
+
+      return res.json({ ok: true, id: duelId });
+    } catch (error) {
+      console.error('Create duel error:', error);
+      return sendError(res, 500, 'DUEL_CREATE_FAILED', 'Failed to create duel');
+    }
+  });
+
+  // GET /api/duels/:id - Get single duel
+  router.get('/:id', async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+
+      const userId = req.userId;
+      const duelId = req.params.id;
+
+      const result = await pool.query(
+        `SELECT * FROM duels WHERE id = $1 AND (challenger_id = $2 OR opponent_id = $2)`,
+        [duelId, userId]
+      );
+
+      if (result.rowCount === 0) {
+        return sendError(res, 404, 'DUEL_NOT_FOUND', 'Duel not found');
+      }
+
+      const duel = normalizeDuel(result.rows[0]);
+
+      return res.json({ ok: true, duel });
+    } catch (error) {
+      console.error('Get duel error:', error);
+      return sendError(res, 500, 'DUEL_FETCH_FAILED', 'Failed to fetch duel');
+    }
+  });
+
+  // PUT /api/duels/:id - Update duel
+  router.put('/:id', validateBody(duelSchema), async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+
+      const userId = req.userId;
+      const duelId = req.params.id;
+
+      const checkResult = await pool.query(
+        `SELECT id FROM duels WHERE id = $1 AND (challenger_id = $2 OR opponent_id = $2)`,
+        [duelId, userId]
+      );
+
+      if (checkResult.rowCount === 0) {
+        return sendError(res, 404, 'DUEL_NOT_FOUND', 'Duel not found');
+      }
+
+      const {
+        title,
+        stake,
+        opponent,
+        opponentId,
+        deadline,
+        status,
+        isPublic,
+        isTeam,
+        witnessCount,
+        loser,
+        isFavorite
+      } = req.body;
+
+      const updateFields = [];
+      const updateValues = [];
+      let paramIndex = 1;
+
+      if (title !== undefined) {
+        updateFields.push(`title = $${paramIndex++}`);
+        updateValues.push(title);
+      }
+      if (stake !== undefined) {
+        updateFields.push(`stake = $${paramIndex++}`);
+        updateValues.push(stake);
+      }
+      if (deadline !== undefined) {
+        updateFields.push(`deadline = $${paramIndex++}`);
+        updateValues.push(deadline ? new Date(deadline) : null);
+      }
+      if (status !== undefined) {
+        updateFields.push(`status = $${paramIndex++}`);
+        updateValues.push(status);
+      }
+      if (isPublic !== undefined) {
+        updateFields.push(`is_public = $${paramIndex++}`);
+        updateValues.push(isPublic);
+      }
+      if (isTeam !== undefined) {
+        updateFields.push(`is_team = $${paramIndex++}`);
+        updateValues.push(isTeam);
+      }
+      if (witnessCount !== undefined) {
+        updateFields.push(`witness_count = $${paramIndex++}`);
+        updateValues.push(witnessCount);
+      }
+      if (loser !== undefined) {
+        updateFields.push(`loser_id = $${paramIndex++}`);
+        updateValues.push(loser ? Number(loser) : null);
+      }
+      if (isFavorite !== undefined) {
+        updateFields.push(`is_favorite = $${paramIndex++}`);
+        updateValues.push(isFavorite);
+      }
+
+      if (opponent !== undefined || opponentId !== undefined) {
+        const opponentIdValue = opponentId ? Number(opponentId) : (Number(opponent) || null);
+        const opponentNameValue = opponentIdValue ? null : (opponent || null);
+        updateFields.push(`opponent_id = $${paramIndex++}`);
+        updateValues.push(opponentIdValue);
+        updateFields.push(`opponent_name = $${paramIndex++}`);
+        updateValues.push(opponentNameValue);
+      }
+
+      if (updateFields.length === 0) {
+        return res.json({ ok: true, id: duelId });
+      }
+
+      updateFields.push(`updated_at = now()`);
+      updateValues.push(duelId, userId);
+
+      await pool.query(
+        `UPDATE duels SET ${updateFields.join(', ')} WHERE id = $${paramIndex} AND (challenger_id = $${paramIndex + 1} OR opponent_id = $${paramIndex + 1})`,
+        updateValues
+      );
+
+      return res.json({ ok: true, id: duelId });
+    } catch (error) {
+      console.error('Update duel error:', error);
+      return sendError(res, 500, 'DUEL_UPDATE_FAILED', 'Failed to update duel');
+    }
+  });
+
+  // DELETE /api/duels/:id - Delete duel
+  router.delete('/:id', async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+
+      const userId = req.userId;
+      const duelId = req.params.id;
+
+      const result = await pool.query(
+        `DELETE FROM duels WHERE id = $1 AND (challenger_id = $2 OR opponent_id = $2)`,
+        [duelId, userId]
+      );
+
+      if (result.rowCount === 0) {
+        return sendError(res, 404, 'DUEL_NOT_FOUND', 'Duel not found');
+      }
+
+      return res.json({ ok: true });
+    } catch (error) {
+      console.error('Delete duel error:', error);
+      return sendError(res, 500, 'DUEL_DELETE_FAILED', 'Failed to delete duel');
+    }
+  });
+
+  return router;
+};
+
+module.exports = { createDuelsRoutes };

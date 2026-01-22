@@ -1,0 +1,81 @@
+version: '3.8'
+services:
+  traefik:
+    image: traefik:v2.10
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entryPoints.web.address=:80
+      - --entryPoints.websecure.address=:443
+      - --certificatesResolvers.le.acme.tlsChallenge=true
+      - --certificatesResolvers.le.acme.email=${LETSENCRYPT_EMAIL}
+      - --certificatesResolvers.le.acme.storage=/letsencrypt/acme.json
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - traefik_acme:/letsencrypt
+    networks:
+      - pressf-net
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pressf-backend.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.services.pressf-backend.loadbalancer.server.port=3000"
+      - "traefik.http.routers.pressf-backend.entrypoints=websecure"
+      - "traefik.http.routers.pressf-backend.tls=true"
+      - "traefik.http.routers.pressf-backend.tls.certresolver=le"
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      WEBHOOK_URL: https://${DOMAIN}
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      - db
+      - redis
+    networks:
+      - pressf-net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pressf-frontend.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.pressf-frontend.entrypoints=websecure"
+      - "traefik.http.routers.pressf-frontend.tls=true"
+      - "traefik.http.routers.pressf-frontend.tls.certresolver=le"
+    networks:
+      - pressf-net
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - pressf-net
+
+  redis:
+    image: redis:7-alpine
+    networks:
+      - pressf-net
+
+volumes:
+  pgdata:
+  traefik_acme:
+
+networks:
+  pressf-net:
+    driver: bridge

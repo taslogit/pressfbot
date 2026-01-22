@@ -1,0 +1,18 @@
+# build and serve Vite app with nginx
+FROM node:20-alpine AS build
+ARG VITE_API_URL
+ENV VITE_API_URL=${VITE_API_URL}
+WORKDIR /app
+COPY press-f/package*.json ./press-f/
+# copy entire frontend
+COPY press-f/ ./press-f/
+WORKDIR /app/press-f
+# Use npm install because package-lock.json may be missing in workspace
+RUN npm install --no-audit --no-fund
+RUN npm run build
+
+FROM nginx:stable-alpine
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/press-f/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
