@@ -132,6 +132,12 @@ app.use((req, res, next) => {
   next();
 });
 
+// Telegram webhook callback (must be before other routes)
+if (USE_WEBHOOK) {
+  app.use(bot.webhookCallback('/bot'));
+  console.log('Webhook callback registered at /bot');
+}
+
 // Import routes and middleware
 const { createAuthMiddleware } = require('./middleware/auth');
 const { createLettersRoutes } = require('./routes/letters');
