@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   traefik:
     image: traefik:v2.10
@@ -36,6 +35,8 @@ services:
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       WEBHOOK_URL: https://${DOMAIN}
+      WEB_APP_URL: ${WEB_APP_URL}
+      BOT_INFO_IMAGE_URL: ${BOT_INFO_IMAGE_URL}
       DATABASE_URL: ${DATABASE_URL}
     depends_on:
       - db
