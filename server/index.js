@@ -520,7 +520,6 @@ app.get('/api/session/:id', async (req, res) => {
 (async () => {
   try {
     if (USE_WEBHOOK) {
-      app.use(bot.webhookCallback('/bot'));
       await bot.telegram.setWebhook(`${WEBHOOK_URL}/bot`);
       console.log('Webhook set to', `${WEBHOOK_URL}/bot`);
     } else if (WEBHOOK_URL) {
