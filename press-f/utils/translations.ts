@@ -287,7 +287,7 @@ export const translations = {
     drops_guide_4_desc: "Lock it until 2077. Let the future deal with your problems.",
     
     profile_title: "IDENTITY",
-    help_profile: "# ID CARD\n\nYour digital creds.\n\n[NOTE] **Level** scales with your reputation. Don't be a noob.\n\n[TIP] Flex your stats. High Karma = Based. Low Karma = Menace.\n\n• **Skins**: Unlock new avatars by not dying.\n• **Badges**: Proof that you actually do stuff.",
+    help_profile: "# ID CARD\n\nYour profile, status, and receipts.\n\n[NOTE] **Level** grows with activity and survival.\n[TIP] Karma up = Based. Karma down = Menace.\n\n• **Skins**: Unlock by staying active.\n• **Badges**: Proof of milestones.\n• **Notifications**: Logs here, settings on the Settings page.",
     profile_bio_label: "Manifesto",
     profile_bio_ph: "Enter your status...",
     profile_reputation: "Reputation",
@@ -420,7 +420,7 @@ export const translations = {
     
     // SQUAD SECTION
     squad_title: "NETRUNNER SQUAD",
-    help_squad: "# BLOOD PACT\n\nDon't die alone.\n\n[WARN] If Squad Integrity hits 0%, everyone's logs get leaked. Keep the ping alive.\n\n• **The Pact**: Shared encrypted vault. Only opens if the whole squad flatlines.\n• **Ping**: Nudge AFK homies. Don't let them slack.\n• **Invite**: Copy link or QR, pull your crew in.\n• **Leaderboard**: Flex uptime, farm clout.",
+    help_squad: "# BLOOD PACT\n\nYour safety net.\n\n[WARN] If everyone goes offline, logs can leak.\n[NOTE] Needs **2/3 votes** from witnesses to trigger.\n\n• **Pact**: Shared encrypted vault.\n• **Ping**: Wake up AFK homies.\n• **Invite**: Link/QR to add the crew.\n• **Leaderboard**: Uptime and clout.",
     tab_pact: "Ops Center",
     tab_leaderboard: "Global Rank",
     create_squad: "INITIALIZE SQUAD",
@@ -439,7 +439,7 @@ export const translations = {
     create_squad_ph: "Squad Codename...",
     create_squad_btn: "FORM UNIT",
     market_title: "BLACK MARKET",
-    help_market: "# BLACK MARKET\n\nSpend Rep. Cheat death.\n\n[TIP] **Time Dilation** buys you 24h. Use it when you're about to touch grass for too long.\n\n• **Karma Scrub**: Erase your toxic past.\n• **Identity Wipe**: Get off the Shame Wall.\n• **Owned** gear stays on your account.",
+    help_market: "# BLACK MARKET\n\nBoosters and survival hacks.\n\n[NOTE] This area may be hidden in some builds.\n\n• **Time Dilation**: +24h buffer.\n• **Karma Scrub**: Clean your rep.\n• **Identity Wipe**: Remove Shame Wall marks.",
     market_balance: "BALANCE",
     buy: "BUY",
     purchased: "OWNED",
@@ -483,15 +483,15 @@ export const translations = {
     invite_copied: "INVITE COPIED",
     
     // UPDATED SECTIONS
-    help_letters: "# PAYLOAD STASH\n\nYour digital dead drops.\n\n[NOTE] Encryption is **AES-256**. We can't read your stuff.\n\n• **Create**: Tap New Payload, tag @homies, set unlock date.\n• **Filters**: Search, Favorites, sort by date/status.\n• **History**: Open a drop → History to rollback.\n• **Export**: Open a drop → Export Markdown.\n• **Favorites**: Star anything you don't want to lose.",
-    help_duels: "# BEEF ZONE\n\nBet on who survives.\n\n[TIP] Create **Smart Contracts** on survival. Winner takes the clout.\n\n• **Hype**: Public beefs. The whole server watches.\n• **Private**: Keep drama low-key.\n• **Favorites**: Star your top rivalries.\n• **Shame**: Lose a bet? Welcome to the wall. F.",
-    help_legacy: "# LOOT & ENEMIES\n\nManage your afterlife inventory.\n\n• **Loot**: Who gets your Steam Deck or your folder 'Homework'?\n• **Enemies**: Blacklist the snakes. Haunt them from beyond the grave.\n• **Logs**: Your final manifesto. Make it based.",
-    help_witness: "# WITNESS PROTOCOL\n\nYour insurance policy.\n\n[WARN] If the timer hits 0, we ask your Squad: 'Is he actually dead or just touching grass?'\n\n• Needs **2/3 consensus** to trigger the Dead Man Switch.\n• Invite only trusted homies.\n• Ping AFK witnesses to keep them alive.",
-    help_dj: "# FUNERAL DJ\n\nSet the mood for your Game Over screen.\n\n[TIP] 'Astronomia' is classic, but 'Sad Violin' hits different.\n\n• This track plays automatically when your timer hits zero and people visit your profile.",
-    help_resurrection: "# RESPAWN SEQUENCE\n\nHard reset the timer.\n\n[WARN] This pings the system. Use only when you're actually alive.\n\n• Tap the button and wait for reboot.\n• Timer resets, your streak survives.",
-    help_search: "# GLOBAL SCAN\n\nFind anything, fast.\n\n[NOTE] Search hits letters + duels at once.\n\n• **2+ chars** to trigger scan.\n• Tap a card to open the target screen.\n• If it's empty — no signal, not a bug.",
-    help_create_letter: "# NEW PAYLOAD\n\nCraft the drop like a pro.\n\n[NOTE] Drafts auto-save. We got you.\n\n• **Title + tags** = who gets the drop.\n• **Unlock date** gates the reveal.\n• **Attachments** support media + audio.\n• **Burn on read** = one-shot reveal.",
-    help_settings: "# SETTINGS CONTROL\n\nTune the machine.\n\n[TIP] If bot is noisy, drop reminder frequency.\n\n• **Language**: flip RU/EN.\n• **Notifications**: app + Telegram toggles.\n• **Wallet**: connect/disconnect for TON ops.\n• **TON Ops**: inheritance, storage, duel escrow."
+    help_letters: "# PAYLOAD STASH\n\nYour timed drops and sealed notes.\n\n[NOTE] Content is encrypted. We can’t read it.\n\n• **Create**: Title + tags + unlock date.\n• **Filters**: Search, Favorites, sort by date/status.\n• **History**: Open → History → rollback.\n• **Export**: Open → Export Markdown.\n• **Favorites**: Star important drops.",
+    help_duels: "# BEEF ZONE\n\nDuels, bets, and receipts.\n\n[NOTE] Beef = dispute with a winner.\n[TIP] Winner gets clout, loser hits the wall.\n\n• **Hype**: Public beefs.\n• **Private**: Low‑key mode.\n• **Favorites**: Star top rivalries.\n• **Shame**: Loss = Shame Wall.",
+    help_legacy: "# LOOT & ENEMIES\n\nAfterlife inventory and receipts.\n\n• **Loot**: Who gets what.\n• **Enemies**: Block the snakes.\n• **Logs**: Final message.",
+    help_witness: "# WITNESS PROTOCOL\n\nProof‑of‑life insurance.\n\n[WARN] When timer hits 0, witnesses decide if the leak triggers.\n[NOTE] Requires **2/3 votes**.\n\n• Invite trusted people only.\n• Ping AFK witnesses to keep them active.",
+    help_dj: "# FUNERAL DJ\n\nSoundtrack for your Game Over screen.\n\n[NOTE] Plays when timer hits 0 and someone opens your profile.\n[TIP] Pick a track that fits your vibe.",
+    help_resurrection: "# RESPAWN SEQUENCE\n\nManual timer reset.\n\n[WARN] Use only if you’re alive.\n\n• Tap the button.\n• Timer resets, streak stays.",
+    help_search: "# LOCAL SEARCH\n\nFind letters and duels fast.\n\n[NOTE] Requires **2+ chars** to start.\n\n• Tap a card to open it.\n• Empty = no results, not a bug.",
+    help_create_letter: "# NEW PAYLOAD\n\nBuild your drop clean.\n\n[NOTE] Drafts auto‑save.\n\n• **Title + tags** = who gets access.\n• **Unlock date** controls reveal.\n• **Attachments**: media + audio.\n• **Burn on read** = one‑shot access.",
+    help_settings: "# SETTINGS CONTROL\n\nTune the system.\n\n[NOTE] You can quiet notifications here.\n\n• **Language**: RU/EN.\n• **Notifications**: app + Telegram.\n• **Wallet**: connect/disconnect for TON ops.\n• **TON Ops**: inheritance, storage, duel escrow."
   },
   ru: {
     app_title: "PRESS F",
@@ -778,7 +778,7 @@ export const translations = {
     drops_guide_4_desc: "Залочь инфу до 2077 года. Пусть внуки разгребают.",
     
     profile_title: "ПРОФИЛЬ",
-    help_profile: "# ID \n\nТвой авторитет.\n\n[NOTE] **Уровень** растет от выживания. Не будь нубом.\n\n[TIP] Качай статы. Высокая карма = База. Низкая = Угроза.\n\n• **Скины**: Разлочь аватары, просто не умирая.\n• **Ачивки**: Пруфы твоей крутости для потомков.\n• **Уведы**: История и статус — тут, настройки — в отдельной вкладке.",
+    help_profile: "# ID / ПРОФИЛЬ\n\nКто ты в системе и как ты живешь.\n\n[NOTE] **Уровень** растет от активности и выживания.\n[TIP] Карма ↑ = база, карма ↓ = угроза.\n\n• **Скины**: открываются за активность.\n• **Ачивки**: доказательства прогресса.\n• **Уведы**: лог здесь, настройки — в отдельной вкладке.",
     profile_bio_label: "Манифест",
     profile_bio_ph: "Твой статус...",
     profile_reputation: "Репутация",
@@ -911,7 +911,7 @@ export const translations = {
     
     // SQUAD SECTION UPDATED
     squad_title: "СКВАД",
-    help_squad: "# ПАКТ КРОВИ\n\nНе подыхай в одиночку.\n\n[WARN] Если Целостность сквада упадет до 0%, все логи сольются. Не дай пацанам уйти в АФК.\n\n• **Пакт**: Общий шифрованный сейф. Откроется только если ляжет весь сквад.\n• **Пинг**: Пни тех, кто спит. Не дай им слить катку.\n• **Инвайт**: Кидай ссылку/QR, собирай банду.\n• **Рейтинг**: Хвастай аптаймом.",
+    help_squad: "# ПАКТ КРОВИ\n\nСквад = страховка.\n\n[WARN] Если все оффлайн — контент может слиться.\n[NOTE] Нужно **2/3 голосов**.\n\n• **Пакт**: общий зашифрованный сейф.\n• **Пинг**: дергай АФК.\n• **Инвайт**: ссылка/QR для вступления.\n• **Рейтинг**: аптайм и реп.",
     tab_pact: "Оперштаб",
     tab_leaderboard: "Рейтинг",
     create_squad: "ИНИЦИАЛИЗАЦИЯ",
@@ -930,7 +930,7 @@ export const translations = {
     create_squad_ph: "Название группировки...",
     create_squad_btn: "СОЗДАТЬ ЮНИТ",
     market_title: "ЧЕРНЫЙ РЫНОК",
-    help_market: "# ЧЕРНЫЙ РЫНОК\n\nТрать репутацию. Обмани смерть.\n\n[TIP] **Замедление времени** дает тебе 24 часа форы. Юзай, если понимаешь, что не успеваешь отметиться.\n\n• **Скраб Кармы**: Сотри токсичное прошлое.\n• **Стирание Личности**: Удали свое имя со Стены Позора.\n• **OWNED** = куплено навсегда.",
+    help_market: "# ЧЕРНЫЙ РЫНОК\n\nБусты и страховки.\n\n[NOTE] В некоторых сборках может быть скрыт.\n\n• **Замедление времени**: +24 часа.\n• **Скраб Кармы**: почистить репутацию.\n• **Стирание Личности**: убрать метку позора.",
     market_balance: "БАЛАНС",
     buy: "КУПИТЬ",
     purchased: "ЕСТЬ",
@@ -974,14 +974,14 @@ export const translations = {
     invite_copied: "ССЫЛКА СКОПИРОВАНА",
     
     // UPDATED SECTIONS
-    help_letters: "# СХРОН\n\nТвои цифровые тайники.\n\n[NOTE] Шифрование. Мы это не прочитаем, даже если захотим.\n\n• **Создание**: Титул + теги + дата открытия.\n• **Фильтры**: Поиск, избранное, сортировка.\n• **История**: Открыл письмо → История → откат версии.\n• **Экспорт**: Открыл письмо → Export Markdown.\n• **Избранное**: Звезда = не потерять.",
-    help_duels: "# БИФ ЗОНА\n\nСтавь на выживание.\n\n[TIP] Смарт-контракты на понтах. Победитель забирает респект.\n\n• **Хайп**: Публичные бифы. Весь сервер смотрит.\n• **Приват**: Тихий разбор без зрителей.\n• **Избранное**: Звезди топовые разборки.\n• **Позор**: Проиграл спор? Твое имя навсегда на Стене Позора. F.",
-    help_legacy: "# ЛУТ И ВРАГИ\n\nМенеджмент посмертного инвентаря.\n\n• **Лут**: Кому достанется комп, а кому папка с домашкой?\n• **Враги**: ЧС для змей. Преследуй их с того света.\n• **Логи**: Толкни финальную речь. Сделай красиво.",
-    help_witness: "# ПРОТОКОЛ СВИДЕТЕЛЕЙ\n\nТвоя страховка.\n\n[WARN] Если таймер пробьет 0, мы спросим Сквад: 'Он реально рип или просто траву трогает?'\n\n• Нужно **2/3 голосов**, чтобы активировать Слив.\n• Зови только проверенных.\n• Пингуй афк — держи их онлайн.",
-    help_dj: "# DJ RIP\n\nСаундтрек для экрана Game Over.\n\n[TIP] Поставь Пашу Техника.\n\n• Этот трек заиграет автоматом, когда таймер истечет и люди зайдут в твой профиль.",
-    help_resurrection: "# ВОСКРЕШЕНИЕ\n\nЖесткий ребут таймера.\n\n[WARN] Это дергает систему. Жми только если реально жив.\n\n• Тап по кнопке и жди перезагрузку.\n• Таймер сбрасывается, серия живет.",
-    help_search: "# ГЛОБАЛ СКАН\n\nИщи быстро, без суеты.\n\n[NOTE] Поиск бьет по письмам и дуэлям сразу.\n\n• **2+ символа** — иначе молчим.\n• Тапай карточку — откроется нужный экран.\n• Пусто? Значит контента нет, не баг.",
-    help_create_letter: "# НОВЫЙ СХРОН\n\nСобери дроп по красоте.\n\n[NOTE] Черновики автосейвятся. Не парься.\n\n• **Титул + теги** = кому улетит.\n• **Дата** закрывает доступ до срока.\n• **Вложения**: медиа + аудио.\n• **Burn on read** = одноразка.",
-    help_settings: "# НАСТРОЙКИ\n\nТюнь машину.\n\n[TIP] Если бот бесит — режь частоту.\n\n• **Язык**: RU/EN тумблер.\n• **Уведомления**: аппка + телега.\n• **Кошелек**: connect/disconnect для TON.\n• **TON Ops**: наследство, сейф, эскроу."
+    help_letters: "# СХРОН ПИСЕМ\n\nТвои тайники и капсулы времени.\n\n[NOTE] Контент шифруется — мы его не читаем.\n\n• **Создание**: заголовок + теги + дата открытия.\n• **Фильтры**: поиск, избранное, сортировка.\n• **История**: письмо → история → откат версии.\n• **Экспорт**: письмо → экспорт в Markdown.\n• **Избранное**: звезда = не потерять.",
+    help_duels: "# БИФ ЗОНА\n\nДуэли, ставки и разборки.\n\n[NOTE] Биф = спор с исходом.\n[TIP] Победитель получает респект, проигравший — на стену.\n\n• **Хайп**: публичные дуэли.\n• **Приват**: без зрителей.\n• **Избранное**: звезди топовые бифы.\n• **Позор**: проиграл — попал в историю.",
+    help_legacy: "# ЛУТ И ВРАГИ\n\nПосмертный инвентарь и финальные послания.\n\n• **Лут**: кому что достанется.\n• **Враги**: ЧС для токсиков.\n• **Логи**: финальное сообщение.",
+    help_witness: "# ПРОТОКОЛ СВИДЕТЕЛЕЙ\n\nПроверка: жив или пропал.\n\n[WARN] Если таймер = 0, свидетели решают, сливать ли контент.\n[NOTE] Нужно **2/3 голосов**.\n\n• Зови только проверенных.\n• Пингуй АФК, держи онлайн.",
+    help_dj: "# DJ RIP\n\nСаундтрек для Game Over.\n\n[NOTE] Трек играет, когда таймер истек и кто‑то открыл профиль.\n[TIP] Выбирай то, что подходит тебе.",
+    help_resurrection: "# ВОСКРЕШЕНИЕ\n\nРучной ребут таймера.\n\n[WARN] Жми только если реально жив.\n\n• Нажми кнопку.\n• Таймер сбросится, серия сохранится.",
+    help_search: "# МЕСТНЫЙ ЯНДЕКС\n\nИщи по письмам, дуэлям и наследке.\n\n[NOTE] Нужно **2+ символа**.\n\n• Тап по карточке — откроется экран.\n• Пусто? Значит ничего не найдено.",
+    help_create_letter: "# НОВЫЙ СХРОН\n\nСобери дроп по уму.\n\n[NOTE] Черновики автосейвятся.\n\n• **Заголовок + теги** = кому доступ.\n• **Дата открытия** = когда видно.\n• **Вложения**: медиа + аудио.\n• **Burn on read** = одноразка.",
+    help_settings: "# НАСТРОЙКИ\n\nПриведи систему в порядок.\n\n[NOTE] Уведы можно сделать тише.\n\n• **Язык**: RU/EN.\n• **Уведомления**: аппка + телега.\n• **Кошелек**: connect/disconnect для TON.\n• **TON Ops**: наследство, сейф, эскроу."
   }
 };

@@ -51,21 +51,6 @@ const { createTables } = require('./migrations');
 
 const bot = new Telegraf(BOT_TOKEN);
 
-<<<<<<< HEAD
-const sendWebAppButton = (ctx) => {
-  if (!WEB_APP_URL) {
-    return ctx.reply('WebApp URL is not set. Define WEB_APP_URL in .env');
-  }
-  return ctx.reply('Open WebApp', {
-    reply_markup: {
-      inline_keyboard: [[{ text: 'Open WebApp', web_app: { url: WEB_APP_URL } }]]
-    }
-  });
-};
-
-bot.start(sendWebAppButton);
-bot.command('open', sendWebAppButton);
-=======
 const BOT_INFO_IMAGE_URL = process.env.BOT_INFO_IMAGE_URL || '';
 const BOT_INFO_TEXT =
   'PRESS F — это мем‑сейф для твоих слов, споров и секретных нычек с криптокошельками.\n' +
@@ -73,13 +58,6 @@ const BOT_INFO_TEXT =
   '• Споры с хайп‑ставкой и публичной драмой\n' +
   '• Завещания и вечные хранилища (TON‑фичи)\n' +
   'Нажми НАЧАТЬ и заходи в WebApp.';
-
-const buildStartKeyboard = () => ({
-  reply_markup: {
-    inline_keyboard: [[{ text: 'НАЧАТЬ', web_app: { url: WEB_APP_URL } }]]
-  }
-});
->>>>>>> 3205764 (Bot start info + start button)
 
 const buildStartKeyboard = () => ({
   reply_markup: {
