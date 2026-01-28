@@ -108,6 +108,15 @@ app.use(express.json({ limit: '200kb' }));
 // Telegram webhook callback (MUST be first, before any other middleware)
 if (USE_WEBHOOK) {
   app.use(bot.webhookCallback('/bot'));
+  // Add a simple handler for HEAD/GET requests to /bot for debugging
+  app.head('/bot', (req, res) => {
+    console.log('HEAD /bot received');
+    res.status(200).end();
+  });
+  app.get('/bot', (req, res) => {
+    console.log('GET /bot received');
+    res.status(200).json({ ok: true, message: 'Webhook endpoint is active' });
+  });
   console.log('✅ Webhook callback registered at /bot');
 } else {
   console.warn('⚠️  Webhook callback NOT registered. USE_WEBHOOK=false');
