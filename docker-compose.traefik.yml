@@ -51,8 +51,7 @@ services:
       dockerfile: Dockerfile.frontend
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.pressf-frontend.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.pressf-frontend.priority=1"
+      - "traefik.http.routers.pressf-frontend.rule=Host(`${DOMAIN}`) && !PathPrefix(`/api`) && !PathPrefix(`/bot`)"
       - "traefik.http.routers.pressf-frontend.entrypoints=websecure"
       - "traefik.http.routers.pressf-frontend.tls=true"
       - "traefik.http.routers.pressf-frontend.tls.certresolver=le"
