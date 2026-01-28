@@ -28,6 +28,7 @@ const WEB_APP_URL =
   process.env.FRONTEND_URL ||
   '';
 const USE_WEBHOOK = Boolean(WEBHOOK_URL) && process.env.BOT_USE_WEBHOOK !== 'false';
+console.log('Webhook config:', { WEBHOOK_URL, BOT_USE_WEBHOOK: process.env.BOT_USE_WEBHOOK, USE_WEBHOOK });
 const PORT = process.env.PORT || 3000;
 const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 const DEV_SKIP_VERIFY = process.env.DEV_SKIP_VERIFY === 'true';
@@ -107,7 +108,9 @@ app.use(express.json({ limit: '200kb' }));
 // Telegram webhook callback (MUST be first, before any other middleware)
 if (USE_WEBHOOK) {
   app.use(bot.webhookCallback('/bot'));
-  console.log('Webhook callback registered at /bot');
+  console.log('✅ Webhook callback registered at /bot');
+} else {
+  console.warn('⚠️  Webhook callback NOT registered. USE_WEBHOOK=false');
 }
 
 app.use(helmet());
