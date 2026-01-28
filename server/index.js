@@ -51,6 +51,7 @@ const { createTables } = require('./migrations');
 
 const bot = new Telegraf(BOT_TOKEN);
 
+<<<<<<< HEAD
 const sendWebAppButton = (ctx) => {
   if (!WEB_APP_URL) {
     return ctx.reply('WebApp URL is not set. Define WEB_APP_URL in .env');
@@ -64,8 +65,55 @@ const sendWebAppButton = (ctx) => {
 
 bot.start(sendWebAppButton);
 bot.command('open', sendWebAppButton);
+=======
+const BOT_INFO_IMAGE_URL = process.env.BOT_INFO_IMAGE_URL || '';
+const BOT_INFO_TEXT =
+  'PRESS F — это мем‑сейф для твоих слов, споров и секретных нычек с криптокошельками.\n' +
+  '• Письма с таймером и дедлайном\n' +
+  '• Споры с хайп‑ставкой и публичной драмой\n' +
+  '• Завещания и вечные хранилища (TON‑фичи)\n' +
+  'Нажми НАЧАТЬ и заходи в WebApp.';
 
-bot.command('info', (ctx) => ctx.reply('PRESS F � WebApp ready.'));
+const buildStartKeyboard = () => ({
+  reply_markup: {
+    inline_keyboard: [[{ text: 'НАЧАТЬ', web_app: { url: WEB_APP_URL } }]]
+  }
+});
+>>>>>>> 3205764 (Bot start info + start button)
+
+const buildStartKeyboard = () => ({
+  reply_markup: {
+    inline_keyboard: [[{ text: 'НАЧАТЬ', web_app: { url: WEB_APP_URL } }]]
+  }
+});
+
+const sendStartMessage = async (ctx) => {
+  if (!WEB_APP_URL) {
+    return ctx.reply('WebApp URL is not set. Define WEB_APP_URL in .env');
+  }
+  if (BOT_INFO_IMAGE_URL) {
+    try {
+      return await ctx.replyWithPhoto(
+        { url: BOT_INFO_IMAGE_URL },
+        { caption: BOT_INFO_TEXT, ...buildStartKeyboard() }
+      );
+    } catch (error) {
+      console.warn('Failed to send bot info image, fallback to text:', error?.message || error);
+    }
+  }
+  return ctx.reply(BOT_INFO_TEXT, buildStartKeyboard());
+};
+
+const sendWebAppButton = (ctx) => {
+  if (!WEB_APP_URL) {
+    return ctx.reply('WebApp URL is not set. Define WEB_APP_URL in .env');
+  }
+  return ctx.reply('Открыть WebApp', buildStartKeyboard());
+};
+
+bot.start(sendStartMessage);
+bot.command('open', sendWebAppButton);
+bot.command('info', (ctx) => ctx.reply(BOT_INFO_TEXT));
 
 const app = express();
 app.use(express.json({ limit: '200kb' }));
