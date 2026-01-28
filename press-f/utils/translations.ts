@@ -287,7 +287,7 @@ export const translations = {
     drops_guide_4_desc: "Lock it until 2077. Let the future deal with your problems.",
     
     profile_title: "IDENTITY",
-    help_profile: "# ID CARD\n\nYour profile, status, and receipts.\n\n[NOTE] **Level** grows with activity and survival.\n[TIP] Karma up = Based. Karma down = Menace.\n\n• **Skins**: Unlock by staying active.\n• **Badges**: Proof of milestones.\n• **Notifications**: Logs here, settings on the Settings page.",
+    help_profile: "# ID / PROFILE\n\nYour passport in the system: who you are, how you live, and why you live.\n\n[NOTE] Level grows with activity and survival.\n\n• **Karma**: higher = based, lower = menace.\n• **Badges**: proof you’re not a bot.",
     profile_bio_label: "Manifesto",
     profile_bio_ph: "Enter your status...",
     profile_reputation: "Reputation",
@@ -420,7 +420,7 @@ export const translations = {
     
     // SQUAD SECTION
     squad_title: "NETRUNNER SQUAD",
-    help_squad: "# BLOOD PACT\n\nYour safety net.\n\n[WARN] If everyone goes offline, logs can leak.\n[NOTE] Needs **2/3 votes** from witnesses to trigger.\n\n• **Pact**: Shared encrypted vault.\n• **Ping**: Wake up AFK homies.\n• **Invite**: Link/QR to add the crew.\n• **Leaderboard**: Uptime and clout.",
+    help_squad: "# BLOOD PACT\n\nYour crew = your insurance.\n\n[WARN] If everyone goes offline, content can leak.\n[NOTE] Needs 2/3 votes.\n\n• **Pact**: shared encrypted vault.\n• **Ping**: poke AFK homies (don’t leak the stash).\n• **Invite**: link/QR to join.",
     tab_pact: "Ops Center",
     tab_leaderboard: "Global Rank",
     create_squad: "INITIALIZE SQUAD",
@@ -484,14 +484,14 @@ export const translations = {
     
     // UPDATED SECTIONS
     help_letters: "# PAYLOAD STASH\n\nYour timed drops and sealed notes.\n\n[NOTE] Content is encrypted. We can’t read it.\n\n• **Create**: Title + tags + unlock date.\n• **Filters**: Search, Favorites, sort by date/status.\n• **History**: Open → History → rollback.\n• **Export**: Open → Export Markdown.\n• **Favorites**: Star important drops.",
-    help_duels: "# BEEF ZONE\n\nDuels, bets, and receipts.\n\n[NOTE] Beef = dispute with a winner.\n[TIP] Winner gets clout, loser hits the wall.\n\n• **Hype**: Public beefs.\n• **Private**: Low‑key mode.\n• **Favorites**: Star top rivalries.\n• **Shame**: Loss = Shame Wall.",
+    help_duels: "# BEEF ZONE\n\nBeefs, bets, and public drama.\n\n[NOTE] Beef = dispute with a result. Go private, add witnesses, or go full hype and hit the top.\n\n• **Hype**: public mode, everyone sees it, top board shows the hottest beefs.\n• **Private**: quiet fight (still can add a homie).\n• **Shame**: lose it and your rep gets roasted.",
     help_legacy: "# LOOT & ENEMIES\n\nAfterlife inventory and receipts.\n\n• **Loot**: Who gets what.\n• **Enemies**: Block the snakes.\n• **Logs**: Final message.",
-    help_witness: "# WITNESS PROTOCOL\n\nProof‑of‑life insurance.\n\n[WARN] When timer hits 0, witnesses decide if the leak triggers.\n[NOTE] Requires **2/3 votes**.\n\n• Invite trusted people only.\n• Ping AFK witnesses to keep them active.",
-    help_dj: "# FUNERAL DJ\n\nSoundtrack for your Game Over screen.\n\n[NOTE] Plays when timer hits 0 and someone opens your profile.\n[TIP] Pick a track that fits your vibe.",
-    help_resurrection: "# RESPAWN SEQUENCE\n\nManual timer reset.\n\n[WARN] Use only if you’re alive.\n\n• Tap the button.\n• Timer resets, streak stays.",
-    help_search: "# LOCAL SEARCH\n\nFind letters and duels fast.\n\n[NOTE] Requires **2+ chars** to start.\n\n• Tap a card to open it.\n• Empty = no results, not a bug.",
-    help_create_letter: "# NEW PAYLOAD\n\nBuild your drop clean.\n\n[NOTE] Drafts auto‑save.\n\n• **Title + tags** = who gets access.\n• **Unlock date** controls reveal.\n• **Attachments**: media + audio.\n• **Burn on read** = one‑shot access.",
-    help_settings: "# SETTINGS CONTROL\n\nTune the system.\n\n[NOTE] You can quiet notifications here.\n\n• **Language**: RU/EN.\n• **Notifications**: app + Telegram.\n• **Wallet**: connect/disconnect for TON ops.\n• **TON Ops**: inheritance, storage, duel escrow."
+    help_witness: "# WITNESS PROTOCOL\n\nAre you alive or just gone? Anti self‑wipe layer.\n\n[WARN] When timer hits 0, witnesses decide if the leak triggers.\n[NOTE] Needs 2/3 votes.\n\n• Invite only trusted people.\n• Ping AFK and keep them online.\n• Kick them when needed, it’s serious.",
+    help_dj: "# DJ RIP (Just for fun)\n\nSoundtrack for Game Over. Exit with style.\n\n[NOTE] Plays when the timer hits 0 and someone opens your profile.\n\n• Pick what fits you (you can upload it in the app).",
+    help_resurrection: "# STAY ALIVE, BRO\n\nTap the skull if you’re alive so your stash stays yours.\n\n[WARN] Use only if you’re actually alive.\n\n• Tap the button.\n• Timer resets, streak stays.",
+    help_search: "# LOCAL YANDEX\n\nSearch letters, beefs, and stashes.\n\n[NOTE] Needs 2+ chars or it won’t start (feature, not a bug).\n\n• Tap a card to open it.\n• Empty? Nothing found (also a feature).",
+    help_create_letter: "# NEW STASH\n\nDo it smart. Keep the important stuff important (or not).\n\n[NOTE] Drafts auto‑save.\n\n• Title + tags = who gets it.\n• Unlock date = when it lands.\n• Attachments: media + audio + whatever pops in your head.\n• Burn on read = one‑shot (we judge, but ok).",
+    help_settings: "# SETTINGS\n\nPut the system in order.\n\n[NOTE] Notifications are configurable here.\n\n• Language: RU/EN.\n• Notifications: app + Telegram.\n• Wallet: connect/disconnect for TON."
   },
   ru: {
     app_title: "PRESS F",
@@ -778,7 +778,7 @@ export const translations = {
     drops_guide_4_desc: "Залочь инфу до 2077 года. Пусть внуки разгребают.",
     
     profile_title: "ПРОФИЛЬ",
-    help_profile: "# ID / ПРОФИЛЬ\n\nКто ты в системе и как ты живешь.\n\n[NOTE] **Уровень** растет от активности и выживания.\n[TIP] Карма ↑ = база, карма ↓ = угроза.\n\n• **Скины**: открываются за активность.\n• **Ачивки**: доказательства прогресса.\n• **Уведы**: лог здесь, настройки — в отдельной вкладке.",
+    help_profile: "# ID / ПРОФИЛЬ\n\nТвой паспорт в системе: кто ты, как живёшь и зачем жив.\n\n[NOTE] Уровень растёт от активности и выживания.\n\n• **Кармa**: выше = база, ниже = угроза.\n• **Ачивки**: пруфы, что ты не бот.",
     profile_bio_label: "Манифест",
     profile_bio_ph: "Твой статус...",
     profile_reputation: "Репутация",
@@ -911,7 +911,7 @@ export const translations = {
     
     // SQUAD SECTION UPDATED
     squad_title: "СКВАД",
-    help_squad: "# ПАКТ КРОВИ\n\nСквад = страховка.\n\n[WARN] Если все оффлайн — контент может слиться.\n[NOTE] Нужно **2/3 голосов**.\n\n• **Пакт**: общий зашифрованный сейф.\n• **Пинг**: дергай АФК.\n• **Инвайт**: ссылка/QR для вступления.\n• **Рейтинг**: аптайм и реп.",
+    help_squad: "# ПАКТ КРОВИ\n\nСквад = страховка. Здесь твои самые близкие кореша.\n\n[WARN] Если все оффлайн — контент может слиться.\n[NOTE] Нужно 2/3 голосов.\n\n• Пакт: общий зашифрованный сейф.\n• Пинг: пинай тех кто АФК (вы же не хотите слить общак?).\n• Инвайт: ссылка/QR.",
     tab_pact: "Оперштаб",
     tab_leaderboard: "Рейтинг",
     create_squad: "ИНИЦИАЛИЗАЦИЯ",
@@ -974,14 +974,14 @@ export const translations = {
     invite_copied: "ССЫЛКА СКОПИРОВАНА",
     
     // UPDATED SECTIONS
-    help_letters: "# СХРОН ПИСЕМ\n\nТвои тайники и капсулы времени.\n\n[NOTE] Контент шифруется — мы его не читаем.\n\n• **Создание**: заголовок + теги + дата открытия.\n• **Фильтры**: поиск, избранное, сортировка.\n• **История**: письмо → история → откат версии.\n• **Экспорт**: письмо → экспорт в Markdown.\n• **Избранное**: звезда = не потерять.",
-    help_duels: "# БИФ ЗОНА\n\nДуэли, ставки и разборки.\n\n[NOTE] Биф = спор с исходом.\n[TIP] Победитель получает респект, проигравший — на стену.\n\n• **Хайп**: публичные дуэли.\n• **Приват**: без зрителей.\n• **Избранное**: звезди топовые бифы.\n• **Позор**: проиграл — попал в историю.",
+    help_letters: "# МОИ СХРОНЫ\n\nТут лежат все твои письма и капсулы времени.\n\n[NOTE] Контент шифруется! Не парься, мы его не прочитаем, даже если захотим :D\nА вообще все шифруется на базе блокчейна TON. Пашку ведь до сих пор не взломали, правда?\n\n• **Создать**: Пиши заголовок, кому доступ, и дату открытия.\n• **Открыть**: Тут видно, когда письмо станет доступным.\n• **Фильтры**: Выбери поиск, избранное или сортировку.\n• **История**: Можешь откатиться к прошлой версии.\n• **Экспорт**: Если надо выгрузи письмо в текстовый файл.",
+    help_duels: "# БИФ ЗОНА\n\nБифы, ставки и публичные разборки.\n\n[NOTE] Биф = спор с исходом. Можешь забиться с кем хочешь и на что хочешь. Сделать это приватно или добавить корешей как свидетелей. А может сделать зарубу на хайп и залететь в топы?\n\n• **Хайп**: публичный режим, видят все, есть доска самых хайповых (за кого больше глаз смотрит).\n• **Приват**: тихий разбор без зрителей (но можешь добавить кореша).\n• **Позор**: проиграл — попал в историю (или зафаршмачил репу).",
     help_legacy: "# ЛУТ И ВРАГИ\n\nПосмертный инвентарь и финальные послания.\n\n• **Лут**: кому что достанется.\n• **Враги**: ЧС для токсиков.\n• **Логи**: финальное сообщение.",
-    help_witness: "# ПРОТОКОЛ СВИДЕТЕЛЕЙ\n\nПроверка: жив или пропал.\n\n[WARN] Если таймер = 0, свидетели решают, сливать ли контент.\n[NOTE] Нужно **2/3 голосов**.\n\n• Зови только проверенных.\n• Пингуй АФК, держи онлайн.",
-    help_dj: "# DJ RIP\n\nСаундтрек для Game Over.\n\n[NOTE] Трек играет, когда таймер истек и кто‑то открыл профиль.\n[TIP] Выбирай то, что подходит тебе.",
-    help_resurrection: "# ВОСКРЕШЕНИЕ\n\nРучной ребут таймера.\n\n[WARN] Жми только если реально жив.\n\n• Нажми кнопку.\n• Таймер сбросится, серия сохранится.",
-    help_search: "# МЕСТНЫЙ ЯНДЕКС\n\nИщи по письмам, дуэлям и наследке.\n\n[NOTE] Нужно **2+ символа**.\n\n• Тап по карточке — откроется экран.\n• Пусто? Значит ничего не найдено.",
-    help_create_letter: "# НОВЫЙ СХРОН\n\nСобери дроп по уму.\n\n[NOTE] Черновики автосейвятся.\n\n• **Заголовок + теги** = кому доступ.\n• **Дата открытия** = когда видно.\n• **Вложения**: медиа + аудио.\n• **Burn on read** = одноразка.",
-    help_settings: "# НАСТРОЙКИ\n\nПриведи систему в порядок.\n\n[NOTE] Уведы можно сделать тише.\n\n• **Язык**: RU/EN.\n• **Уведомления**: аппка + телега.\n• **Кошелек**: connect/disconnect для TON.\n• **TON Ops**: наследство, сейф, эскроу."
+    help_witness: "# ПРОТОКОЛ СВИДЕТЕЛЕЙ\n\nПроверка: жив ты или просто пропал. Защита от самовыпила.\n\n[WARN] Если таймер = 0, свидетели решают, сливать ли контент.\n[NOTE] Нужно 2/3 голосов.\n\n• Зови только проверенных.\n• Пингуй АФК, держи их онлайн.\n• Когда надо пинай, дело серьезное.",
+    help_dj: "# DJ RIP (Раздел по рофлу)\n\nСаундтрек для Game Over. Уйди красиво.\n\n[NOTE] Трек играет, когда таймер истёк и кто‑то открыл профиль.\n\n• Выбирай под себя, чтобы было в тему (можешь загрузить в приложуху).",
+    help_resurrection: "# ЖИВИ БРАТКА\n\nТапай на черепушку если жив, этим ты сохранишь свои нычки при себе.\n\n[WARN] Жми только если реально жив.\n\n• Нажми кнопку.\n• Таймер сбросится, серия сохранится.",
+    help_search: "# МЕСТНЫЙ ЯНДЕКС\n\nИщи по письмам, бифам и схронам.\n\n[NOTE] Нужно 2+ символа иначе ничего не найдет (не баг, а фича).\n\n• Тап по карточке — откроется экран.\n• Пусто? Значит ничего не найдено (опять же фича).",
+    help_create_letter: "# НОВЫЙ СХРОН\n\nДелай по уму. Оставь важное важным (а может и нет).\n\n[NOTE] Черновики автосейвятся.\n\n• Заголовок + теги = кому улетит.\n• Дата открытия = когда прилетит.\n• Вложения: медиа + аудио и вообще че в голову придет.\n• Burn on read = одноразка (как для интимок, но осуждаем).",
+    help_settings: "# НАСТРОЙКИ\n\nПриведи систему в порядок.\n\n[NOTE] Уведомления можно настраивать.\n\n• Язык: RU/EN.\n• Уведомления: аппка + телега.\n• Кошелёк: connect/disconnect для TON."
   }
 };
