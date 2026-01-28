@@ -66,18 +66,26 @@ const buildStartKeyboard = () => ({
 });
 
 const sendStartMessage = async (ctx) => {
+  console.log('[/start] Received start command from user:', ctx.from?.id);
   if (!WEB_APP_URL) {
+    console.warn('[/start] WEB_APP_URL not set');
     return ctx.reply('WebApp URL is not set. Define WEB_APP_URL in .env');
   }
   if (BOT_INFO_IMAGE_URL) {
+    console.log('[/start] Attempting to send image:', BOT_INFO_IMAGE_URL);
     try {
-      return await ctx.replyWithPhoto(
+      const result = await ctx.replyWithPhoto(
         { url: BOT_INFO_IMAGE_URL },
         { caption: BOT_INFO_TEXT, ...buildStartKeyboard() }
       );
+      console.log('[/start] Image sent successfully');
+      return result;
     } catch (error) {
-      console.warn('Failed to send bot info image, fallback to text:', error?.message || error);
+      console.error('[/start] Failed to send bot info image:', error?.message || error);
+      console.log('[/start] Falling back to text message');
     }
+  } else {
+    console.log('[/start] BOT_INFO_IMAGE_URL not set, sending text only');
   }
   return ctx.reply(BOT_INFO_TEXT, buildStartKeyboard());
 };
