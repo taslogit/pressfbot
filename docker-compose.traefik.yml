@@ -36,6 +36,7 @@ services:
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       WEBHOOK_URL: https://${DOMAIN}
+      BOT_USE_WEBHOOK: ${BOT_USE_WEBHOOK:-true}
       WEB_APP_URL: ${WEB_APP_URL}
       BOT_INFO_IMAGE_URL: ${BOT_INFO_IMAGE_URL}
       DATABASE_URL: ${DATABASE_URL}
