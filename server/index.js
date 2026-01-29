@@ -163,7 +163,13 @@ bot.command('info', async (ctx) => {
 });
 
 const app = express();
-app.use(express.json({ limit: '200kb' }));
+
+// Body size limit middleware (before express.json)
+const bodySizeLimit = require('./middleware/bodySizeLimit');
+app.use(bodySizeLimit);
+
+// JSON parser with reasonable default limit
+app.use(express.json({ limit: '1mb' }));
 
 // Serve static files (for bot images, avatars, etc.) with caching
 const path = require('path');
@@ -520,6 +526,8 @@ app.get('/api/health', async (_req, res) => {
       `UPDATE sessions SET last_seen_at = COALESCE(last_seen_at, created_at) WHERE last_seen_at IS NULL`
     );
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)`);
+    // Performance: Index for telegram_id lookups in auth middleware
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_telegram_id ON sessions(telegram_id)`);
     logger.info('Sessions table initialized');
 
     if (SESSION_CLEANUP_INTERVAL_SECONDS > 0) {

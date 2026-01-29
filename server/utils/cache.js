@@ -41,16 +41,71 @@ const initCache = (redisUrl) => {
   }
 };
 
+// Cache stampede protection: track pending requests
+const pendingRequests = new Map();
+
 const cache = {
-  // Get value from cache
+  // Get value from cache with stampede protection
   get: async (key) => {
     if (!redisClient) return null;
     try {
       const value = await redisClient.get(key);
-      return value ? JSON.parse(value) : null;
+      if (value) {
+        return JSON.parse(value);
+      }
+      
+      // Cache stampede protection: if another request is already fetching this key, wait for it
+      if (pendingRequests.has(key)) {
+        logger.debug(`Cache stampede protection: waiting for pending request for key ${key}`);
+        return await pendingRequests.get(key);
+      }
+      
+      return null;
     } catch (error) {
       logger.warn(`Cache get error for key ${key}`, { error: error.message });
       return null;
+    }
+  },
+  
+  // Get or set pattern with stampede protection
+  getOrSet: async (key, fetchFn, ttl = 300) => {
+    if (!redisClient) {
+      // If cache is not available, just fetch directly
+      return await fetchFn();
+    }
+    
+    try {
+      // Try to get from cache first
+      const cached = await cache.get(key);
+      if (cached !== null) {
+        return cached;
+      }
+      
+      // Check if another request is already fetching
+      if (pendingRequests.has(key)) {
+        logger.debug(`Cache stampede protection: waiting for pending fetch for key ${key}`);
+        return await pendingRequests.get(key);
+      }
+      
+      // Create promise for this fetch
+      const fetchPromise = (async () => {
+        try {
+          const value = await fetchFn();
+          await cache.set(key, value, ttl);
+          return value;
+        } finally {
+          // Remove from pending requests
+          pendingRequests.delete(key);
+        }
+      })();
+      
+      pendingRequests.set(key, fetchPromise);
+      return await fetchPromise;
+    } catch (error) {
+      pendingRequests.delete(key);
+      logger.warn(`Cache getOrSet error for key ${key}`, { error: error.message });
+      // Fallback to direct fetch
+      return await fetchFn();
     }
   },
 

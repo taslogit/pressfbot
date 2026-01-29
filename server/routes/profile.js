@@ -187,6 +187,16 @@ const createProfileRoutes = (pool) => {
       );
 
       if (checkResult.rowCount === 0) {
+        // Security: Verify user exists in sessions before creating profile
+        const userCheck = await pool.query(
+          'SELECT telegram_id FROM sessions WHERE telegram_id = $1 AND expires_at > now()',
+          [userId]
+        );
+        
+        if (userCheck.rowCount === 0) {
+          return sendError(res, 404, 'USER_NOT_FOUND', 'User session not found or expired');
+        }
+        
         // Create new profile with default values
         await pool.query(
           `INSERT INTO profiles (
