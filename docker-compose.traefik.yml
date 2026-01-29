@@ -7,6 +7,8 @@ services:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
       - --providers.docker.endpoint=unix:///var/run/docker.sock
+      - --providers.docker.network=pressf-net
+      - --log.level=DEBUG
       - --entryPoints.web.address=:80
       - --entryPoints.websecure.address=:443
       - --certificatesResolvers.le.acme.tlsChallenge=true
