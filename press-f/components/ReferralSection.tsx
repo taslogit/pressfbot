@@ -7,6 +7,7 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { tg } from '../utils/telegram';
 import { playSound } from '../utils/sound';
 import { QRCodeSVG } from 'qrcode.react';
+import { analytics } from '../utils/analytics';
 
 interface Props {
   className?: string;
@@ -39,8 +40,10 @@ const ReferralSection: React.FC<Props> = ({ className = '' }) => {
     if (!referralInfo?.referralLink) return;
     navigator.clipboard.writeText(referralInfo.referralLink);
     playSound('success');
-    tg.showPopup({ message: t('link_copied') || 'Link copied!' });
+    tg.showPopup({ message: t('referral_link_copied') || 'Link copied!' });
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    analytics.trackReferral(referralInfo.referralCode || '');
+    analytics.track('referral_link_copied', { code: referralInfo.referralCode });
   };
 
   const shareReferralLink = () => {
@@ -48,6 +51,8 @@ const ReferralSection: React.FC<Props> = ({ className = '' }) => {
     const text = t('referral_share_text') || 'Join Press F and get rewards!';
     tg.openLink(`https://t.me/share/url?url=${encodeURIComponent(referralInfo.referralLink)}&text=${encodeURIComponent(text)}`);
     playSound('click');
+    analytics.trackShare('referral', referralInfo.referralCode);
+    analytics.track('referral_shared', { code: referralInfo.referralCode });
   };
 
   if (loading || !referralInfo) {

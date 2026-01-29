@@ -368,12 +368,12 @@ const authMiddleware = createAuthMiddleware(pool);
 // Register API routes with rate limiting
 // Note: Rate limiters for POST requests are applied inside route handlers
 app.use('/api/letters', authMiddleware, createLettersRoutes(pool, letterCreateLimiter));
-app.use('/api/profile', authMiddleware, createProfileRoutes(pool));
+app.use('/api/profile', authMiddleware, createProfileRoutes(pool, bot));
 app.use('/api/duels', authMiddleware, createDuelsRoutes(pool, duelCreateLimiter));
 app.use('/api/legacy', authMiddleware, createLegacyRoutes(pool));
 app.use('/api/notifications', authMiddleware, createNotificationsRoutes(pool, bot));
 app.use('/api/ton', authMiddleware, createTonRoutes(pool));
-app.use('/api/daily-quests', authMiddleware, createDailyQuestsRoutes(pool));
+app.use('/api/daily-quests', authMiddleware, createDailyQuestsRoutes(pool, bot));
 app.use('/api/avatars', createAvatarsRoutes()); // No auth needed for public avatars list
 app.use('/api/gifts', authMiddleware, createGiftsRoutes(pool));
 app.use('/api/events', authMiddleware, createEventsRoutes(pool));

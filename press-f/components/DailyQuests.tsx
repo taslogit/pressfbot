@@ -6,6 +6,7 @@ import { DailyQuest } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
 import { playSound } from '../utils/sound';
 import confetti from 'canvas-confetti';
+import { analytics } from '../utils/analytics';
 
 interface Props {
   className?: string;
