@@ -1,5 +1,6 @@
 // Database migrations for Press F
 const { Pool } = require('pg');
+const logger = require('./utils/logger');
 
 const createTables = async (pool) => {
   try {
@@ -510,10 +511,10 @@ const createTables = async (pool) => {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_activity_feed_public ON activity_feed(is_public, created_at DESC) WHERE is_public = true`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_activity_feed_type ON activity_feed(activity_type, created_at DESC)`);
 
-    console.log('✅ All tables created successfully');
+    logger.info('✅ All tables created successfully');
     return true;
   } catch (error) {
-    console.error('❌ Error creating tables:', error);
+    logger.error('❌ Error creating tables:', error);
     throw error;
   }
 };
