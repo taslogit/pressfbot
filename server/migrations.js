@@ -296,6 +296,8 @@ const createTables = async (pool) => {
       )
     `);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_squads_creator ON squads(creator_id)`);
+    // Performance: GIN index for JSONB members queries
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_squads_members_gin ON squads USING GIN (members)`);
 
     // Witnesses table
     await pool.query(`

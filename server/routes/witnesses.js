@@ -1,10 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4, validate: validateUUID } = require('uuid');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { cache } = require('../utils/cache');
 const { logActivity } = require('./activity');
+
+// Constants
+const MAX_WITNESSES_PER_USER = 100;
 
 const createWitnessesRoutes = (pool) => {
   // GET /api/witnesses - Get user's witnesses
@@ -68,6 +71,11 @@ const createWitnessesRoutes = (pool) => {
 
       const witnessId = req.params.id;
 
+      // Validate witnessId format
+      if (!witnessId || !witnessId.startsWith('witness_')) {
+        return sendError(res, 400, 'INVALID_WITNESS_ID', 'Invalid witness ID format');
+      }
+
       const result = await pool.query(
         `SELECT * FROM witnesses WHERE id = $1 AND user_id = $2`,
         [witnessId, userId]
@@ -112,6 +120,20 @@ const createWitnessesRoutes = (pool) => {
 
       if (name.length > 255) {
         return sendError(res, 400, 'VALIDATION_ERROR', 'Witness name exceeds maximum length of 255 characters');
+      }
+
+      if (name.trim().length < 2) {
+        return sendError(res, 400, 'VALIDATION_ERROR', 'Witness name must be at least 2 characters');
+      }
+
+      // Check witness limit
+      const countResult = await pool.query(
+        'SELECT COUNT(*) as count FROM witnesses WHERE user_id = $1',
+        [userId]
+      );
+      const witnessCount = parseInt(countResult.rows[0]?.count || 0);
+      if (witnessCount >= MAX_WITNESSES_PER_USER) {
+        return sendError(res, 400, 'TOO_MANY_WITNESSES', `Maximum ${MAX_WITNESSES_PER_USER} witnesses allowed per user`);
       }
 
       // If letterId provided, verify letter exists and belongs to user
@@ -161,26 +183,38 @@ const createWitnessesRoutes = (pool) => {
 
   // PUT /api/witnesses/:id - Update witness
   router.put('/:id', async (req, res) => {
-    try {
-      if (!pool) {
-        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
-      }
+    const client = await pool?.connect();
+    if (!client) {
+      return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+    }
 
+    try {
       const userId = req.userId;
       if (!userId) {
+        client.release();
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
       const witnessId = req.params.id;
       const { name, status } = req.body;
 
-      // Check if witness exists and belongs to user
-      const witnessResult = await pool.query(
-        `SELECT * FROM witnesses WHERE id = $1 AND user_id = $2`,
+      // Validate witnessId format
+      if (!witnessId || !witnessId.startsWith('witness_')) {
+        client.release();
+        return sendError(res, 400, 'INVALID_WITNESS_ID', 'Invalid witness ID format');
+      }
+
+      await client.query('BEGIN');
+
+      // Check if witness exists and belongs to user (with lock)
+      const witnessResult = await client.query(
+        `SELECT * FROM witnesses WHERE id = $1 AND user_id = $2 FOR UPDATE`,
         [witnessId, userId]
       );
 
       if (witnessResult.rowCount === 0) {
+        await client.query('ROLLBACK');
+        client.release();
         return sendError(res, 404, 'WITNESS_NOT_FOUND', 'Witness not found or access denied');
       }
 
@@ -215,10 +249,13 @@ const createWitnessesRoutes = (pool) => {
       updateFields.push(`updated_at = now()`);
       updateValues.push(witnessId);
 
-      await pool.query(
+      await client.query(
         `UPDATE witnesses SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`,
         updateValues
       );
+
+      await client.query('COMMIT');
+      client.release();
 
       // Get updated witness
       const updatedResult = await pool.query(
@@ -236,6 +273,8 @@ const createWitnessesRoutes = (pool) => {
         updatedAt: witness.updated_at?.toISOString()
       }});
     } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      client.release();
       logger.error('Update witness error:', error);
       return sendError(res, 500, 'WITNESS_UPDATE_FAILED', 'Failed to update witness');
     }
@@ -243,32 +282,54 @@ const createWitnessesRoutes = (pool) => {
 
   // POST /api/witnesses/:id/confirm - Confirm witness
   router.post('/:id/confirm', async (req, res) => {
-    try {
-      if (!pool) {
-        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
-      }
+    const client = await pool?.connect();
+    if (!client) {
+      return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+    }
 
+    try {
       const userId = req.userId;
       if (!userId) {
+        client.release();
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
       const witnessId = req.params.id;
 
-      // Check if witness exists and belongs to user
-      const witnessResult = await pool.query(
-        `SELECT * FROM witnesses WHERE id = $1 AND user_id = $2`,
+      // Validate witnessId format
+      if (!witnessId || !witnessId.startsWith('witness_')) {
+        client.release();
+        return sendError(res, 400, 'INVALID_WITNESS_ID', 'Invalid witness ID format');
+      }
+
+      await client.query('BEGIN');
+
+      // Check if witness exists and belongs to user (with lock)
+      const witnessResult = await client.query(
+        `SELECT * FROM witnesses WHERE id = $1 AND user_id = $2 FOR UPDATE`,
         [witnessId, userId]
       );
 
       if (witnessResult.rowCount === 0) {
+        await client.query('ROLLBACK');
+        client.release();
         return sendError(res, 404, 'WITNESS_NOT_FOUND', 'Witness not found or access denied');
       }
 
-      await pool.query(
+      // Check if already confirmed
+      if (witnessResult.rows[0].status === 'confirmed') {
+        await client.query('ROLLBACK');
+        client.release();
+        return sendError(res, 409, 'ALREADY_CONFIRMED', 'Witness already confirmed');
+      }
+
+      await client.query(
         `UPDATE witnesses SET status = 'confirmed', updated_at = now() WHERE id = $1`,
         [witnessId]
       );
+
+      await client.query('COMMIT');
+      client.release();
 
       // Log activity
       try {
@@ -282,6 +343,8 @@ const createWitnessesRoutes = (pool) => {
 
       return res.json({ ok: true });
     } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      client.release();
       logger.error('Confirm witness error:', error);
       return sendError(res, 500, 'WITNESS_CONFIRM_FAILED', 'Failed to confirm witness');
     }
@@ -300,6 +363,11 @@ const createWitnessesRoutes = (pool) => {
       }
 
       const witnessId = req.params.id;
+
+      // Validate witnessId format
+      if (!witnessId || !witnessId.startsWith('witness_')) {
+        return sendError(res, 400, 'INVALID_WITNESS_ID', 'Invalid witness ID format');
+      }
 
       // Check if witness exists and belongs to user
       const witnessResult = await pool.query(

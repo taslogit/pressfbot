@@ -1,13 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4, validate: validateUUID } = require('uuid');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { cache } = require('../utils/cache');
 const { logActivity } = require('./activity');
 
+// Constants
+const MAX_SQUAD_MEMBERS = 50;
+const MAX_SHARED_PAYLOAD_SIZE = 10 * 1024; // 10KB
+const MAX_MEMBER_NAME_LENGTH = 100;
+
 const createSquadsRoutes = (pool) => {
-  // GET /api/squads - Get user's squad
+  // GET /api/squads - Get user's squad (with caching)
   router.get('/', async (req, res) => {
     try {
       if (!pool) {
@@ -17,6 +22,13 @@ const createSquadsRoutes = (pool) => {
       const userId = req.userId;
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+      }
+
+      // Try cache first
+      const cacheKey = `squad:${userId}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        return res.json({ ok: true, squad: cached });
       }
 
       // Find squad where user is a member
@@ -29,6 +41,7 @@ const createSquadsRoutes = (pool) => {
       );
 
       if (result.rowCount === 0) {
+        await cache.set(cacheKey, null, 300); // Cache null for 5 minutes
         return res.json({ ok: true, squad: null });
       }
 
@@ -42,6 +55,9 @@ const createSquadsRoutes = (pool) => {
         createdAt: squad.created_at?.toISOString(),
         updatedAt: squad.updated_at?.toISOString()
       };
+
+      // Cache for 5 minutes
+      await cache.set(cacheKey, normalizedSquad, 300);
 
       return res.json({ ok: true, squad: normalizedSquad });
     } catch (error) {
@@ -89,9 +105,12 @@ const createSquadsRoutes = (pool) => {
         [userId]
       );
 
+      // Get user name from profile or use default
+      const userName = profileResult.rows[0]?.title || 'User';
+
       const creator = {
         id: userId.toString(),
-        name: req.user?.first_name || 'User',
+        name: userName,
         status: 'alive',
         lastCheckIn: Date.now(),
         avatarId: profileResult.rows[0]?.avatar || 'pressf'
@@ -145,20 +164,43 @@ const createSquadsRoutes = (pool) => {
       const squadId = req.params.id;
       const { name, sharedPayload, pactHealth } = req.body;
 
-      // Check if squad exists and user is creator
-      const squadResult = await pool.query(
-        `SELECT * FROM squads WHERE id = $1`,
-        [squadId]
-      );
-
-      if (squadResult.rowCount === 0) {
-        return sendError(res, 404, 'SQUAD_NOT_FOUND', 'Squad not found');
+      // Validate squadId format
+      if (!squadId || !squadId.startsWith('squad_')) {
+        return sendError(res, 400, 'INVALID_SQUAD_ID', 'Invalid squad ID format');
       }
 
-      const squad = squadResult.rows[0];
-      if (squad.creator_id !== userId) {
-        return sendError(res, 403, 'FORBIDDEN', 'Only squad creator can update squad');
+      // Validate sharedPayload size
+      if (sharedPayload !== undefined && sharedPayload !== null) {
+        if (typeof sharedPayload !== 'string') {
+          return sendError(res, 400, 'VALIDATION_ERROR', 'sharedPayload must be a string');
+        }
+        if (sharedPayload.length > MAX_SHARED_PAYLOAD_SIZE) {
+          return sendError(res, 400, 'PAYLOAD_TOO_LARGE', `sharedPayload exceeds ${MAX_SHARED_PAYLOAD_SIZE / 1024}KB limit`);
+        }
       }
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        // Check if squad exists and user is creator (with lock)
+        const squadResult = await client.query(
+          `SELECT * FROM squads WHERE id = $1 FOR UPDATE`,
+          [squadId]
+        );
+
+        if (squadResult.rowCount === 0) {
+          await client.query('ROLLBACK');
+          client.release();
+          return sendError(res, 404, 'SQUAD_NOT_FOUND', 'Squad not found');
+        }
+
+        const squad = squadResult.rows[0];
+        if (squad.creator_id !== userId) {
+          await client.query('ROLLBACK');
+          client.release();
+          return sendError(res, 403, 'FORBIDDEN', 'Only squad creator can update squad');
+        }
 
       // Build update query
       const updateFields = [];
@@ -196,99 +238,154 @@ const createSquadsRoutes = (pool) => {
         return sendError(res, 400, 'VALIDATION_ERROR', 'No fields to update');
       }
 
-      updateFields.push(`updated_at = now()`);
-      updateValues.push(squadId);
+        updateFields.push(`updated_at = now()`);
+        updateValues.push(squadId);
 
-      await pool.query(
-        `UPDATE squads SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`,
-        updateValues
-      );
+        await client.query(
+          `UPDATE squads SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`,
+          updateValues
+        );
 
-      // Invalidate cache
-      await cache.del(`squad:${userId}`);
+        await client.query('COMMIT');
+        client.release();
 
-      // Get updated squad
-      const updatedResult = await pool.query(
-        `SELECT * FROM squads WHERE id = $1`,
-        [squadId]
-      );
+        // Invalidate cache
+        await cache.del(`squad:${userId}`);
 
-      const updatedSquad = updatedResult.rows[0];
-      const normalizedSquad = {
-        id: updatedSquad.id,
-        name: updatedSquad.name,
-        members: updatedSquad.members || [],
-        pactHealth: updatedSquad.pact_health || 100,
-        sharedPayload: updatedSquad.shared_payload,
-        createdAt: updatedSquad.created_at?.toISOString(),
-        updatedAt: updatedSquad.updated_at?.toISOString()
-      };
+        // Get updated squad
+        const updatedResult = await pool.query(
+          `SELECT * FROM squads WHERE id = $1`,
+          [squadId]
+        );
 
-      return res.json({ ok: true, squad: normalizedSquad });
-    } catch (error) {
-      logger.error('Update squad error:', error);
-      return sendError(res, 500, 'SQUAD_UPDATE_FAILED', 'Failed to update squad');
-    }
-  });
+        const updatedSquad = updatedResult.rows[0];
+        const normalizedSquad = {
+          id: updatedSquad.id,
+          name: updatedSquad.name,
+          members: updatedSquad.members || [],
+          pactHealth: updatedSquad.pact_health || 100,
+          sharedPayload: updatedSquad.shared_payload,
+          createdAt: updatedSquad.created_at?.toISOString(),
+          updatedAt: updatedSquad.updated_at?.toISOString()
+        };
+
+        return res.json({ ok: true, squad: normalizedSquad });
+      } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        client.release();
+        logger.error('Update squad error:', error);
+        return sendError(res, 500, 'SQUAD_UPDATE_FAILED', 'Failed to update squad');
+      }
+    });
 
   // POST /api/squads/:id/members - Add member to squad
   router.post('/:id/members', async (req, res) => {
-    try {
-      if (!pool) {
-        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
-      }
+    const client = await pool?.connect();
+    if (!client) {
+      return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+    }
 
+    try {
       const userId = req.userId;
       if (!userId) {
+        client.release();
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
       const squadId = req.params.id;
       const { memberId, memberName, avatarId } = req.body;
 
+      // Validate squadId format
+      if (!squadId || !squadId.startsWith('squad_')) {
+        client.release();
+        return sendError(res, 400, 'INVALID_SQUAD_ID', 'Invalid squad ID format');
+      }
+
       if (!memberId || typeof memberId !== 'string') {
+        client.release();
         return sendError(res, 400, 'VALIDATION_ERROR', 'memberId is required');
       }
 
-      // Check if squad exists
-      const squadResult = await pool.query(
-        `SELECT * FROM squads WHERE id = $1`,
+      // Validate memberName
+      if (memberName && (typeof memberName !== 'string' || memberName.length > MAX_MEMBER_NAME_LENGTH)) {
+        client.release();
+        return sendError(res, 400, 'VALIDATION_ERROR', `memberName must be a string with max length ${MAX_MEMBER_NAME_LENGTH}`);
+      }
+
+      await client.query('BEGIN');
+
+      // Check if squad exists and get with lock
+      const squadResult = await client.query(
+        `SELECT * FROM squads WHERE id = $1 FOR UPDATE`,
         [squadId]
       );
 
       if (squadResult.rowCount === 0) {
+        await client.query('ROLLBACK');
+        client.release();
         return sendError(res, 404, 'SQUAD_NOT_FOUND', 'Squad not found');
       }
 
       const squad = squadResult.rows[0];
       const members = squad.members || [];
 
+      // Check authorization: only creator or existing member can add new members
+      const isCreator = squad.creator_id === userId;
+      const isMember = members.some(m => m.id === userId.toString());
+      if (!isCreator && !isMember) {
+        await client.query('ROLLBACK');
+        client.release();
+        return sendError(res, 403, 'FORBIDDEN', 'Only squad creator or members can add new members');
+      }
+
       // Check if member already exists
       if (members.some(m => m.id === memberId)) {
+        await client.query('ROLLBACK');
+        client.release();
         return sendError(res, 409, 'MEMBER_EXISTS', 'Member already in squad');
+      }
+
+      // Check member limit
+      if (members.length >= MAX_SQUAD_MEMBERS) {
+        await client.query('ROLLBACK');
+        client.release();
+        return sendError(res, 400, 'SQUAD_FULL', `Maximum ${MAX_SQUAD_MEMBERS} members allowed per squad`);
+      }
+
+      // Validate members array size (prevent DoS)
+      const membersJson = JSON.stringify(members);
+      if (membersJson.length > 100 * 1024) { // 100KB limit for members array
+        await client.query('ROLLBACK');
+        client.release();
+        return sendError(res, 400, 'MEMBERS_TOO_LARGE', 'Members array exceeds size limit');
       }
 
       // Add new member
       const newMember = {
         id: memberId,
-        name: memberName || 'User',
+        name: (memberName || 'User').trim().substring(0, MAX_MEMBER_NAME_LENGTH),
         status: 'alive',
         lastCheckIn: Date.now(),
-        avatarId: avatarId || 'pressf'
+        avatarId: (avatarId || 'pressf').substring(0, 50)
       };
 
       members.push(newMember);
 
-      await pool.query(
+      await client.query(
         `UPDATE squads SET members = $1, updated_at = now() WHERE id = $2`,
         [JSON.stringify(members), squadId]
       );
+
+      await client.query('COMMIT');
+      client.release();
 
       // Invalidate cache
       await cache.del(`squad:${userId}`);
 
       return res.json({ ok: true, member: newMember });
     } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      client.release();
       logger.error('Add member error:', error);
       return sendError(res, 500, 'MEMBER_ADD_FAILED', 'Failed to add member');
     }
@@ -296,26 +393,38 @@ const createSquadsRoutes = (pool) => {
 
   // DELETE /api/squads/:id/members/:memberId - Remove member from squad
   router.delete('/:id/members/:memberId', async (req, res) => {
-    try {
-      if (!pool) {
-        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
-      }
+    const client = await pool?.connect();
+    if (!client) {
+      return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+    }
 
+    try {
       const userId = req.userId;
       if (!userId) {
+        client.release();
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
       const squadId = req.params.id;
       const memberId = req.params.memberId;
 
-      // Check if squad exists
-      const squadResult = await pool.query(
-        `SELECT * FROM squads WHERE id = $1`,
+      // Validate squadId format
+      if (!squadId || !squadId.startsWith('squad_')) {
+        client.release();
+        return sendError(res, 400, 'INVALID_SQUAD_ID', 'Invalid squad ID format');
+      }
+
+      await client.query('BEGIN');
+
+      // Check if squad exists and get with lock
+      const squadResult = await client.query(
+        `SELECT * FROM squads WHERE id = $1 FOR UPDATE`,
         [squadId]
       );
 
       if (squadResult.rowCount === 0) {
+        await client.query('ROLLBACK');
+        client.release();
         return sendError(res, 404, 'SQUAD_NOT_FOUND', 'Squad not found');
       }
 
@@ -323,6 +432,8 @@ const createSquadsRoutes = (pool) => {
 
       // Check permissions: only creator can remove members, or user can remove themselves
       if (squad.creator_id !== userId && userId.toString() !== memberId) {
+        await client.query('ROLLBACK');
+        client.release();
         return sendError(res, 403, 'FORBIDDEN', 'Only creator can remove members, or user can remove themselves');
       }
 
@@ -330,19 +441,26 @@ const createSquadsRoutes = (pool) => {
       const filteredMembers = members.filter(m => m.id !== memberId);
 
       if (filteredMembers.length === members.length) {
+        await client.query('ROLLBACK');
+        client.release();
         return sendError(res, 404, 'MEMBER_NOT_FOUND', 'Member not found in squad');
       }
 
-      await pool.query(
+      await client.query(
         `UPDATE squads SET members = $1, updated_at = now() WHERE id = $2`,
         [JSON.stringify(filteredMembers), squadId]
       );
+
+      await client.query('COMMIT');
+      client.release();
 
       // Invalidate cache
       await cache.del(`squad:${userId}`);
 
       return res.json({ ok: true });
     } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      client.release();
       logger.error('Remove member error:', error);
       return sendError(res, 500, 'MEMBER_REMOVE_FAILED', 'Failed to remove member');
     }
@@ -350,25 +468,49 @@ const createSquadsRoutes = (pool) => {
 
   // POST /api/squads/:id/join - Join squad via invite link
   router.post('/:id/join', async (req, res) => {
-    try {
-      if (!pool) {
-        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
-      }
+    const client = await pool?.connect();
+    if (!client) {
+      return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+    }
 
+    try {
       const userId = req.userId;
       if (!userId) {
+        client.release();
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
       const squadId = req.params.id;
 
-      // Check if squad exists
-      const squadResult = await pool.query(
-        `SELECT * FROM squads WHERE id = $1`,
+      // Validate squadId format
+      if (!squadId || !squadId.startsWith('squad_')) {
+        client.release();
+        return sendError(res, 400, 'INVALID_SQUAD_ID', 'Invalid squad ID format');
+      }
+
+      // Check if user already has a squad
+      const existingResult = await client.query(
+        `SELECT id FROM squads 
+         WHERE creator_id = $1 OR members @> $2::jsonb`,
+        [userId, JSON.stringify([{ id: userId.toString() }])]
+      );
+
+      if (existingResult.rowCount > 0) {
+        client.release();
+        return sendError(res, 409, 'ALREADY_IN_SQUAD', 'User already belongs to a squad');
+      }
+
+      await client.query('BEGIN');
+
+      // Check if squad exists and get with lock
+      const squadResult = await client.query(
+        `SELECT * FROM squads WHERE id = $1 FOR UPDATE`,
         [squadId]
       );
 
       if (squadResult.rowCount === 0) {
+        await client.query('ROLLBACK');
+        client.release();
         return sendError(res, 404, 'SQUAD_NOT_FOUND', 'Squad not found');
       }
 
@@ -377,18 +519,30 @@ const createSquadsRoutes = (pool) => {
 
       // Check if user already in squad
       if (members.some(m => m.id === userId.toString())) {
+        await client.query('ROLLBACK');
+        client.release();
         return sendError(res, 409, 'ALREADY_MEMBER', 'User already in squad');
       }
 
+      // Check member limit
+      if (members.length >= MAX_SQUAD_MEMBERS) {
+        await client.query('ROLLBACK');
+        client.release();
+        return sendError(res, 400, 'SQUAD_FULL', `Maximum ${MAX_SQUAD_MEMBERS} members allowed per squad`);
+      }
+
       // Get user profile
-      const profileResult = await pool.query(
+      const profileResult = await client.query(
         `SELECT user_id, avatar, title, level FROM profiles WHERE user_id = $1`,
         [userId]
       );
 
+      // Get user name from profile
+      const userName = profileResult.rows[0]?.title || 'User';
+
       const newMember = {
         id: userId.toString(),
-        name: req.user?.first_name || 'User',
+        name: userName,
         status: 'alive',
         lastCheckIn: Date.now(),
         avatarId: profileResult.rows[0]?.avatar || 'pressf'
@@ -396,10 +550,13 @@ const createSquadsRoutes = (pool) => {
 
       members.push(newMember);
 
-      await pool.query(
+      await client.query(
         `UPDATE squads SET members = $1, updated_at = now() WHERE id = $2`,
         [JSON.stringify(members), squadId]
       );
+
+      await client.query('COMMIT');
+      client.release();
 
       // Log activity
       try {
@@ -422,6 +579,8 @@ const createSquadsRoutes = (pool) => {
         sharedPayload: squad.shared_payload
       }});
     } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      client.release();
       logger.error('Join squad error:', error);
       return sendError(res, 500, 'SQUAD_JOIN_FAILED', 'Failed to join squad');
     }
@@ -434,8 +593,12 @@ const createSquadsRoutes = (pool) => {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
       }
 
-      const limit = parseInt(req.query.limit) || 50;
-      const offset = parseInt(req.query.offset) || 0;
+      const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Max 100
+      const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+
+      if (isNaN(limit) || limit < 1 || isNaN(offset) || offset < 0) {
+        return sendError(res, 400, 'INVALID_PARAMS', 'Invalid limit or offset');
+      }
 
       // Get top squads by pact_health
       const result = await pool.query(
