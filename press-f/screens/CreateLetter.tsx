@@ -11,6 +11,8 @@ import InfoSection from '../components/InfoSection';
 import { Letter } from '../types';
 import { encryptPayload, splitKey } from '../utils/security';
 import { uploadToIPFS } from '../services/cloud';
+import XPNotification from '../components/XPNotification';
+import { calculateLevel } from '../utils/levelSystem';
 
 type Attachment = {
   id: string;
@@ -35,6 +37,7 @@ const CreateLetter = () => {
   const [isSending, setIsSending] = useState(false);
   const [encryptionStep, setEncryptionStep] = useState(0); // 0: idle, 1: encrypting, 2: splitting, 3: uploading, 4: done
   const [hasDraft, setHasDraft] = useState(false);
+  const [xpNotification, setXpNotification] = useState<{ xp: number; level?: number; levelUp?: boolean } | null>(null);
   
   // Attachments State
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -127,7 +130,7 @@ const CreateLetter = () => {
     }
   };
 
-  const performSave = () => {
+  const performSave = async () => {
     const mockAttachmentUrls = attachments.map(att => {
       if (att.type === 'image') return `https://source.unsplash.com/random/800x600?sig=${att.id}`;
       if (att.type === 'video') return `https://www.w3schools.com/html/mov_bbb.mp4`; 
@@ -135,7 +138,7 @@ const CreateLetter = () => {
       return '';
     });
 
-    storage.saveLetter({
+    const letter: Letter = {
       id: Date.now().toString(),
       title: title || t('new_letter'),
       content,
@@ -145,7 +148,35 @@ const CreateLetter = () => {
       attachments: mockAttachmentUrls,
       type: leakType,
       options: { burnOnRead }
-    });
+    };
+
+    // Use async API to get XP reward
+    try {
+      const result = await storage.saveLetterAsync(letter);
+      // Check if we got XP from API response
+      if (result && result.xp) {
+        // Update quest progress
+        const { dailyQuestsAPI } = await import('../utils/api');
+        dailyQuestsAPI.updateProgress('create_letter').catch(() => {});
+        
+        // Trigger quest refresh event for DailyQuests component
+        window.dispatchEvent(new CustomEvent('questProgressUpdated'));
+        
+        // Refresh profile to get updated XP
+        await storage.getUserProfileAsync();
+        
+        // Get current profile to check for level up
+        const profile = await storage.getUserProfileAsync();
+        const oldLevel = calculateLevel(profile.experience || 0);
+        const newLevel = calculateLevel((profile.experience || 0) + result.xp);
+        const levelUp = newLevel > oldLevel;
+        
+        setXpNotification({ xp: result.xp, level: levelUp ? newLevel : undefined, levelUp });
+      }
+    } catch (error) {
+      // Fallback to local save
+      storage.saveLetter(letter);
+    }
 
     storage.clearDraft();
   };
@@ -228,6 +259,14 @@ const CreateLetter = () => {
   return (
     <div className="pb-24 relative min-h-screen">
       <EnvelopeAnimation isVisible={isSending} onComplete={handleAnimationComplete} />
+      {xpNotification && (
+        <XPNotification
+          xp={xpNotification.xp}
+          level={xpNotification.level}
+          levelUp={xpNotification.levelUp || false}
+          onComplete={() => setXpNotification(null)}
+        />
+      )}
       
       {/* Security Overlay */}
       <AnimatePresence>

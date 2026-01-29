@@ -13,6 +13,8 @@ import InfoSection from '../components/InfoSection';
 import { tg } from '../utils/telegram';
 import EnvelopeAnimation from '../components/EnvelopeAnimation';
 import { playSound } from '../utils/sound';
+import XPNotification from '../components/XPNotification';
+import { calculateLevel } from '../utils/levelSystem';
 
 type DuelTab = 'mine' | 'hype' | 'shame';
 
@@ -45,6 +47,7 @@ const Duels = () => {
   const [showSkeleton, setShowSkeleton] = useState(false);
   const skeletonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shownWinsRef = useRef<Set<string>>(new Set());
+  const [xpNotification, setXpNotification] = useState<{ xp: number; level?: number; levelUp?: boolean } | null>(null);
 
   // Form State
   const [title, setTitle] = useState('');
@@ -168,24 +171,44 @@ const Duels = () => {
       loser: existing?.loser
     };
 
-    setTimeout(() => {
-      const op = editingDuelId
-        ? storage.updateDuelAsync(editingDuelId, newDuel)
-        : storage.saveDuelAsync(newDuel);
-      op.finally(() => {
-        storage.getDuelsAsync(buildQueryParams()).then((nextDuels) => setDuels(nextDuels));
-        setIsSending(false);
-        setIsCreating(false);
-        setEditingDuelId(null);
-        // Reset form
-        setTitle('');
-        setOpponent('');
-        setStake('');
-        setIsPublic(false);
-        setIsTeam(false);
-        setShowWitnessInvite(false);
-        tg.showPopup({ message: t('duel_created') });
-      });
+    setTimeout(async () => {
+      if (editingDuelId) {
+        await storage.updateDuelAsync(editingDuelId, newDuel);
+      } else {
+        const result = await storage.saveDuelAsync(newDuel);
+        // Show XP notification if received
+        if (result && result.xp) {
+          // Update quest progress
+          const { dailyQuestsAPI } = await import('../utils/api');
+          dailyQuestsAPI.updateProgress('create_duel').catch(() => {});
+          
+          // Trigger quest refresh event for DailyQuests component
+          window.dispatchEvent(new CustomEvent('questProgressUpdated'));
+          
+          // Refresh profile to get updated XP
+          await storage.getUserProfileAsync();
+          
+          const profile = await storage.getUserProfileAsync();
+          const oldLevel = calculateLevel(profile.experience || 0);
+          const newLevel = calculateLevel((profile.experience || 0) + result.xp);
+          const levelUp = newLevel > oldLevel;
+          
+          setXpNotification({ xp: result.xp, level: levelUp ? newLevel : undefined, levelUp });
+        }
+      }
+      
+      storage.getDuelsAsync(buildQueryParams()).then((nextDuels) => setDuels(nextDuels));
+      setIsSending(false);
+      setIsCreating(false);
+      setEditingDuelId(null);
+      // Reset form
+      setTitle('');
+      setOpponent('');
+      setStake('');
+      setIsPublic(false);
+      setIsTeam(false);
+      setShowWitnessInvite(false);
+      tg.showPopup({ message: t('duel_created') });
     }, 1500);
   };
 
@@ -264,6 +287,14 @@ const Duels = () => {
         </div>
       </div>
 
+      {xpNotification && (
+        <XPNotification
+          xp={xpNotification.xp}
+          level={xpNotification.level}
+          levelUp={xpNotification.levelUp || false}
+          onComplete={() => setXpNotification(null)}
+        />
+      )}
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-black flex items-center gap-3 text-orange-500 drop-shadow-[0_0_10px_rgba(249,115,22,0.8)]">

@@ -135,10 +135,10 @@ export const storage = {
     storage.checkQuestTrigger('create_letter');
   },
   // Async version (API with fallback to localStorage)
-  saveLetterAsync: async (letter: Letter) => {
+  saveLetterAsync: async (letter: Letter): Promise<{ xp?: number } | void> => {
     // Try API first
     const result = await lettersAPI.create(letter);
-    if (result.ok) {
+    if (result.ok && result.data) {
       // Also save to localStorage for offline
       const letters = storage.getLetters();
       const existingIndex = letters.findIndex(l => l.id === letter.id);
@@ -146,7 +146,7 @@ export const storage = {
       else letters.push(letter);
       safeSave(KEYS.LETTERS, letters);
       storage.checkQuestTrigger('create_letter');
-      return;
+      return { xp: result.data.xp };
     }
     // Fallback to localStorage only
     storage.saveLetter(letter);
@@ -190,13 +190,14 @@ export const storage = {
     }
     return safeParse(KEYS.DUELS, []);
   },
-  saveDuelAsync: async (duel: Duel) => {
+  saveDuelAsync: async (duel: Duel): Promise<{ xp?: number } | void> => {
     const result = await duelsAPI.create(duel);
-    if (result.ok) {
+    if (result.ok && result.data) {
       const duels = storage.getDuels();
       duels.push(duel);
       safeSave(KEYS.DUELS, duels);
-      return;
+      storage.checkQuestTrigger('create_duel');
+      return { xp: result.data.xp };
     }
     storage.saveDuel(duel);
   },

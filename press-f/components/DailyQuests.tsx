@@ -18,6 +18,22 @@ const DailyQuests: React.FC<Props> = ({ className = '' }) => {
 
   useEffect(() => {
     loadQuests();
+    
+    // Listen for quest progress updates
+    const handleQuestUpdate = () => {
+      loadQuests();
+    };
+    window.addEventListener('questProgressUpdated', handleQuestUpdate);
+    
+    // Auto-refresh every 30 seconds to catch progress updates
+    const interval = setInterval(() => {
+      loadQuests();
+    }, 30000);
+    
+    return () => {
+      window.removeEventListener('questProgressUpdated', handleQuestUpdate);
+      clearInterval(interval);
+    };
   }, []);
 
   const loadQuests = async () => {

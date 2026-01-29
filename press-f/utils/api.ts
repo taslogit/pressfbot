@@ -85,7 +85,7 @@ export const lettersAPI = {
     return apiRequest<{ letter: any }>(`/api/letters/${id}`);
   },
   create: async (letter: any) => {
-    return apiRequest<{ id: string }>('/api/letters', {
+    return apiRequest<{ id: string; xp?: number }>('/api/letters', {
       method: 'POST',
       body: JSON.stringify(letter),
     });
@@ -112,7 +112,7 @@ export const duelsAPI = {
     return apiRequest<{ duel: any }>(`/api/duels/${id}`);
   },
   create: async (duel: any) => {
-    return apiRequest<{ id: string }>('/api/duels', {
+    return apiRequest<{ id: string; xp?: number }>('/api/duels', {
       method: 'POST',
       body: JSON.stringify(duel),
     });
@@ -212,6 +212,12 @@ export const dailyQuestsAPI = {
   claim: async (id: string) => {
     return apiRequest<{ reward: number; xp: number }>(`/api/daily-quests/${id}/claim`, {
       method: 'POST',
+    });
+  },
+  updateProgress: async (questType: string) => {
+    return apiRequest('/api/daily-quests/progress', {
+      method: 'POST',
+      body: JSON.stringify({ questType }),
     });
   },
 };

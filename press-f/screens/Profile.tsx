@@ -11,6 +11,7 @@ import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
 import { playSound } from '../utils/sound';
 import { calculateLevel, getLevelProgress, getTitleForLevel, xpForLevel } from '../utils/levelSystem';
+import confetti from 'canvas-confetti';
 
 // Default avatar is pressf.jpg from server
 const DEFAULT_AVATAR_ID = 'pressf';
@@ -42,6 +43,13 @@ const Profile = () => {
   const [availableAvatars, setAvailableAvatars] = useState<Array<{ id: string; name: string; url: string }>>([]);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
+  
+  // Calculate level from experience (needed before state initialization)
+  const currentXP = profile.experience || 0;
+  const currentLevel = calculateLevel(currentXP);
+  
+  const [previousLevel, setPreviousLevel] = useState(currentLevel);
+  const [showLevelUpAnimation, setShowLevelUpAnimation] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -92,11 +100,27 @@ const Profile = () => {
     };
   }, []);
 
-  // Calculate level from experience
-  const currentXP = profile.experience || 0;
-  const currentLevel = calculateLevel(currentXP);
+  // Calculate level progress and title
   const levelProgress = getLevelProgress(currentXP);
   const levelTitle = getTitleForLevel(currentLevel);
+  
+  // Check for level up
+  useEffect(() => {
+    if (currentLevel > previousLevel) {
+      setShowLevelUpAnimation(true);
+      playSound('success');
+      confetti({
+        particleCount: 100,
+        spread: 120,
+        origin: { y: 0.4 },
+        colors: ['#B4FF00', '#ffffff', '#00E0FF', '#FF00FF', '#9333EA']
+      });
+      setTimeout(() => {
+        setShowLevelUpAnimation(false);
+      }, 3000);
+    }
+    setPreviousLevel(currentLevel);
+  }, [currentLevel, previousLevel]);
 
   // Find server avatar if profile.avatar matches a server avatar ID
   const serverAvatar = availableAvatars.find(av => av.id === profile.avatar);
@@ -468,9 +492,17 @@ const Profile = () => {
               </div>
 
               <div className="text-center mb-4 mt-4 space-y-2">
-                  <span className="bg-purple-500/20 text-purple-400 text-[10px] font-black uppercase px-2 py-0.5 rounded border border-purple-500/50">
+                  <motion.span 
+                    key={currentLevel}
+                    initial={showLevelUpAnimation ? { scale: 0, rotate: -180 } : { scale: 1 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                    className={`bg-purple-500/20 text-purple-400 text-[10px] font-black uppercase px-2 py-0.5 rounded border border-purple-500/50 inline-block ${
+                      showLevelUpAnimation ? 'shadow-[0_0_30px_rgba(168,85,247,0.8)]' : ''
+                    }`}
+                  >
                       LVL {currentLevel} • {levelTitle}
-                  </span>
+                  </motion.span>
                   
                   {/* XP Progress Bar */}
                   <div className="w-full max-w-xs mx-auto">
