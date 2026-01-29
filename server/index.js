@@ -33,7 +33,7 @@ const WEB_APP_URL =
   process.env.FRONTEND_URL ||
   '';
 const USE_WEBHOOK = Boolean(WEBHOOK_URL) && process.env.BOT_USE_WEBHOOK !== 'false';
-console.log('Webhook config:', { WEBHOOK_URL, BOT_USE_WEBHOOK: process.env.BOT_USE_WEBHOOK, USE_WEBHOOK });
+logger.info('Webhook config:', { WEBHOOK_URL, BOT_USE_WEBHOOK: process.env.BOT_USE_WEBHOOK, USE_WEBHOOK });
 // Constants - Configuration values
 const PORT = process.env.PORT || 3000;
 const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL;
@@ -57,7 +57,7 @@ const RATE_LIMIT_SEARCH_MAX = 30;
 const RATE_LIMIT_DUEL_CREATE_MAX = 10; // per 15 minutes
 
 if (!BOT_TOKEN) {
-  console.error('Missing TELEGRAM_BOT_TOKEN in env');
+  logger.error('Missing TELEGRAM_BOT_TOKEN in env');
   process.exit(1);
 }
 
@@ -744,7 +744,7 @@ app.post('/api/verify', async (req, res) => {
       }
     }
   } catch (e) {
-    console.warn('Failed to parse user id from initData', e);
+    logger.warn('Failed to parse user id from initData', e);
   }
 
   const sessionId = uuidv4();
