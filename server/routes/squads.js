@@ -209,9 +209,13 @@ const createSquadsRoutes = (pool) => {
 
       if (name !== undefined) {
         if (typeof name !== 'string' || name.trim().length === 0) {
+          await client.query('ROLLBACK');
+          client.release();
           return sendError(res, 400, 'VALIDATION_ERROR', 'Squad name must be a non-empty string');
         }
         if (name.length > 255) {
+          await client.query('ROLLBACK');
+          client.release();
           return sendError(res, 400, 'VALIDATION_ERROR', 'Squad name exceeds maximum length');
         }
         updateFields.push(`name = $${paramIndex++}`);
@@ -220,6 +224,8 @@ const createSquadsRoutes = (pool) => {
 
       if (sharedPayload !== undefined) {
         if (typeof sharedPayload !== 'string') {
+          await client.query('ROLLBACK');
+          client.release();
           return sendError(res, 400, 'VALIDATION_ERROR', 'sharedPayload must be a string');
         }
         updateFields.push(`shared_payload = $${paramIndex++}`);
@@ -228,6 +234,8 @@ const createSquadsRoutes = (pool) => {
 
       if (pactHealth !== undefined) {
         if (!Number.isInteger(pactHealth) || pactHealth < 0 || pactHealth > 100) {
+          await client.query('ROLLBACK');
+          client.release();
           return sendError(res, 400, 'VALIDATION_ERROR', 'pactHealth must be an integer between 0 and 100');
         }
         updateFields.push(`pact_health = $${paramIndex++}`);
@@ -235,6 +243,8 @@ const createSquadsRoutes = (pool) => {
       }
 
       if (updateFields.length === 0) {
+        await client.query('ROLLBACK');
+        client.release();
         return sendError(res, 400, 'VALIDATION_ERROR', 'No fields to update');
       }
 
