@@ -23,7 +23,7 @@ const duelSchema = z.object({
   isFavorite: z.boolean().optional()
 });
 
-const createDuelsRoutes = (pool) => {
+const createDuelsRoutes = (pool, createLimiter) => {
   // GET /api/duels - Get all duels for user
   router.get('/', async (req, res) => {
     try {
@@ -156,8 +156,8 @@ const createDuelsRoutes = (pool) => {
     }
   });
 
-  // POST /api/duels - Create new duel
-  router.post('/', validateBody(duelSchema), async (req, res) => {
+  // POST /api/duels - Create new duel (with rate limiting)
+  router.post('/', createLimiter || ((req, res, next) => next()), validateBody(duelSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');

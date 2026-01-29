@@ -12,7 +12,8 @@ const SESSION_TTL_REFRESH_SECONDS = Number.isFinite(SESSION_TTL_REFRESH_MINUTES)
 const createAuthMiddleware = (pool) => {
   return async (req, res, next) => {
     try {
-      const sessionId = req.headers['x-session-id'] || req.cookies?.sessionId || req.query?.sessionId;
+      // Security: Do not accept sessionId from query parameters (prevents logging/leakage)
+      const sessionId = req.headers['x-session-id'] || req.cookies?.sessionId;
       
       if (!sessionId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'Session ID required');

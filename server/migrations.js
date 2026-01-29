@@ -31,6 +31,9 @@ const createTables = async (pool) => {
     await pool.query(`ALTER TABLE letters ADD COLUMN IF NOT EXISTS unlock_notified_at TIMESTAMP`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_letters_favorite ON letters(is_favorite)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_letters_unlock_notified ON letters(unlock_notified_at)`);
+    // Performance: Composite indexes for common query patterns
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_letters_user_status_created ON letters(user_id, status, created_at DESC)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_letters_user_favorite ON letters(user_id, is_favorite) WHERE is_favorite = true`);
 
     // Duels table
     await pool.query(`
@@ -58,6 +61,9 @@ const createTables = async (pool) => {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_opponent ON duels(opponent_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_status ON duels(status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_favorite ON duels(is_favorite)`);
+    // Performance: Composite indexes for common query patterns
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_challenger_status ON duels(challenger_id, status, created_at DESC)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_opponent_status ON duels(opponent_id, status, created_at DESC)`);
 
     // Legacy items table
     await pool.query(`

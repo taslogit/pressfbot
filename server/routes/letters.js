@@ -9,25 +9,31 @@ const VALID_LETTER_STATUSES = ['draft', 'scheduled', 'sent'];
 const VALID_LETTER_TYPES = ['generic', 'crypto', 'love', 'roast', 'confession'];
 const VALID_LETTER_SORT = ['created_at', 'unlock_date', 'title'];
 
+// Security: Content size limits
+const MAX_CONTENT_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_TITLE_SIZE = 500; // characters
+const MAX_ATTACHMENTS = 10;
+const MAX_RECIPIENTS = 50;
+
 const letterSchema = z.object({
   id: z.string().optional(),
-  title: z.string().optional(),
-  content: z.string().optional(),
-  recipients: z.array(z.string()).optional(),
+  title: z.string().max(MAX_TITLE_SIZE).optional(),
+  content: z.string().max(MAX_CONTENT_SIZE).optional(),
+  recipients: z.array(z.string()).max(MAX_RECIPIENTS).optional(),
   unlockDate: z.string().optional(),
   status: z.enum(['draft', 'scheduled', 'sent']).optional(),
-  attachments: z.array(z.string()).optional(),
+  attachments: z.array(z.string()).max(MAX_ATTACHMENTS).optional(),
   type: z.enum(['generic', 'crypto', 'love', 'roast', 'confession']).optional(),
   options: z.object({
     burnOnRead: z.boolean().optional(),
     blurPreview: z.boolean().optional()
   }).optional(),
-  encryptedContent: z.string().optional(),
+  encryptedContent: z.string().max(MAX_CONTENT_SIZE).optional(),
   ipfsHash: z.string().optional(),
   isFavorite: z.boolean().optional()
 });
 
-const createLettersRoutes = (pool) => {
+const createLettersRoutes = (pool, createLimiter) => {
   // GET /api/letters - Get all letters for user
   router.get('/', async (req, res) => {
     try {
@@ -153,8 +159,8 @@ const createLettersRoutes = (pool) => {
     }
   });
 
-  // POST /api/letters - Create new letter
-  router.post('/', validateBody(letterSchema), async (req, res) => {
+  // POST /api/letters - Create new letter (with rate limiting)
+  router.post('/', createLimiter || ((req, res, next) => next()), validateBody(letterSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');

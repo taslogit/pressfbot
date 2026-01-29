@@ -29,6 +29,7 @@ const WEB_APP_URL =
   '';
 const USE_WEBHOOK = Boolean(WEBHOOK_URL) && process.env.BOT_USE_WEBHOOK !== 'false';
 console.log('Webhook config:', { WEBHOOK_URL, BOT_USE_WEBHOOK: process.env.BOT_USE_WEBHOOK, USE_WEBHOOK });
+// Constants - Configuration values
 const PORT = process.env.PORT || 3000;
 const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 const DEV_SKIP_VERIFY = process.env.DEV_SKIP_VERIFY === 'true';
@@ -40,12 +41,29 @@ const SESSION_CLEANUP_INTERVAL_SECONDS = Number(
 const NOTIFY_INTERVAL_SECONDS = Number(process.env.NOTIFY_INTERVAL_SECONDS || 300);
 const NOTIFY_UNLOCK_AHEAD_SECONDS = Number(process.env.NOTIFY_UNLOCK_AHEAD_SECONDS || 0);
 
+// Rate Limiting Constants
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_MAX_REQUESTS = 300;
+const RATE_LIMIT_VERIFY_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+const RATE_LIMIT_VERIFY_MAX = 30;
+const RATE_LIMIT_LETTER_CREATE_MAX = 20; // per 15 minutes
+const RATE_LIMIT_SEARCH_WINDOW_MS = 1 * 60 * 1000; // 1 minute
+const RATE_LIMIT_SEARCH_MAX = 30;
+const RATE_LIMIT_DUEL_CREATE_MAX = 10; // per 15 minutes
+
 if (!BOT_TOKEN) {
   console.error('Missing TELEGRAM_BOT_TOKEN in env');
   process.exit(1);
 }
 
-const pool = DATABASE_URL ? new Pool({ connectionString: DATABASE_URL }) : null;
+// Performance: Configure database connection pool
+const pool = DATABASE_URL ? new Pool({
+  connectionString: DATABASE_URL,
+  max: 20, // Maximum number of clients in the pool
+  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+  statement_timeout: 10000, // Query timeout (10 seconds)
+}) : null;
 
 // Import migrations
 const { createTables } = require('./migrations');
@@ -106,10 +124,18 @@ bot.command('info', (ctx) => ctx.reply(BOT_INFO_TEXT));
 const app = express();
 app.use(express.json({ limit: '200kb' }));
 
-// Serve static files (for bot images, etc.)
+// Serve static files (for bot images, etc.) with caching
 const path = require('path');
 const staticPath = path.join(__dirname, 'static');
-app.use('/api/static', express.static(staticPath));
+app.use('/api/static', express.static(staticPath, {
+  maxAge: '1y', // Cache for 1 year
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, path) => {
+    // Performance: Set explicit cache headers for static assets
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  }
+}));
 console.log('Static files served from:', staticPath);
 
 // Telegram webhook callback (MUST be first, before any other middleware)
@@ -129,27 +155,88 @@ if (USE_WEBHOOK) {
   console.warn('⚠️  Webhook callback NOT registered. USE_WEBHOOK=false');
 }
 
-app.use(helmet());
+// Security: Configure Helmet with proper CSP for Telegram Mini App
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://telegram.org"], // Telegram Mini App needs unsafe-inline
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      connectSrc: ["'self'", "https://api.telegram.org", "https://*.telegram.org"],
+      fontSrc: ["'self'", "data:"],
+      frameSrc: ["'self'", "https://telegram.org"]
+    }
+  },
+  crossOriginEmbedderPolicy: false, // Required for Telegram Mini App
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+// Additional Security Headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  next();
+});
 
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_MAX_REQUESTS,
   standardHeaders: true,
   legacyHeaders: false
 });
 app.use(globalLimiter);
 
 const verifyLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  max: 30,
+  windowMs: RATE_LIMIT_VERIFY_WINDOW_MS,
+  max: RATE_LIMIT_VERIFY_MAX,
   standardHeaders: true,
   legacyHeaders: false
 });
 app.use('/api/verify', verifyLimiter);
 
-// CORS middleware
+// Security: Rate limiting for critical endpoints
+const letterCreateLimiter = rateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_LETTER_CREATE_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many letters created, please try again later'
+});
+
+const searchLimiter = rateLimit({
+  windowMs: RATE_LIMIT_SEARCH_WINDOW_MS,
+  max: RATE_LIMIT_SEARCH_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many search requests, please try again later'
+});
+
+const duelCreateLimiter = rateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_DUEL_CREATE_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many duels created, please try again later'
+});
+
+// CORS middleware - Security: Whitelist only allowed origins
+const allowedOrigins = [
+  process.env.WEB_APP_URL,
+  process.env.FRONTEND_URL,
+  'https://pressfbot.ru',
+  'https://www.pressfbot.ru'
+].filter(Boolean);
+
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, X-Session-Id');
   if (req.method === 'OPTIONS') {
@@ -173,16 +260,17 @@ const { normalizeLegacyItem } = require('./services/legacyService');
 // Apply auth middleware
 const authMiddleware = createAuthMiddleware(pool);
 
-// Register API routes
-app.use('/api/letters', authMiddleware, createLettersRoutes(pool));
+// Register API routes with rate limiting
+// Note: Rate limiters for POST requests are applied inside route handlers
+app.use('/api/letters', authMiddleware, createLettersRoutes(pool, letterCreateLimiter));
 app.use('/api/profile', authMiddleware, createProfileRoutes(pool));
-app.use('/api/duels', authMiddleware, createDuelsRoutes(pool));
+app.use('/api/duels', authMiddleware, createDuelsRoutes(pool, duelCreateLimiter));
 app.use('/api/legacy', authMiddleware, createLegacyRoutes(pool));
 app.use('/api/notifications', authMiddleware, createNotificationsRoutes(pool));
 app.use('/api/ton', authMiddleware, createTonRoutes(pool));
 
-// Global search across letters, duels, legacy
-app.get('/api/search', authMiddleware, async (req, res) => {
+// Global search across letters, duels, legacy (with rate limiting)
+app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {
   try {
     if (!pool) {
       return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -481,9 +569,11 @@ app.post('/api/verify', async (req, res) => {
   const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
   try {
     if (pool) {
+      // Security: Do not store init_data (contains sensitive user data)
+      // Only store telegram_id for session management
       await pool.query(
-        'INSERT INTO sessions(id, telegram_id, init_data, expires_at, last_seen_at) VALUES($1, $2, $3, $4, now())',
-        [sessionId, tgUserId, initData, expiresAt]
+        'INSERT INTO sessions(id, telegram_id, expires_at, last_seen_at) VALUES($1, $2, $3, now())',
+        [sessionId, tgUserId, expiresAt]
       );
     }
     return res.json({ ok: true, sessionId });
