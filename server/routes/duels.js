@@ -257,6 +257,18 @@ const createDuelsRoutes = (pool, createLimiter) => {
         logger.debug('Failed to update event progress for duel creation', { error: eventError?.message });
       }
 
+      // Log activity
+      try {
+        const { logActivity } = require('./activity');
+        await logActivity(pool, userId, 'duel_created', {
+          duelId,
+          title: title || 'Untitled Duel',
+          isPublic
+        }, duelId, 'duel', isPublic);
+      } catch (activityError) {
+        logger.debug('Failed to log activity for duel creation', { error: activityError?.message });
+      }
+
       return res.json({ ok: true, id: duelId, xp: xpReward || 0 });
     } catch (error) {
       logger.error('Create duel error:', { error: error?.message || error, userId });

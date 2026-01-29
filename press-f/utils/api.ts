@@ -327,6 +327,17 @@ export const tournamentsAPI = {
   },
 };
 
+// Activity Feed API
+export const activityAPI = {
+  getFeed: async (limit = 50, offset = 0, type?: string) => {
+    const query = type ? `?limit=${limit}&offset=${offset}&type=${type}` : `?limit=${limit}&offset=${offset}`;
+    return apiRequest<{ activities: any[]; hasMore: boolean }>(`/api/activity/feed${query}`);
+  },
+  getUserActivity: async (userId: number, limit = 50, offset = 0) => {
+    return apiRequest<{ activities: any[]; hasMore: boolean }>(`/api/activity/user/${userId}?limit=${limit}&offset=${offset}`);
+  },
+};
+
 export const tonAPI = {
   createInheritancePlan: async (payload: {
     recipients: { address: string; amount: number }[];

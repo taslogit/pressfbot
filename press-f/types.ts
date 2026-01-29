@@ -187,6 +187,21 @@ export interface TournamentMatch {
   completedAt?: string;
 }
 
+export interface ActivityFeedItem {
+  id: string;
+  userId: number;
+  activityType: string;
+  activityData: Record<string, any>;
+  targetId?: string;
+  targetType?: string;
+  createdAt: string;
+  user: {
+    avatar: string;
+    title?: string;
+    level?: number;
+  };
+}
+
 export interface Perk {
   id: string;
   key: string; // translation key

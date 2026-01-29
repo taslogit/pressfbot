@@ -362,6 +362,17 @@ const createProfileRoutes = (pool) => {
       // Invalidate cache after check-in
       await cache.del(`profile:${userId}`);
 
+      // Log activity
+      try {
+        const { logActivity } = require('./activity');
+        await logActivity(pool, userId, 'check_in', {
+          streak: newStreak,
+          streakBonus
+        }, null, null, true);
+      } catch (activityError) {
+        logger.debug('Failed to log activity for check-in', { error: activityError?.message });
+      }
+
       return res.json({ 
         ok: true, 
         timestamp: Date.now(),

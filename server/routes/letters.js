@@ -264,6 +264,17 @@ const createLettersRoutes = (pool, createLimiter) => {
         logger.debug('Failed to update event progress for letter creation', { error: eventError?.message });
       }
 
+      // Log activity
+      try {
+        const { logActivity } = require('./activity');
+        await logActivity(pool, userId, 'letter_created', {
+          letterId,
+          title: title || 'Untitled'
+        }, letterId, 'letter', true);
+      } catch (activityError) {
+        logger.debug('Failed to log activity for letter creation', { error: activityError?.message });
+      }
+
       return res.json({ ok: true, id: letterId, xp: xpReward || 0 });
     } catch (error) {
       logger.error('Create letter error:', { error: error?.message || error, userId });

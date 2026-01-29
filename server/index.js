@@ -273,6 +273,7 @@ const { createAvatarsRoutes } = require('./routes/avatars');
 const { createGiftsRoutes } = require('./routes/gifts');
 const { createEventsRoutes } = require('./routes/events');
 const { createTournamentsRoutes } = require('./routes/tournaments');
+const { createActivityRoutes, logActivity } = require('./routes/activity');
 const { normalizeLetter } = require('./services/lettersService');
 const { normalizeDuel } = require('./services/duelsService');
 const { normalizeLegacyItem } = require('./services/legacyService');
@@ -293,6 +294,7 @@ app.use('/api/avatars', createAvatarsRoutes()); // No auth needed for public ava
 app.use('/api/gifts', authMiddleware, createGiftsRoutes(pool));
 app.use('/api/events', authMiddleware, createEventsRoutes(pool));
 app.use('/api/tournaments', authMiddleware, createTournamentsRoutes(pool));
+app.use('/api/activity', authMiddleware, createActivityRoutes(pool));
 
 // Global search across letters, duels, legacy (with rate limiting and pagination)
 app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {

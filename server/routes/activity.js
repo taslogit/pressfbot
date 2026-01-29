@@ -1,0 +1,192 @@
+const express = require('express');
+const router = express.Router();
+const { v4: uuidv4 } = require('uuid');
+const { sendError } = require('../utils/errors');
+const logger = require('../utils/logger');
+const { cache } = require('../utils/cache');
+
+const createActivityRoutes = (pool) => {
+  // GET /api/activity/feed - Get activity feed
+  router.get('/feed', async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+
+      const userId = req.userId;
+      const limit = parseInt(req.query.limit) || 50;
+      const offset = parseInt(req.query.offset) || 0;
+      const type = req.query.type; // Optional filter by activity type
+
+      if (!userId) {
+        return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+      }
+
+      // Validate limit
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid limit', {
+          field: 'limit',
+          min: 1,
+          max: 100
+        });
+      }
+
+      if (!Number.isInteger(offset) || offset < 0) {
+        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid offset', {
+          field: 'offset',
+          min: 0
+        });
+      }
+
+      // Build query
+      let query = '';
+      let params = [];
+
+      if (type) {
+        query = `SELECT af.*, p.avatar, p.title, p.level
+                 FROM activity_feed af
+                 LEFT JOIN profiles p ON af.user_id = p.user_id
+                 WHERE af.is_public = true AND af.activity_type = $1
+                 ORDER BY af.created_at DESC
+                 LIMIT $2 OFFSET $3`;
+        params = [type, limit, offset];
+      } else {
+        query = `SELECT af.*, p.avatar, p.title, p.level
+                 FROM activity_feed af
+                 LEFT JOIN profiles p ON af.user_id = p.user_id
+                 WHERE af.is_public = true
+                 ORDER BY af.created_at DESC
+                 LIMIT $1 OFFSET $2`;
+        params = [limit, offset];
+      }
+
+      const result = await pool.query(query, params);
+
+      const activities = result.rows.map(row => ({
+        id: row.id,
+        userId: row.user_id,
+        activityType: row.activity_type,
+        activityData: row.activity_data || {},
+        targetId: row.target_id,
+        targetType: row.target_type,
+        createdAt: row.created_at?.toISOString(),
+        user: {
+          avatar: row.avatar || 'pressf',
+          title: row.title,
+          level: row.level
+        }
+      }));
+
+      return res.json({ ok: true, activities, hasMore: result.rows.length === limit });
+    } catch (error) {
+      logger.error('Get activity feed error:', { error: error?.message || error });
+      return sendError(res, 500, 'ACTIVITY_FETCH_FAILED', 'Failed to fetch activity feed');
+    }
+  });
+
+  // GET /api/activity/user/:userId - Get user's activity feed
+  router.get('/user/:userId', async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+
+      const currentUserId = req.userId;
+      const targetUserId = parseInt(req.params.userId);
+      const limit = parseInt(req.query.limit) || 50;
+      const offset = parseInt(req.query.offset) || 0;
+
+      if (!currentUserId) {
+        return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+      }
+
+      if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
+        return sendError(res, 400, 'INVALID_USER_ID', 'Invalid user ID');
+      }
+
+      // Validate limit
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid limit');
+      }
+
+      if (!Number.isInteger(offset) || offset < 0) {
+        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid offset');
+      }
+
+      // Get user's activities (public only, or own if viewing own profile)
+      const isOwnProfile = currentUserId === targetUserId;
+      const query = isOwnProfile
+        ? `SELECT af.*, p.avatar, p.title, p.level
+           FROM activity_feed af
+           LEFT JOIN profiles p ON af.user_id = p.user_id
+           WHERE af.user_id = $1
+           ORDER BY af.created_at DESC
+           LIMIT $2 OFFSET $3`
+        : `SELECT af.*, p.avatar, p.title, p.level
+           FROM activity_feed af
+           LEFT JOIN profiles p ON af.user_id = p.user_id
+           WHERE af.user_id = $1 AND af.is_public = true
+           ORDER BY af.created_at DESC
+           LIMIT $2 OFFSET $3`;
+
+      const result = await pool.query(query, [targetUserId, limit, offset]);
+
+      const activities = result.rows.map(row => ({
+        id: row.id,
+        userId: row.user_id,
+        activityType: row.activity_type,
+        activityData: row.activity_data || {},
+        targetId: row.target_id,
+        targetType: row.target_type,
+        createdAt: row.created_at?.toISOString(),
+        user: {
+          avatar: row.avatar || 'pressf',
+          title: row.title,
+          level: row.level
+        }
+      }));
+
+      return res.json({ ok: true, activities, hasMore: result.rows.length === limit });
+    } catch (error) {
+      logger.error('Get user activity error:', { error: error?.message || error });
+      return sendError(res, 500, 'USER_ACTIVITY_FETCH_FAILED', 'Failed to fetch user activity');
+    }
+  });
+
+  return router;
+};
+
+// Utility function to log activity (used by other routes)
+async function logActivity(pool, userId, activityType, activityData, targetId = null, targetType = null, isPublic = true) {
+  if (!pool || !userId || !activityType) {
+    return;
+  }
+
+  try {
+    const activityId = uuidv4();
+    await pool.query(
+      `INSERT INTO activity_feed 
+       (id, user_id, activity_type, activity_data, target_id, target_type, is_public, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, now())`,
+      [
+        activityId,
+        userId,
+        activityType,
+        JSON.stringify(activityData),
+        targetId,
+        targetType,
+        isPublic
+      ]
+    );
+
+    // Invalidate cache
+    await cache.delByPattern('activity:*');
+
+    logger.debug('Activity logged', { userId, activityType, activityId });
+  } catch (error) {
+    logger.error('Log activity error:', { error: error?.message || error, userId, activityType });
+    // Don't throw - activity logging is non-critical
+  }
+}
+
+module.exports = { createActivityRoutes, logActivity };

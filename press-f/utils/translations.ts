@@ -557,7 +557,21 @@ export const translations = {
     register: "REGISTER",
     view: "VIEW",
     tournament_registered: "Successfully registered!",
-    tournament_register_failed: "Failed to register"
+    tournament_register_failed: "Failed to register",
+    
+    // Activity Feed
+    activity_feed: "ACTIVITY FEED",
+    no_activities: "No activities yet",
+    activity_created_letter: "created a letter",
+    activity_created_duel: "created a duel",
+    activity_received_gift: "received a gift",
+    activity_checked_in: "checked in",
+    activity_won_tournament: "won a tournament",
+    activity_leveled_up: "leveled up",
+    activity_unknown: "performed an action",
+    just_now: "just now",
+    ago: "ago",
+    load_more: "Load More"
   },
   ru: {
     app_title: "PRESS F",
@@ -1115,6 +1129,20 @@ export const translations = {
     register: "РЕГИСТРАЦИЯ",
     view: "СМОТРЕТЬ",
     tournament_registered: "Успешно зарегистрирован!",
-    tournament_register_failed: "Не удалось зарегистрироваться"
+    tournament_register_failed: "Не удалось зарегистрироваться",
+    
+    // Activity Feed
+    activity_feed: "ЛЕНТА АКТИВНОСТИ",
+    no_activities: "Активности пока нет",
+    activity_created_letter: "создал письмо",
+    activity_created_duel: "создал дуэль",
+    activity_received_gift: "получил подарок",
+    activity_checked_in: "отметился",
+    activity_won_tournament: "выиграл турнир",
+    activity_leveled_up: "повысил уровень",
+    activity_unknown: "выполнил действие",
+    just_now: "только что",
+    ago: "назад",
+    load_more: "Загрузить еще"
   }
 };
