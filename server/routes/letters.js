@@ -156,7 +156,7 @@ const createLettersRoutes = (pool, createLimiter) => {
 
       return res.json({ ok: true, letters, meta: { limit, offset, sortBy, order, q: query || '' } });
     } catch (error) {
-      console.error('Get letters error:', error);
+      logger.error('Get letters error:', error);
       return sendError(res, 500, 'LETTERS_FETCH_FAILED', 'Failed to fetch letters');
     }
   });
@@ -305,7 +305,7 @@ const createLettersRoutes = (pool, createLimiter) => {
 
       return res.json({ ok: true, letter });
     } catch (error) {
-      console.error('Get letter error:', error);
+      logger.error('Get letter error:', error);
       return sendError(res, 500, 'LETTER_FETCH_FAILED', 'Failed to fetch letter');
     }
   });
@@ -346,7 +346,7 @@ const createLettersRoutes = (pool, createLimiter) => {
 
       return res.json({ ok: true, versions });
     } catch (error) {
-      console.error('Get letter history error:', error);
+      logger.error('Get letter history error:', error);
       return sendError(res, 500, 'LETTER_HISTORY_FAILED', 'Failed to fetch letter history');
     }
   });
@@ -404,7 +404,7 @@ const createLettersRoutes = (pool, createLimiter) => {
 
       return res.json({ ok: true });
     } catch (error) {
-      console.error('Restore letter error:', error);
+      logger.error('Restore letter error:', error);
       return sendError(res, 500, 'LETTER_RESTORE_FAILED', 'Failed to restore letter');
     }
   });
@@ -443,53 +443,74 @@ const createLettersRoutes = (pool, createLimiter) => {
         return sendError(res, 404, 'LETTER_NOT_FOUND', 'Letter not found');
       }
 
+      // Security: Use whitelist of allowed fields to prevent SQL injection
+      const allowedFields = {
+        title: 'title',
+        content: 'content',
+        encrypted_content: 'encrypted_content',
+        ipfs_hash: 'ipfs_hash',
+        recipients: 'recipients',
+        unlock_date: 'unlock_date',
+        unlock_notified_at: 'unlock_notified_at',
+        status: 'status',
+        letter_type: 'letter_type',
+        attachments: 'attachments',
+        options: 'options',
+        is_favorite: 'is_favorite'
+      };
+
       const updateFields = [];
       const updateValues = [];
       let paramIndex = 1;
 
-      if (title !== undefined) {
+      if (title !== undefined && allowedFields.title) {
         updateFields.push(`title = $${paramIndex++}`);
         updateValues.push(title);
       }
-      if (content !== undefined) {
+      if (content !== undefined && allowedFields.content) {
         updateFields.push(`content = $${paramIndex++}`);
         updateValues.push(content);
       }
-      if (encryptedContent !== undefined) {
+      if (encryptedContent !== undefined && allowedFields.encrypted_content) {
         updateFields.push(`encrypted_content = $${paramIndex++}`);
         updateValues.push(encryptedContent);
       }
-      if (ipfsHash !== undefined) {
+      if (ipfsHash !== undefined && allowedFields.ipfs_hash) {
         updateFields.push(`ipfs_hash = $${paramIndex++}`);
         updateValues.push(ipfsHash);
       }
-      if (recipients !== undefined) {
+      if (recipients !== undefined && allowedFields.recipients) {
         updateFields.push(`recipients = $${paramIndex++}`);
         updateValues.push(recipients);
       }
-      if (unlockDate !== undefined) {
+      if (unlockDate !== undefined && allowedFields.unlock_date) {
+        const unlockDateValue = unlockDate ? new Date(unlockDate) : null;
+        // Security: Validate that unlock_date is not in the past
+        if (unlockDateValue && unlockDateValue < new Date()) {
+          return sendError(res, 400, 'VALIDATION_ERROR', 'unlock_date cannot be in the past');
+        }
         updateFields.push(`unlock_date = $${paramIndex++}`);
-        updateValues.push(unlockDate ? new Date(unlockDate) : null);
+        updateValues.push(unlockDateValue);
         updateFields.push(`unlock_notified_at = $${paramIndex++}`);
         updateValues.push(null);
       }
-      if (status !== undefined) {
+      if (status !== undefined && allowedFields.status) {
         updateFields.push(`status = $${paramIndex++}`);
         updateValues.push(status);
       }
-      if (type !== undefined) {
+      if (type !== undefined && allowedFields.letter_type) {
         updateFields.push(`letter_type = $${paramIndex++}`);
         updateValues.push(type);
       }
-      if (attachments !== undefined) {
+      if (attachments !== undefined && allowedFields.attachments) {
         updateFields.push(`attachments = $${paramIndex++}`);
         updateValues.push(attachments);
       }
-      if (options !== undefined) {
+      if (options !== undefined && allowedFields.options) {
         updateFields.push(`options = $${paramIndex++}`);
         updateValues.push(JSON.stringify(options));
       }
-      if (isFavorite !== undefined) {
+      if (isFavorite !== undefined && allowedFields.is_favorite) {
         updateFields.push(`is_favorite = $${paramIndex++}`);
         updateValues.push(isFavorite);
       }
@@ -501,6 +522,7 @@ const createLettersRoutes = (pool, createLimiter) => {
       updateFields.push(`updated_at = now()`);
       updateValues.push(letterId, userId);
 
+      // Security: Use parameterized query with whitelisted field names
       await pool.query(
         `UPDATE letters SET ${updateFields.join(', ')} WHERE id = $${paramIndex} AND user_id = $${paramIndex + 1}`,
         updateValues

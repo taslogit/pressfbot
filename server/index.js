@@ -807,11 +807,13 @@ app.post('/api/verify', async (req, res) => {
         );
 
         if (userProfile.rowCount === 0 || !userProfile.rows[0].referral_code) {
-          // Generate unique referral code (6-8 characters)
+          // Security: Use cryptographically secure random generator for referral codes
+          const crypto = require('crypto');
           let referralCode = '';
           let attempts = 0;
           while (attempts < 10) {
-            referralCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+            // Generate 8-character code using crypto.randomBytes (more secure than Math.random)
+            referralCode = crypto.randomBytes(4).toString('hex').toUpperCase().substring(0, 8);
             const existing = await pool.query(
               'SELECT user_id FROM profiles WHERE referral_code = $1',
               [referralCode]
@@ -863,20 +865,21 @@ app.post('/api/enqueue-test', async (req, res) => {
   }
 });
 
-// endpoint to get session info
+// endpoint to get session info (security: removed init_data to prevent data leakage)
 app.get('/api/session/:id', async (req, res) => {
   const id = req.params.id;
   try {
     if (!pool) {
       return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
     }
-    const r = await pool.query('SELECT id, telegram_id, init_data, created_at FROM sessions WHERE id=$1', [id]);
+    // Security: Do not return init_data (contains sensitive user data)
+    const r = await pool.query('SELECT id, telegram_id, created_at, expires_at, last_seen_at FROM sessions WHERE id=$1', [id]);
     if (r.rowCount === 0) {
       return sendError(res, 404, 'SESSION_NOT_FOUND', 'Session not found');
     }
     return res.json({ ok: true, session: r.rows[0] });
   } catch (e) {
-    console.error('Failed to fetch session', e);
+    logger.error('Failed to fetch session', e);
     return sendError(res, 500, 'SESSION_FETCH_FAILED', 'Failed to fetch session');
   }
 });

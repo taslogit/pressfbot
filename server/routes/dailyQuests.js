@@ -119,48 +119,60 @@ const createDailyQuestsRoutes = (pool) => {
 
   // POST /api/daily-quests/:id/claim - Claim quest reward
   router.post('/:id/claim', async (req, res) => {
-    try {
-      if (!pool) {
-        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
-      }
+    const client = await pool?.connect();
+    if (!client) {
+      return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+    }
 
+    try {
       const userId = req.userId;
       if (!userId) {
+        client.release();
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
       const { id } = req.params;
 
-      // Get quest
-      const questResult = await pool.query(
-        'SELECT * FROM daily_quests WHERE id = $1 AND user_id = $2',
+      // Start transaction for atomic operations
+      await client.query('BEGIN');
+
+      // Get quest with lock to prevent race conditions
+      const questResult = await client.query(
+        'SELECT * FROM daily_quests WHERE id = $1 AND user_id = $2 FOR UPDATE',
         [id, userId]
       );
 
       if (questResult.rowCount === 0) {
+        await client.query('ROLLBACK');
+        client.release();
         return sendError(res, 404, 'QUEST_NOT_FOUND', 'Quest not found');
       }
 
       const quest = questResult.rows[0];
 
       if (!quest.is_completed) {
+        await client.query('ROLLBACK');
+        client.release();
         return sendError(res, 400, 'QUEST_NOT_COMPLETED', 'Quest is not completed yet');
       }
 
+      // Security: Check if already claimed (prevent duplicate claims)
       if (quest.is_claimed) {
+        await client.query('ROLLBACK');
+        client.release();
         return sendError(res, 400, 'QUEST_ALREADY_CLAIMED', 'Quest reward already claimed');
       }
 
-      // Award reputation
-      await pool.query(
-        'UPDATE profiles SET reputation = reputation + $1 WHERE user_id = $2',
+      // Award reputation (in transaction)
+      await client.query(
+        'UPDATE profiles SET reputation = reputation + $1, updated_at = now() WHERE user_id = $2',
         [quest.reward, userId]
       );
 
-      // Award XP
+      // Award XP (in transaction)
       const xpReward = getXPReward('daily_quest');
       if (xpReward > 0) {
-        await pool.query(
+        await client.query(
           `UPDATE profiles 
            SET experience = experience + $1, total_xp_earned = total_xp_earned + $1, updated_at = now()
            WHERE user_id = $2`,
@@ -168,15 +180,19 @@ const createDailyQuestsRoutes = (pool) => {
         );
       }
 
-      // Mark as claimed
-      await pool.query(
-        'UPDATE daily_quests SET is_claimed = true, updated_at = now() WHERE id = $1',
+      // Mark as claimed (in transaction)
+      await client.query(
+        'UPDATE daily_quests SET is_claimed = true, claimed_at = now(), updated_at = now() WHERE id = $1',
         [id]
       );
 
+      // Commit transaction
+      await client.query('COMMIT');
+      client.release();
+
       logger.info('Quest reward claimed', { questId: id, userId, reward: quest.reward, xp: xpReward });
 
-      // Invalidate cache for this user's daily quests
+      // Invalidate cache for this user's daily quests (outside transaction)
       const today = new Date().toISOString().split('T')[0];
       const cacheKey = `daily-quests:${userId}:${today}`;
       await cache.del(cacheKey);
@@ -187,6 +203,8 @@ const createDailyQuestsRoutes = (pool) => {
         xp: xpReward
       });
     } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      client.release();
       logger.error('Claim quest reward error:', { error: error?.message || error });
       return sendError(res, 500, 'QUEST_CLAIM_FAILED', 'Failed to claim quest reward');
     }
@@ -195,24 +213,30 @@ const createDailyQuestsRoutes = (pool) => {
   // POST /api/daily-quests/progress - Update quest progress (called by other endpoints)
   // This is an internal endpoint, should be called when user performs actions
   router.post('/progress', async (req, res) => {
-    try {
-      if (!pool) {
-        return res.json({ ok: false, error: 'Database not available' });
-      }
+    const client = await pool?.connect();
+    if (!client) {
+      return res.json({ ok: false, error: 'Database not available' });
+    }
 
+    try {
       const userId = req.userId;
       const { questType } = req.body;
 
       if (!userId || !questType) {
+        client.release();
         return res.json({ ok: false, error: 'Missing parameters' });
       }
 
       const today = new Date().toISOString().split('T')[0];
 
-      // Find incomplete quests of this type for today
-      const questsResult = await pool.query(
+      // Start transaction for atomic operations
+      await client.query('BEGIN');
+
+      // Find incomplete quests of this type for today with lock to prevent race conditions
+      const questsResult = await client.query(
         `SELECT * FROM daily_quests 
-         WHERE user_id = $1 AND quest_date = $2 AND quest_type = $3 AND is_completed = false`,
+         WHERE user_id = $1 AND quest_date = $2 AND quest_type = $3 AND is_completed = false
+         FOR UPDATE`,
         [userId, today, questType]
       );
 
@@ -220,7 +244,8 @@ const createDailyQuestsRoutes = (pool) => {
         const newCount = quest.current_count + 1;
         const isCompleted = newCount >= quest.target_count;
 
-        await pool.query(
+        // Security: Update atomically within transaction
+        await client.query(
           `UPDATE daily_quests 
            SET current_count = $1, is_completed = $2, updated_at = now()
            WHERE id = $3`,
@@ -230,12 +255,18 @@ const createDailyQuestsRoutes = (pool) => {
         logger.debug('Quest progress updated', { questId: quest.id, questType, newCount, isCompleted });
       }
 
-      // Invalidate cache for this user's daily quests
+      // Commit transaction
+      await client.query('COMMIT');
+      client.release();
+
+      // Invalidate cache for this user's daily quests (outside transaction)
       const cacheKey = `daily-quests:${userId}:${today}`;
       await cache.del(cacheKey);
 
       return res.json({ ok: true });
     } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      client.release();
       logger.error('Update quest progress error:', { error: error?.message || error });
       return res.json({ ok: false, error: error?.message || error });
     }

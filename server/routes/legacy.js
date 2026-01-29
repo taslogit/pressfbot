@@ -217,7 +217,7 @@ const createLegacyRoutes = (pool) => {
 
       return res.json({ ok: true, id: itemId });
     } catch (error) {
-      console.error('Create legacy error:', error);
+      logger.error('Create legacy error:', error);
       return sendError(res, 500, 'LEGACY_CREATE_FAILED', 'Failed to create legacy item');
     }
   });
@@ -245,7 +245,7 @@ const createLegacyRoutes = (pool) => {
 
       return res.json({ ok: true, item });
     } catch (error) {
-      console.error('Get legacy item error:', error);
+      logger.error('Get legacy item error:', error);
       return sendError(res, 500, 'LEGACY_FETCH_FAILED', 'Failed to fetch legacy item');
     }
   });
@@ -281,43 +281,56 @@ const createLegacyRoutes = (pool) => {
         isFavorite
       } = req.body;
 
+      // Security: Use whitelist of allowed fields to prevent SQL injection
+      const allowedFields = {
+        item_type: 'item_type',
+        title: 'title',
+        description: 'description',
+        encrypted_payload: 'encrypted_payload',
+        severity: 'severity',
+        rarity: 'rarity',
+        is_resolved: 'is_resolved',
+        ghost_config: 'ghost_config',
+        is_favorite: 'is_favorite'
+      };
+
       const updateFields = [];
       const updateValues = [];
       let paramIndex = 1;
 
-      if (type !== undefined) {
+      if (type !== undefined && allowedFields.item_type) {
         updateFields.push(`item_type = $${paramIndex++}`);
         updateValues.push(type);
       }
-      if (title !== undefined) {
+      if (title !== undefined && allowedFields.title) {
         updateFields.push(`title = $${paramIndex++}`);
         updateValues.push(title);
       }
-      if (description !== undefined) {
+      if (description !== undefined && allowedFields.description) {
         updateFields.push(`description = $${paramIndex++}`);
         updateValues.push(description);
       }
-      if (secretPayload !== undefined) {
+      if (secretPayload !== undefined && allowedFields.encrypted_payload) {
         updateFields.push(`encrypted_payload = $${paramIndex++}`);
         updateValues.push(secretPayload);
       }
-      if (severity !== undefined) {
+      if (severity !== undefined && allowedFields.severity) {
         updateFields.push(`severity = $${paramIndex++}`);
         updateValues.push(severity);
       }
-      if (rarity !== undefined) {
+      if (rarity !== undefined && allowedFields.rarity) {
         updateFields.push(`rarity = $${paramIndex++}`);
         updateValues.push(rarity);
       }
-      if (isResolved !== undefined) {
+      if (isResolved !== undefined && allowedFields.is_resolved) {
         updateFields.push(`is_resolved = $${paramIndex++}`);
         updateValues.push(isResolved);
       }
-      if (ghostConfig !== undefined) {
+      if (ghostConfig !== undefined && allowedFields.ghost_config) {
         updateFields.push(`ghost_config = $${paramIndex++}`);
         updateValues.push(ghostConfig ? JSON.stringify(ghostConfig) : null);
       }
-      if (isFavorite !== undefined) {
+      if (isFavorite !== undefined && allowedFields.is_favorite) {
         updateFields.push(`is_favorite = $${paramIndex++}`);
         updateValues.push(isFavorite);
       }
@@ -329,6 +342,7 @@ const createLegacyRoutes = (pool) => {
       updateFields.push(`updated_at = now()`);
       updateValues.push(itemId, userId);
 
+      // Security: Use parameterized query with whitelisted field names
       await pool.query(
         `UPDATE legacy_items SET ${updateFields.join(', ')} WHERE id = $${paramIndex} AND user_id = $${paramIndex + 1}`,
         updateValues
@@ -336,7 +350,7 @@ const createLegacyRoutes = (pool) => {
 
       return res.json({ ok: true, id: itemId });
     } catch (error) {
-      console.error('Update legacy error:', error);
+      logger.error('Update legacy error:', error);
       return sendError(res, 500, 'LEGACY_UPDATE_FAILED', 'Failed to update legacy item');
     }
   });
@@ -362,7 +376,7 @@ const createLegacyRoutes = (pool) => {
 
       return res.json({ ok: true });
     } catch (error) {
-      console.error('Delete legacy error:', error);
+      logger.error('Delete legacy error:', error);
       return sendError(res, 500, 'LEGACY_DELETE_FAILED', 'Failed to delete legacy item');
     }
   });

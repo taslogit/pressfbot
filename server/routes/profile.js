@@ -10,15 +10,13 @@ const { cache } = require('../utils/cache');
 const profileUpdateSchema = z.object({
   avatar: z.string().optional(),
   bio: z.string().optional(),
-  level: z.number().int().optional(),
+  // Security: level, reputation, karma removed - they are system-managed
   title: z.string().optional(),
   tonAddress: z.string().optional(),
   gifts: z.array(z.any()).optional(),
   achievements: z.array(z.any()).optional(),
   perks: z.array(z.any()).optional(),
   contracts: z.array(z.any()).optional(),
-  reputation: z.number().int().optional(),
-  karma: z.number().int().optional(),
   stats: z.object({
     beefsWon: z.number().int().optional(),
     leaksDropped: z.number().int().optional(),
@@ -115,15 +113,13 @@ const createProfileRoutes = (pool) => {
       const {
         avatar,
         bio,
-        level,
+        // Security: level, reputation, karma cannot be updated via API - they are system-managed
         title,
         tonAddress,
         gifts,
         achievements,
         perks,
         contracts,
-        reputation,
-        karma,
         stats
       } = req.body;
 
@@ -134,79 +130,77 @@ const createProfileRoutes = (pool) => {
       );
 
       if (checkResult.rowCount === 0) {
-        // Create new profile
+        // Create new profile with default values
         await pool.query(
           `INSERT INTO profiles (
-            user_id, avatar, bio, level, title, gifts, achievements,
-            perks, contracts, reputation, karma, stats, ton_address
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+            user_id, avatar, bio, title, gifts, achievements,
+            perks, contracts, stats, ton_address, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())`,
           [
             userId,
-            avatar || 'default',
+            avatar || 'pressf',
             bio || 'No bio yet.',
-            level || 1,
-            title || 'Newbie',
+            title || null, // Title will be calculated from level
             JSON.stringify(gifts || []),
             JSON.stringify(achievements || []),
             JSON.stringify(perks || []),
             JSON.stringify(contracts || []),
-            reputation || 0,
-            karma || 50,
             JSON.stringify(stats || { beefsWon: 0, leaksDropped: 0, daysAlive: 1 }),
             tonAddress || null
           ]
         );
       } else {
-        // Update existing profile
+        // Security: Use whitelist of allowed fields to prevent SQL injection
+        const allowedFields = {
+          avatar: 'avatar',
+          bio: 'bio',
+          title: 'title',
+          ton_address: 'ton_address',
+          gifts: 'gifts',
+          achievements: 'achievements',
+          perks: 'perks',
+          contracts: 'contracts',
+          stats: 'stats'
+        };
+
         const updateFields = [];
         const updateValues = [];
         let paramIndex = 1;
 
-        if (avatar !== undefined) {
+        // Only allow whitelisted fields to be updated
+        if (avatar !== undefined && allowedFields.avatar) {
           updateFields.push(`avatar = $${paramIndex++}`);
           updateValues.push(avatar);
         }
-        if (bio !== undefined) {
+        if (bio !== undefined && allowedFields.bio) {
           updateFields.push(`bio = $${paramIndex++}`);
           updateValues.push(bio);
         }
-        if (level !== undefined) {
-          updateFields.push(`level = $${paramIndex++}`);
-          updateValues.push(level);
-        }
-        if (title !== undefined) {
+        if (title !== undefined && allowedFields.title) {
           updateFields.push(`title = $${paramIndex++}`);
           updateValues.push(title);
         }
-        if (tonAddress !== undefined) {
+        if (tonAddress !== undefined && allowedFields.ton_address) {
           updateFields.push(`ton_address = $${paramIndex++}`);
           updateValues.push(tonAddress);
         }
-        if (gifts !== undefined) {
+        if (gifts !== undefined && allowedFields.gifts) {
           updateFields.push(`gifts = $${paramIndex++}`);
           updateValues.push(JSON.stringify(gifts));
         }
-        if (achievements !== undefined) {
+        if (achievements !== undefined && allowedFields.achievements) {
           updateFields.push(`achievements = $${paramIndex++}`);
           updateValues.push(JSON.stringify(achievements));
         }
-        if (perks !== undefined) {
+        if (perks !== undefined && allowedFields.perks) {
           updateFields.push(`perks = $${paramIndex++}`);
           updateValues.push(JSON.stringify(perks));
         }
-        if (contracts !== undefined) {
+        if (contracts !== undefined && allowedFields.contracts) {
           updateFields.push(`contracts = $${paramIndex++}`);
           updateValues.push(JSON.stringify(contracts));
         }
-        if (reputation !== undefined) {
-          updateFields.push(`reputation = $${paramIndex++}`);
-          updateValues.push(reputation);
-        }
-        if (karma !== undefined) {
-          updateFields.push(`karma = $${paramIndex++}`);
-          updateValues.push(karma);
-        }
-        if (stats !== undefined) {
+        if (stats !== undefined && allowedFields.stats) {
           updateFields.push(`stats = $${paramIndex++}`);
           updateValues.push(JSON.stringify(stats));
         }
@@ -215,6 +209,7 @@ const createProfileRoutes = (pool) => {
           updateFields.push(`updated_at = now()`);
           updateValues.push(userId);
 
+          // Security: Use parameterized query with whitelisted field names
           await pool.query(
             `UPDATE profiles SET ${updateFields.join(', ')} WHERE user_id = $${paramIndex}`,
             updateValues
@@ -244,34 +239,60 @@ const createProfileRoutes = (pool) => {
 
   // POST /api/profile/check-in - Dead man switch check-in
   router.post('/check-in', async (req, res) => {
-    try {
-      if (!pool) {
-        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
-      }
+    const client = await pool?.connect();
+    if (!client) {
+      return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+    }
 
+    try {
       const userId = req.userId;
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      // Security: Use UTC date to prevent timezone manipulation
+      const now = new Date();
+      const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      const today = todayUTC.toISOString().split('T')[0]; // YYYY-MM-DD in UTC
 
-      // Get current settings
-      const settingsResult = await pool.query(
-        'SELECT * FROM user_settings WHERE user_id = $1',
+      // Start transaction for atomic operations
+      await client.query('BEGIN');
+
+      // Get current settings with lock to prevent race conditions
+      const settingsResult = await client.query(
+        'SELECT * FROM user_settings WHERE user_id = $1 FOR UPDATE',
         [userId]
       );
 
       let currentStreak = 0;
       let longestStreak = 0;
       let lastStreakDate = null;
+      let lastCheckIn = null;
       let freeSkips = 0;
 
       if (settingsResult.rowCount > 0) {
         currentStreak = settingsResult.rows[0].current_streak || 0;
         longestStreak = settingsResult.rows[0].longest_streak || 0;
         lastStreakDate = settingsResult.rows[0].last_streak_date;
+        lastCheckIn = settingsResult.rows[0].last_check_in;
         freeSkips = settingsResult.rows[0].streak_free_skip || 0;
+
+        // Security: Check if already checked in today (prevent duplicate check-ins)
+        if (lastCheckIn) {
+          const lastCheckInDate = new Date(lastCheckIn);
+          const lastCheckInUTC = new Date(Date.UTC(
+            lastCheckInDate.getUTCFullYear(),
+            lastCheckInDate.getUTCMonth(),
+            lastCheckInDate.getUTCDate()
+          ));
+          const lastCheckInStr = lastCheckInUTC.toISOString().split('T')[0];
+
+          if (lastCheckInStr === today) {
+            await client.query('ROLLBACK');
+            client.release();
+            return sendError(res, 400, 'ALREADY_CHECKED_IN', 'You have already checked in today');
+          }
+        }
       }
 
       // Calculate streak
@@ -280,8 +301,8 @@ const createProfileRoutes = (pool) => {
       let streakBonus = 0;
 
       if (lastStreakDate) {
-        const lastDate = new Date(lastStreakDate);
-        const todayDate = new Date(today);
+        const lastDate = new Date(lastStreakDate + 'T00:00:00Z'); // Parse as UTC
+        const todayDate = new Date(today + 'T00:00:00Z');
         const daysDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
 
         if (daysDiff === 1) {
@@ -299,7 +320,7 @@ const createProfileRoutes = (pool) => {
             newStreak = 1;
           }
         } else if (daysDiff === 0) {
-          // Already checked in today
+          // Same day (should not happen due to check above, but handle gracefully)
           newStreak = currentStreak;
         }
       } else {
@@ -319,33 +340,33 @@ const createProfileRoutes = (pool) => {
       else if (newStreak === 30) streakBonus = 100;
       else if (newStreak === 100) streakBonus = 500;
 
-      // Award bonus reputation
+      // Award bonus reputation (in transaction)
       if (streakBonus > 0) {
-        await pool.query(
-          'UPDATE profiles SET reputation = reputation + $1 WHERE user_id = $2',
+        await client.query(
+          'UPDATE profiles SET reputation = reputation + $1, updated_at = now() WHERE user_id = $2',
           [streakBonus, userId]
         );
       }
 
-      // Award XP for check-in (10 XP)
+      // Award XP for check-in (10 XP) - in transaction
       const checkInXP = 10;
-      await pool.query(
+      await client.query(
         `UPDATE profiles 
          SET experience = experience + $1, total_xp_earned = total_xp_earned + $1, updated_at = now()
          WHERE user_id = $2`,
         [checkInXP, userId]
       );
 
-      // Update or create settings
+      // Update or create settings - in transaction
       if (settingsResult.rowCount === 0) {
-        await pool.query(
+        await client.query(
           `INSERT INTO user_settings 
            (user_id, last_check_in, checkin_notified_at, current_streak, longest_streak, last_streak_date, streak_free_skip) 
            VALUES ($1, now(), NULL, $2, $3, $4, $5)`,
           [userId, newStreak, longestStreak, today, freeSkips]
         );
       } else {
-        await pool.query(
+        await client.query(
           `UPDATE user_settings 
            SET last_check_in = now(), 
                checkin_notified_at = NULL, 
@@ -359,10 +380,14 @@ const createProfileRoutes = (pool) => {
         );
       }
 
+      // Commit transaction
+      await client.query('COMMIT');
+      client.release();
+
       // Invalidate cache after check-in
       await cache.del(`profile:${userId}`);
 
-      // Log activity
+      // Log activity (outside transaction to not block on activity logging)
       try {
         const { logActivity } = require('./activity');
         await logActivity(pool, userId, 'check_in', {
@@ -385,6 +410,8 @@ const createProfileRoutes = (pool) => {
         xp: checkInXP
       });
     } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      client.release();
       logger.error('Check-in error', error);
       return sendError(res, 500, 'CHECKIN_FAILED', 'Failed to check in');
     }
@@ -440,40 +467,51 @@ const createProfileRoutes = (pool) => {
           ]
         );
       } else {
-        // Update existing settings
+        // Security: Use whitelist of allowed fields to prevent SQL injection
+        const allowedFields = {
+          dead_man_switch_days: 'dead_man_switch_days',
+          funeral_track: 'funeral_track',
+          language: 'language',
+          theme: 'theme',
+          sound_enabled: 'sound_enabled',
+          notifications_enabled: 'notifications_enabled',
+          telegram_notifications_enabled: 'telegram_notifications_enabled',
+          checkin_reminder_interval_minutes: 'checkin_reminder_interval_minutes'
+        };
+
         const updateFields = [];
         const updateValues = [];
         let paramIndex = 1;
 
-        if (deadManSwitchDays !== undefined) {
+        if (deadManSwitchDays !== undefined && allowedFields.dead_man_switch_days) {
           updateFields.push(`dead_man_switch_days = $${paramIndex++}`);
           updateValues.push(deadManSwitchDays);
         }
-        if (funeralTrack !== undefined) {
+        if (funeralTrack !== undefined && allowedFields.funeral_track) {
           updateFields.push(`funeral_track = $${paramIndex++}`);
           updateValues.push(funeralTrack);
         }
-        if (language !== undefined) {
+        if (language !== undefined && allowedFields.language) {
           updateFields.push(`language = $${paramIndex++}`);
           updateValues.push(language);
         }
-        if (theme !== undefined) {
+        if (theme !== undefined && allowedFields.theme) {
           updateFields.push(`theme = $${paramIndex++}`);
           updateValues.push(theme);
         }
-        if (soundEnabled !== undefined) {
+        if (soundEnabled !== undefined && allowedFields.sound_enabled) {
           updateFields.push(`sound_enabled = $${paramIndex++}`);
           updateValues.push(soundEnabled);
         }
-        if (notificationsEnabled !== undefined) {
+        if (notificationsEnabled !== undefined && allowedFields.notifications_enabled) {
           updateFields.push(`notifications_enabled = $${paramIndex++}`);
           updateValues.push(notificationsEnabled);
         }
-        if (telegramNotificationsEnabled !== undefined) {
+        if (telegramNotificationsEnabled !== undefined && allowedFields.telegram_notifications_enabled) {
           updateFields.push(`telegram_notifications_enabled = $${paramIndex++}`);
           updateValues.push(telegramNotificationsEnabled);
         }
-        if (checkinReminderIntervalMinutes !== undefined) {
+        if (checkinReminderIntervalMinutes !== undefined && allowedFields.checkin_reminder_interval_minutes) {
           updateFields.push(`checkin_reminder_interval_minutes = $${paramIndex++}`);
           updateValues.push(checkinReminderIntervalMinutes);
         }
@@ -482,6 +520,7 @@ const createProfileRoutes = (pool) => {
           updateFields.push(`updated_at = now()`);
           updateValues.push(userId);
 
+          // Security: Use parameterized query with whitelisted field names
           await pool.query(
             `UPDATE user_settings SET ${updateFields.join(', ')} WHERE user_id = $${paramIndex}`,
             updateValues
@@ -491,7 +530,7 @@ const createProfileRoutes = (pool) => {
 
       return res.json({ ok: true });
     } catch (error) {
-      console.error('Update settings error:', error);
+      logger.error('Update settings error:', error);
       return sendError(res, 500, 'SETTINGS_UPDATE_FAILED', 'Failed to update settings');
     }
   });

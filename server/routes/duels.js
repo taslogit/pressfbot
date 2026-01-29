@@ -159,7 +159,7 @@ const createDuelsRoutes = (pool, createLimiter) => {
 
       return res.json({ ok: true, duels, meta: { limit, offset, sortBy, order, q: query || '' } });
     } catch (error) {
-      console.error('Get duels error:', error);
+      logger.error('Get duels error:', error);
       return sendError(res, 500, 'DUELS_FETCH_FAILED', 'Failed to fetch duels');
     }
   });
@@ -380,43 +380,58 @@ const createDuelsRoutes = (pool, createLimiter) => {
         isFavorite
       } = req.body;
 
+      // Security: Use whitelist of allowed fields to prevent SQL injection
+      const allowedFields = {
+        title: 'title',
+        stake: 'stake',
+        deadline: 'deadline',
+        status: 'status',
+        is_public: 'is_public',
+        is_team: 'is_team',
+        witness_count: 'witness_count',
+        loser_id: 'loser_id',
+        opponent_id: 'opponent_id',
+        opponent_name: 'opponent_name',
+        is_favorite: 'is_favorite'
+      };
+
       const updateFields = [];
       const updateValues = [];
       let paramIndex = 1;
 
-      if (title !== undefined) {
+      if (title !== undefined && allowedFields.title) {
         updateFields.push(`title = $${paramIndex++}`);
         updateValues.push(title);
       }
-      if (stake !== undefined) {
+      if (stake !== undefined && allowedFields.stake) {
         updateFields.push(`stake = $${paramIndex++}`);
         updateValues.push(stake);
       }
-      if (deadline !== undefined) {
+      if (deadline !== undefined && allowedFields.deadline) {
         updateFields.push(`deadline = $${paramIndex++}`);
         updateValues.push(deadline ? new Date(deadline) : null);
       }
-      if (status !== undefined) {
+      if (status !== undefined && allowedFields.status) {
         updateFields.push(`status = $${paramIndex++}`);
         updateValues.push(status);
       }
-      if (isPublic !== undefined) {
+      if (isPublic !== undefined && allowedFields.is_public) {
         updateFields.push(`is_public = $${paramIndex++}`);
         updateValues.push(isPublic);
       }
-      if (isTeam !== undefined) {
+      if (isTeam !== undefined && allowedFields.is_team) {
         updateFields.push(`is_team = $${paramIndex++}`);
         updateValues.push(isTeam);
       }
-      if (witnessCount !== undefined) {
+      if (witnessCount !== undefined && allowedFields.witness_count) {
         updateFields.push(`witness_count = $${paramIndex++}`);
         updateValues.push(witnessCount);
       }
-      if (loser !== undefined) {
+      if (loser !== undefined && allowedFields.loser_id) {
         updateFields.push(`loser_id = $${paramIndex++}`);
         updateValues.push(loser ? Number(loser) : null);
       }
-      if (isFavorite !== undefined) {
+      if (isFavorite !== undefined && allowedFields.is_favorite) {
         updateFields.push(`is_favorite = $${paramIndex++}`);
         updateValues.push(isFavorite);
       }
@@ -424,10 +439,24 @@ const createDuelsRoutes = (pool, createLimiter) => {
       if (opponent !== undefined || opponentId !== undefined) {
         const opponentIdValue = opponentId ? Number(opponentId) : (Number(opponent) || null);
         const opponentNameValue = opponentIdValue ? null : (opponent || null);
-        updateFields.push(`opponent_id = $${paramIndex++}`);
-        updateValues.push(opponentIdValue);
-        updateFields.push(`opponent_name = $${paramIndex++}`);
-        updateValues.push(opponentNameValue);
+        // Security: Validate opponent exists if opponentId is provided
+        if (opponentIdValue && allowedFields.opponent_id) {
+          const opponentCheck = await pool.query(
+            'SELECT user_id FROM profiles WHERE user_id = $1',
+            [opponentIdValue]
+          );
+          if (opponentCheck.rowCount === 0) {
+            return sendError(res, 404, 'OPPONENT_NOT_FOUND', 'Opponent not found');
+          }
+        }
+        if (allowedFields.opponent_id) {
+          updateFields.push(`opponent_id = $${paramIndex++}`);
+          updateValues.push(opponentIdValue);
+        }
+        if (allowedFields.opponent_name) {
+          updateFields.push(`opponent_name = $${paramIndex++}`);
+          updateValues.push(opponentNameValue);
+        }
       }
 
       if (updateFields.length === 0) {
@@ -437,6 +466,7 @@ const createDuelsRoutes = (pool, createLimiter) => {
       updateFields.push(`updated_at = now()`);
       updateValues.push(duelId, userId);
 
+      // Security: Use parameterized query with whitelisted field names
       await pool.query(
         `UPDATE duels SET ${updateFields.join(', ')} WHERE id = $${paramIndex} AND (challenger_id = $${paramIndex + 1} OR opponent_id = $${paramIndex + 1})`,
         updateValues
@@ -444,7 +474,7 @@ const createDuelsRoutes = (pool, createLimiter) => {
 
       return res.json({ ok: true, id: duelId });
     } catch (error) {
-      console.error('Update duel error:', error);
+      logger.error('Update duel error:', error);
       return sendError(res, 500, 'DUEL_UPDATE_FAILED', 'Failed to update duel');
     }
   });
@@ -470,7 +500,7 @@ const createDuelsRoutes = (pool, createLimiter) => {
 
       return res.json({ ok: true });
     } catch (error) {
-      console.error('Delete duel error:', error);
+      logger.error('Delete duel error:', error);
       return sendError(res, 500, 'DUEL_DELETE_FAILED', 'Failed to delete duel');
     }
   });
