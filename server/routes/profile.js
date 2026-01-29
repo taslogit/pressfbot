@@ -476,6 +476,69 @@ const createProfileRoutes = (pool) => {
     }
   });
 
+  // GET /api/profile/streak - Get streak information
+  router.get('/streak', async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+
+      const userId = req.userId;
+      if (!userId) {
+        return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+      }
+
+      const settingsResult = await pool.query(
+        'SELECT current_streak, longest_streak, last_streak_date, streak_free_skip FROM user_settings WHERE user_id = $1',
+        [userId]
+      );
+
+      if (settingsResult.rowCount === 0) {
+        return res.json({
+          ok: true,
+          streak: {
+            current: 0,
+            longest: 0,
+            lastStreakDate: null,
+            freeSkips: 0,
+            nextBonus: { days: 3, reward: 5 }
+          }
+        });
+      }
+
+      const row = settingsResult.rows[0];
+      const currentStreak = row.current_streak || 0;
+      
+      // Calculate next bonus
+      let nextBonus = null;
+      if (currentStreak < 3) {
+        nextBonus = { days: 3 - currentStreak, reward: 5 };
+      } else if (currentStreak < 7) {
+        nextBonus = { days: 7 - currentStreak, reward: 15 };
+      } else if (currentStreak < 14) {
+        nextBonus = { days: 14 - currentStreak, reward: 30 };
+      } else if (currentStreak < 30) {
+        nextBonus = { days: 30 - currentStreak, reward: 100 };
+      } else if (currentStreak < 100) {
+        nextBonus = { days: 100 - currentStreak, reward: 500 };
+      }
+
+      return res.json({
+        ok: true,
+        streak: {
+          current: currentStreak,
+          longest: row.longest_streak || 0,
+          lastStreakDate: row.last_streak_date,
+          freeSkips: row.streak_free_skip || 0,
+          nextBonus
+        }
+      });
+    } catch (error) {
+      logger.error('Get streak error:', { error: error?.message || error });
+      return sendError(res, 500, 'STREAK_FETCH_FAILED', 'Failed to fetch streak');
+    }
+  });
+
   return router;
 };
 

@@ -10,7 +10,9 @@ const normalizeProfile = (row) => ({
   reputation: row.reputation || 0,
   karma: row.karma || 50,
   stats: row.stats || { beefsWon: 0, leaksDropped: 0, daysAlive: 1 },
-  tonAddress: row.ton_address || null
+  tonAddress: row.ton_address || null,
+  experience: row.experience || 0,
+  totalXpEarned: row.total_xp_earned || 0
 });
 
 const normalizeSettings = (row) => ({
