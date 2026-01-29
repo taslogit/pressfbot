@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, ShieldCheck, Trophy, ScanEye, Plus, UserPlus, Zap, Skull, Crown, Activity, TrendingUp, TrendingDown, Minus, Share2, Copy, Trash2, Power, BellRing, Lock, Unlock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { storage } from '../utils/storage';
 import { tg } from '../utils/telegram';
 import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
@@ -10,6 +9,7 @@ import { playSound } from '../utils/sound';
 import { Squad, SquadMember, LeaderboardEntry } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 import { getAvatarComponent } from '../components/Avatars';
+import { squadsAPI } from '../utils/api';
 
 type Tab = 'pact' | 'leaderboard';
 
@@ -31,29 +31,98 @@ const Squads = () => {
     const inviteLink = `https://t.me/LastMemeBot?start=squad_${squad?.id || 'new'}`;
 
     useEffect(() => {
-        const currentSquad = storage.getSquad();
-        setSquad(currentSquad);
-        if (currentSquad && currentSquad.sharedPayload) {
-            setPayloadInput(currentSquad.sharedPayload);
+        loadSquad();
+        loadLeaderboard();
+        
+        // Check for pending squad join from invite link
+        const pendingSquadId = localStorage.getItem('lastmeme_pending_squad_join');
+        if (pendingSquadId) {
+            localStorage.removeItem('lastmeme_pending_squad_join');
+            handleJoinSquad(pendingSquadId);
         }
-        setLeaderboard(storage.getLeaderboard());
     }, []);
 
-    const handleCreateSquad = () => {
-        if (!squadName) return;
-        playSound('success');
-        const newSquad = storage.createSquad(squadName);
-        setSquad(newSquad);
-        setIsCreating(false);
+    const loadSquad = async () => {
+        try {
+            const result = await squadsAPI.get();
+            if (result.ok && result.data?.squad) {
+                const loadedSquad = result.data.squad;
+                setSquad(loadedSquad);
+                if (loadedSquad.sharedPayload) {
+                    setPayloadInput(loadedSquad.sharedPayload);
+                }
+            } else {
+                setSquad(null);
+            }
+        } catch (error) {
+            console.error('Failed to load squad:', error);
+            setSquad(null);
+        }
     };
 
-    const handlePayloadSave = () => {
+    const loadLeaderboard = async () => {
+        try {
+            const result = await squadsAPI.getLeaderboard(50, 0);
+            if (result.ok && result.data?.leaderboard) {
+                setLeaderboard(result.data.leaderboard);
+            } else {
+                setLeaderboard([]);
+            }
+        } catch (error) {
+            console.error('Failed to load leaderboard:', error);
+            setLeaderboard([]);
+        }
+    };
+
+    const handleJoinSquad = async (squadId: string) => {
+        try {
+            const result = await squadsAPI.join(squadId);
+            if (result.ok && result.data?.squad) {
+                setSquad(result.data.squad);
+                playSound('success');
+                tg.showPopup({ message: t('squad_joined') || 'Joined squad successfully!' });
+            } else {
+                tg.showPopup({ message: result.error || 'Failed to join squad' });
+            }
+        } catch (error) {
+            console.error('Failed to join squad:', error);
+            tg.showPopup({ message: 'Failed to join squad' });
+        }
+    };
+
+    const handleCreateSquad = async () => {
+        if (!squadName) return;
+        try {
+            const result = await squadsAPI.create(squadName);
+            if (result.ok && result.data?.squad) {
+                playSound('success');
+                setSquad(result.data.squad);
+                setSquadName('');
+                setIsCreating(false);
+            } else {
+                tg.showPopup({ message: result.error || 'Failed to create squad' });
+            }
+        } catch (error) {
+            console.error('Failed to create squad:', error);
+            tg.showPopup({ message: 'Failed to create squad' });
+        }
+    };
+
+    const handlePayloadSave = async () => {
         if (!squad) return;
-        const updated = { ...squad, sharedPayload: payloadInput };
-        setSquad(updated);
-        storage.updateSquad(updated);
-        setIsPactLocked(true);
-        playSound('success');
+        try {
+            const result = await squadsAPI.update(squad.id, { sharedPayload: payloadInput });
+            if (result.ok && result.data?.squad) {
+                setSquad(result.data.squad);
+                setIsPactLocked(true);
+                playSound('success');
+            } else {
+                tg.showPopup({ message: result.error || 'Failed to save payload' });
+            }
+        } catch (error) {
+            console.error('Failed to save payload:', error);
+            tg.showPopup({ message: 'Failed to save payload' });
+        }
     };
 
     const copyLink = () => {
@@ -67,11 +136,26 @@ const Squads = () => {
         tg.showPopup({ message: `${t('ping_sent')}: ${name}` });
     };
 
-    const leaveSquad = () => {
-        if(confirm("LEAVE SQUAD?")) {
-            localStorage.removeItem('lastmeme_squad');
-            setSquad(null);
-            setSquadName('');
+    const leaveSquad = async () => {
+        if (!squad) return;
+        if (!confirm("LEAVE SQUAD?")) return;
+        
+        const userId = tg.initDataUnsafe?.user?.id?.toString();
+        if (!userId) return;
+
+        try {
+            const result = await squadsAPI.removeMember(squad.id, userId);
+            if (result.ok) {
+                setSquad(null);
+                setSquadName('');
+                playSound('success');
+                tg.showPopup({ message: t('squad_left') || 'Left squad successfully' });
+            } else {
+                tg.showPopup({ message: result.error || 'Failed to leave squad' });
+            }
+        } catch (error) {
+            console.error('Failed to leave squad:', error);
+            tg.showPopup({ message: 'Failed to leave squad' });
         }
     };
 
