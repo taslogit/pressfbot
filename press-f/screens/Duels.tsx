@@ -224,8 +224,11 @@ const Duels = () => {
     setTimeout(async () => {
       if (editingDuelId) {
         await storage.updateDuelAsync(editingDuelId, newDuel);
+        analytics.track('duel_updated', { duelId: editingDuelId });
       } else {
         const result = await storage.saveDuelAsync(newDuel);
+        // Track analytics
+        analytics.trackDuelCreated(newDuel.id, isPublic);
         // Show XP notification if received
         if (result && result.xp) {
           // Update quest progress

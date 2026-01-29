@@ -54,6 +54,9 @@ const DailyQuests: React.FC<Props> = ({ className = '' }) => {
     if (!quest.isCompleted || quest.isClaimed) return;
 
     try {
+      // Track analytics before claiming
+      analytics.trackQuestCompleted(quest.id, quest.questType);
+      
       const result = await dailyQuestsAPI.claim(quest.id);
       if (result.ok) {
         playSound('success');
@@ -68,6 +71,7 @@ const DailyQuests: React.FC<Props> = ({ className = '' }) => {
       }
     } catch (error) {
       console.error('Failed to claim quest:', error);
+      analytics.trackError('quest_claim_failed', quest.id);
     }
   };
 
