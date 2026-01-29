@@ -32,12 +32,22 @@ services:
       dockerfile: Dockerfile.backend
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.pressf-backend.rule=Host(`pressfbot.ru`) && (PathPrefix(`/api`) || PathPrefix(`/bot`) || PathPrefix(`/static`))"
-      - "traefik.http.routers.pressf-backend.priority=10"
-      - "traefik.http.services.pressf-backend.loadbalancer.server.port=3000"
-      - "traefik.http.routers.pressf-backend.entrypoints=websecure"
-      - "traefik.http.routers.pressf-backend.tls=true"
-      - "traefik.http.routers.pressf-backend.tls.certresolver=le"
+      # Router for /bot endpoint (highest priority)
+      - "traefik.http.routers.pressf-backend-bot.rule=Host(`pressfbot.ru`) && PathPrefix(`/bot`)"
+      - "traefik.http.routers.pressf-backend-bot.priority=20"
+      - "traefik.http.routers.pressf-backend-bot.entrypoints=websecure"
+      - "traefik.http.routers.pressf-backend-bot.tls=true"
+      - "traefik.http.routers.pressf-backend-bot.tls.certresolver=le"
+      - "traefik.http.routers.pressf-backend-bot.service=pressf-backend-service"
+      # Router for /api and /static endpoints
+      - "traefik.http.routers.pressf-backend-api.rule=Host(`pressfbot.ru`) && (PathPrefix(`/api`) || PathPrefix(`/static`))"
+      - "traefik.http.routers.pressf-backend-api.priority=10"
+      - "traefik.http.routers.pressf-backend-api.entrypoints=websecure"
+      - "traefik.http.routers.pressf-backend-api.tls=true"
+      - "traefik.http.routers.pressf-backend-api.tls.certresolver=le"
+      - "traefik.http.routers.pressf-backend-api.service=pressf-backend-service"
+      # Service definition
+      - "traefik.http.services.pressf-backend-service.loadbalancer.server.port=3000"
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       WEBHOOK_URL: https://${DOMAIN}
