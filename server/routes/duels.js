@@ -8,17 +8,23 @@ const { sendError } = require('../utils/errors');
 const VALID_DUEL_STATUSES = ['pending', 'active', 'completed', 'shame'];
 const VALID_DUEL_SORT = ['created_at', 'deadline', 'title', 'status'];
 
+// Security: Content size limits
+const MAX_TITLE_SIZE = 500; // characters
+const MAX_STAKE_SIZE = 255; // characters
+const MAX_OPPONENT_NAME_SIZE = 255; // characters
+const MAX_WITNESS_COUNT = 100;
+
 const duelSchema = z.object({
   id: z.string().optional(),
-  title: z.string().optional(),
-  stake: z.string().optional(),
-  opponent: z.string().optional(),
+  title: z.string().max(MAX_TITLE_SIZE).optional(),
+  stake: z.string().max(MAX_STAKE_SIZE).optional(),
+  opponent: z.string().max(MAX_OPPONENT_NAME_SIZE).optional(),
   opponentId: z.union([z.string(), z.number()]).optional(),
   deadline: z.string().optional(),
   status: z.enum(['pending', 'active', 'completed', 'shame']).optional(),
   isPublic: z.boolean().optional(),
   isTeam: z.boolean().optional(),
-  witnessCount: z.number().int().nonnegative().optional(),
+  witnessCount: z.number().int().nonnegative().max(MAX_WITNESS_COUNT).optional(),
   loser: z.union([z.string(), z.number()]).optional(),
   isFavorite: z.boolean().optional()
 });

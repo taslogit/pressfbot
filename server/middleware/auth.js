@@ -3,6 +3,7 @@
 
 const { Pool } = require('pg');
 const { sendError } = require('../utils/errors');
+const logger = require('../utils/logger');
 const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 7 * 24 * 60 * 60);
 const SESSION_TTL_REFRESH_MINUTES = Number(process.env.SESSION_TTL_REFRESH_MINUTES || 10);
 const SESSION_TTL_REFRESH_SECONDS = Number.isFinite(SESSION_TTL_REFRESH_MINUTES)
@@ -53,7 +54,7 @@ const createAuthMiddleware = (pool) => {
               [newExpiresAt, sessionId]
             );
           } catch (ttlError) {
-            console.warn('Failed to extend session TTL', ttlError);
+            logger.warn('Failed to extend session TTL', { sessionId, error: ttlError.message });
           }
         }
       }
@@ -62,7 +63,7 @@ const createAuthMiddleware = (pool) => {
       req.sessionId = sessionId;
       next();
     } catch (error) {
-      console.error('Auth middleware error:', error);
+      logger.error('Auth middleware error', error);
       return sendError(res, 500, 'AUTH_FAILED', 'Authentication failed');
     }
   };

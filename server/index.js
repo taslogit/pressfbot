@@ -8,6 +8,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const { sendError } = require('./utils/errors');
+const logger = require('./utils/logger');
 
 // Redis / Bull (job queue)
 const Queue = require('bull');
@@ -85,27 +86,26 @@ const buildStartKeyboard = () => ({
 });
 
 const sendStartMessage = async (ctx) => {
-  console.log('[/start] Received start command from user:', ctx.from?.id);
+  logger.info('[/start] Received start command', { userId: ctx.from?.id });
   if (!WEB_APP_URL) {
-    console.warn('[/start] WEB_APP_URL not set');
+    logger.warn('[/start] WEB_APP_URL not set');
     return ctx.reply('WebApp URL is not set. Define WEB_APP_URL in .env');
   }
   if (BOT_INFO_IMAGE_URL) {
-    console.log('[/start] Attempting to send image:', BOT_INFO_IMAGE_URL);
+    logger.debug('[/start] Attempting to send image', { imageUrl: BOT_INFO_IMAGE_URL });
     try {
       const result = await ctx.replyWithPhoto(
         { url: BOT_INFO_IMAGE_URL },
         { caption: BOT_INFO_TEXT, ...buildStartKeyboard() }
       );
-      console.log('[/start] Image sent successfully, message_id:', result?.message_id);
+      logger.info('[/start] Image sent successfully', { messageId: result?.message_id });
       return result;
     } catch (error) {
-      console.error('[/start] Failed to send bot info image:', error?.message || error);
-      console.error('[/start] Error details:', JSON.stringify(error, null, 2));
-      console.log('[/start] Falling back to text message');
+      logger.error('[/start] Failed to send bot info image', error);
+      logger.debug('[/start] Falling back to text message');
     }
   } else {
-    console.log('[/start] BOT_INFO_IMAGE_URL not set, sending text only');
+    logger.debug('[/start] BOT_INFO_IMAGE_URL not set, sending text only');
   }
   return ctx.reply(BOT_INFO_TEXT, buildStartKeyboard());
 };
@@ -269,7 +269,7 @@ app.use('/api/legacy', authMiddleware, createLegacyRoutes(pool));
 app.use('/api/notifications', authMiddleware, createNotificationsRoutes(pool));
 app.use('/api/ton', authMiddleware, createTonRoutes(pool));
 
-// Global search across letters, duels, legacy (with rate limiting)
+// Global search across letters, duels, legacy (with rate limiting and pagination)
 app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {
   try {
     if (!pool) {
@@ -283,7 +283,9 @@ app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {
 
     const q = String(req.query.q || '').trim();
     const limitRaw = req.query.limit;
+    const offsetRaw = req.query.offset;
     const limit = limitRaw ? Number(limitRaw) : 10;
+    const offset = offsetRaw ? Number(offsetRaw) : 0;
 
     if (q.length < 2) {
       return sendError(res, 400, 'VALIDATION_ERROR', 'Query is too short');
@@ -293,6 +295,12 @@ app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {
         field: 'limit',
         min: 1,
         max: 20
+      });
+    }
+    if (!Number.isInteger(offset) || offset < 0) {
+      return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid offset', {
+        field: 'offset',
+        min: 0
       });
     }
 
@@ -305,8 +313,8 @@ app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {
            title ILIKE $2 OR content ILIKE $2 OR array_to_string(recipients, ' ') ILIKE $2
          )
        ORDER BY created_at DESC
-       LIMIT $3`,
-      [userId, like, limit]
+       LIMIT $3 OFFSET $4`,
+      [userId, like, limit, offset]
     );
 
     const duelsResult = await pool.query(
@@ -316,8 +324,8 @@ app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {
            title ILIKE $2 OR stake ILIKE $2 OR opponent_name ILIKE $2
          )
        ORDER BY created_at DESC
-       LIMIT $3`,
-      [userId, like, limit]
+       LIMIT $3 OFFSET $4`,
+      [userId, like, limit, offset]
     );
 
     const legacyResult = await pool.query(
@@ -327,15 +335,21 @@ app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {
            title ILIKE $2 OR description ILIKE $2
          )
        ORDER BY created_at DESC
-       LIMIT $3`,
-      [userId, like, limit]
+       LIMIT $3 OFFSET $4`,
+      [userId, like, limit, offset]
     );
 
     return res.json({
       ok: true,
       letters: lettersResult.rows.map(normalizeLetter),
       duels: duelsResult.rows.map(normalizeDuel),
-      legacy: legacyResult.rows.map(normalizeLegacyItem)
+      legacy: legacyResult.rows.map(normalizeLegacyItem),
+      meta: {
+        q,
+        limit,
+        offset,
+        total: lettersResult.rows.length + duelsResult.rows.length + legacyResult.rows.length
+      }
     });
   } catch (error) {
     console.error('Search error:', error);
@@ -343,28 +357,54 @@ app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {
   }
 });
 
-// Health check (no auth)
+// Enhanced Health check with metrics (no auth)
 app.get('/api/health', async (_req, res) => {
   const health = {
     ok: true,
     timestamp: Date.now(),
-    db: 'unknown'
+    uptime: process.uptime(),
+    db: 'unknown',
+    redis: 'unknown',
+    memory: {
+      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+      rss: Math.round(process.memoryUsage().rss / 1024 / 1024)
+    }
   };
 
+  // Check database
   if (!pool) {
     health.db = 'disabled';
-    return res.json(health);
+  } else {
+    try {
+      const start = Date.now();
+      await pool.query('SELECT 1');
+      const queryTime = Date.now() - start;
+      health.db = 'ok';
+      health.dbQueryTime = queryTime;
+    } catch (e) {
+      health.ok = false;
+      health.db = 'error';
+      health.dbError = e.message;
+    }
   }
 
-  try {
-    await pool.query('SELECT 1');
-    health.db = 'ok';
-    return res.json(health);
-  } catch (e) {
-    health.ok = false;
-    health.db = 'error';
-    return res.status(500).json(health);
+  // Check Redis (if available)
+  if (jobsQueue) {
+    try {
+      const client = jobsQueue.client;
+      await client.ping();
+      health.redis = 'ok';
+    } catch (e) {
+      health.redis = 'error';
+      health.redisError = e.message;
+    }
+  } else {
+    health.redis = 'disabled';
   }
+
+  const statusCode = health.ok ? 200 : 503;
+  return res.status(statusCode).json(health);
 });
 
 // Create all tables (sessions + migrations)
@@ -395,7 +435,7 @@ app.get('/api/health', async (_req, res) => {
       `UPDATE sessions SET last_seen_at = COALESCE(last_seen_at, created_at) WHERE last_seen_at IS NULL`
     );
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)`);
-    console.log('✅ Sessions table exists');
+    logger.info('Sessions table initialized');
 
     if (SESSION_CLEANUP_INTERVAL_SECONDS > 0) {
       const interval = setInterval(async () => {
@@ -403,11 +443,11 @@ app.get('/api/health', async (_req, res) => {
           const result = await pool.query(
             'DELETE FROM sessions WHERE expires_at IS NOT NULL AND expires_at <= now()'
           );
-          if (result.rowCount > 0) {
-            console.log(`🧹 Cleaned up ${result.rowCount} expired sessions`);
-          }
+            if (result.rowCount > 0) {
+              logger.info(`Cleaned up ${result.rowCount} expired sessions`);
+            }
         } catch (cleanupError) {
-          console.warn('Failed to clean up expired sessions', cleanupError);
+          logger.warn('Failed to clean up expired sessions', { error: cleanupError.message });
         }
       }, SESSION_CLEANUP_INTERVAL_SECONDS * 1000);
       if (interval.unref) {
@@ -452,7 +492,7 @@ app.get('/api/health', async (_req, res) => {
                 [uuidv4(), row.user_id, 'unlock', row.title, msg]
               );
             } catch (notifyError) {
-              console.warn('Failed to notify unlock', notifyError);
+              logger.warn('Failed to notify unlock', { letterId: row.id, userId: row.user_id, error: notifyError.message });
             }
           }
 
@@ -484,11 +524,11 @@ app.get('/api/health', async (_req, res) => {
                 [uuidv4(), row.user_id, 'checkin', 'Check-in reminder', msg]
               );
             } catch (notifyError) {
-              console.warn('Failed to notify check-in', notifyError);
+              logger.warn('Failed to notify check-in', { userId: row.user_id, error: notifyError.message });
             }
           }
         } catch (notifyError) {
-          console.warn('Notification job failed', notifyError);
+          logger.error('Notification job failed', notifyError);
         }
       };
 
@@ -501,9 +541,9 @@ app.get('/api/health', async (_req, res) => {
     
     // Run all migrations
     await createTables(pool);
-    console.log('✅ Database initialized successfully');
+    logger.info('Database initialized successfully');
   } catch (e) {
-    console.error('❌ Failed to initialize database:', e);
+    logger.error('Failed to initialize database', e);
   }
 })();
 
@@ -578,7 +618,7 @@ app.post('/api/verify', async (req, res) => {
     }
     return res.json({ ok: true, sessionId });
   } catch (e) {
-    console.error('Failed to create session', e);
+    logger.error('Failed to create session', e);
     return sendError(res, 500, 'SESSION_CREATE_FAILED', 'Failed to create session');
   }
 });
@@ -642,11 +682,11 @@ app.get('/api/session/:id', async (req, res) => {
       console.log('Bot launched via long polling');
     }
   } catch (e) {
-    console.error('Failed to set webhook or launch bot:', e?.message || e);
+    logger.error('Failed to set webhook or launch bot', e);
   }
 })();
 
-app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+app.listen(PORT, () => logger.info(`Backend running on port ${PORT}`));
 
 function verifyInitData(initData, botToken) {
   try {
