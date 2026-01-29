@@ -1,0 +1,402 @@
+const express = require('express');
+const router = express.Router();
+const { v4: uuidv4 } = require('uuid');
+const { sendError } = require('../utils/errors');
+const logger = require('../utils/logger');
+const { cache } = require('../utils/cache');
+
+const createTournamentsRoutes = (pool) => {
+  // GET /api/tournaments - Get tournaments (active, upcoming, past)
+  router.get('/', async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+
+      const userId = req.userId;
+      const { status } = req.query; // 'active', 'upcoming', 'past', 'all'
+
+      if (!userId) {
+        return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+      }
+
+      const now = new Date();
+      let query = '';
+      let params = [];
+
+      if (status === 'active') {
+        query = `SELECT * FROM tournaments 
+                 WHERE status = 'active' 
+                   AND start_date <= $1 
+                   AND end_date >= $1
+                 ORDER BY start_date DESC`;
+        params = [now];
+      } else if (status === 'upcoming') {
+        query = `SELECT * FROM tournaments 
+                 WHERE status IN ('upcoming', 'registration')
+                   AND registration_start <= $1
+                   AND start_date > $1
+                 ORDER BY start_date ASC`;
+        params = [now];
+      } else if (status === 'past') {
+        query = `SELECT * FROM tournaments 
+                 WHERE status = 'completed' 
+                    OR end_date < $1
+                 ORDER BY end_date DESC
+                 LIMIT 20`;
+        params = [now];
+      } else {
+        query = `SELECT * FROM tournaments 
+                 ORDER BY start_date DESC
+                 LIMIT 50`;
+        params = [];
+      }
+
+      const tournamentsResult = await pool.query(query, params);
+
+      const tournaments = await Promise.all(
+        tournamentsResult.rows.map(async (row) => {
+          // Get participant count
+          const participantsResult = await pool.query(
+            'SELECT COUNT(*) as count FROM tournament_participants WHERE tournament_id = $1',
+            [row.id]
+          );
+          const participantCount = parseInt(participantsResult.rows[0]?.count || 0);
+
+          // Check if user is registered
+          let isRegistered = false;
+          let userParticipant = null;
+          if (userId) {
+            const userParticipantResult = await pool.query(
+              'SELECT * FROM tournament_participants WHERE tournament_id = $1 AND user_id = $2',
+              [row.id, userId]
+            );
+            if (userParticipantResult.rowCount > 0) {
+              isRegistered = true;
+              userParticipant = {
+                seed: userParticipantResult.rows[0].seed,
+                score: userParticipantResult.rows[0].score,
+                wins: userParticipantResult.rows[0].wins,
+                losses: userParticipantResult.rows[0].losses,
+                status: userParticipantResult.rows[0].status
+              };
+            }
+          }
+
+          return {
+            id: row.id,
+            name: row.name,
+            description: row.description,
+            startDate: row.start_date?.toISOString(),
+            endDate: row.end_date?.toISOString(),
+            registrationStart: row.registration_start?.toISOString(),
+            registrationEnd: row.registration_end?.toISOString(),
+            maxParticipants: row.max_participants,
+            minParticipants: row.min_participants,
+            status: row.status,
+            format: row.format,
+            prizePool: row.prize_pool || {},
+            rules: row.rules || {},
+            bannerUrl: row.banner_url,
+            icon: row.icon,
+            participantCount,
+            isRegistered,
+            userParticipant
+          };
+        })
+      );
+
+      return res.json({ ok: true, tournaments });
+    } catch (error) {
+      logger.error('Get tournaments error:', { error: error?.message || error });
+      return sendError(res, 500, 'TOURNAMENTS_FETCH_FAILED', 'Failed to fetch tournaments');
+    }
+  });
+
+  // GET /api/tournaments/:id - Get tournament details
+  router.get('/:id', async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+
+      const userId = req.userId;
+      const tournamentId = req.params.id;
+
+      if (!userId) {
+        return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+      }
+
+      // Validate UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(tournamentId)) {
+        return sendError(res, 400, 'INVALID_TOURNAMENT_ID', 'Invalid tournament ID format');
+      }
+
+      // Get tournament
+      const tournamentResult = await pool.query(
+        'SELECT * FROM tournaments WHERE id = $1',
+        [tournamentId]
+      );
+
+      if (tournamentResult.rowCount === 0) {
+        return sendError(res, 404, 'TOURNAMENT_NOT_FOUND', 'Tournament not found');
+      }
+
+      const tournament = tournamentResult.rows[0];
+
+      // Get participants
+      const participantsResult = await pool.query(
+        `SELECT tp.*, p.avatar, p.title, p.level, p.experience
+         FROM tournament_participants tp
+         LEFT JOIN profiles p ON tp.user_id = p.user_id
+         WHERE tp.tournament_id = $1
+         ORDER BY tp.score DESC, tp.wins DESC, tp.registered_at ASC`,
+        [tournamentId]
+      );
+
+      const participants = participantsResult.rows.map(row => ({
+        id: row.id,
+        userId: row.user_id,
+        seed: row.seed,
+        score: row.score,
+        wins: row.wins,
+        losses: row.losses,
+        status: row.status,
+        avatar: row.avatar || 'pressf',
+        title: row.title,
+        level: row.level,
+        experience: row.experience
+      }));
+
+      // Get matches
+      const matchesResult = await pool.query(
+        `SELECT * FROM tournament_matches 
+         WHERE tournament_id = $1
+         ORDER BY round ASC, match_number ASC`,
+        [tournamentId]
+      );
+
+      const matches = matchesResult.rows.map(row => ({
+        id: row.id,
+        round: row.round,
+        matchNumber: row.match_number,
+        participant1Id: row.participant1_id,
+        participant2Id: row.participant2_id,
+        winnerId: row.winner_id,
+        duelId: row.duel_id,
+        status: row.status,
+        scheduledAt: row.scheduled_at?.toISOString(),
+        completedAt: row.completed_at?.toISOString()
+      }));
+
+      // Check if user is registered
+      let isRegistered = false;
+      let userParticipant = null;
+      const userParticipantResult = await pool.query(
+        'SELECT * FROM tournament_participants WHERE tournament_id = $1 AND user_id = $2',
+        [tournamentId, userId]
+      );
+      if (userParticipantResult.rowCount > 0) {
+        isRegistered = true;
+        userParticipant = {
+          id: userParticipantResult.rows[0].id,
+          seed: userParticipantResult.rows[0].seed,
+          score: userParticipantResult.rows[0].score,
+          wins: userParticipantResult.rows[0].wins,
+          losses: userParticipantResult.rows[0].losses,
+          status: userParticipantResult.rows[0].status
+        };
+      }
+
+      return res.json({
+        ok: true,
+        tournament: {
+          id: tournament.id,
+          name: tournament.name,
+          description: tournament.description,
+          startDate: tournament.start_date?.toISOString(),
+          endDate: tournament.end_date?.toISOString(),
+          registrationStart: tournament.registration_start?.toISOString(),
+          registrationEnd: tournament.registration_end?.toISOString(),
+          maxParticipants: tournament.max_participants,
+          minParticipants: tournament.min_participants,
+          status: tournament.status,
+          format: tournament.format,
+          prizePool: tournament.prize_pool || {},
+          rules: tournament.rules || {},
+          bannerUrl: tournament.banner_url,
+          icon: tournament.icon
+        },
+        participants,
+        matches,
+        isRegistered,
+        userParticipant
+      });
+    } catch (error) {
+      logger.error('Get tournament error:', { error: error?.message || error });
+      return sendError(res, 500, 'TOURNAMENT_FETCH_FAILED', 'Failed to fetch tournament');
+    }
+  });
+
+  // POST /api/tournaments/:id/register - Register for tournament
+  router.post('/:id/register', async (req, res) => {
+    const client = await pool?.connect();
+    if (!client) {
+      return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+    }
+
+    try {
+      const userId = req.userId;
+      const tournamentId = req.params.id;
+
+      if (!userId) {
+        return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+      }
+
+      // Validate UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(tournamentId)) {
+        return sendError(res, 400, 'INVALID_TOURNAMENT_ID', 'Invalid tournament ID format');
+      }
+
+      // Start transaction
+      await client.query('BEGIN');
+
+      // Get tournament
+      const tournamentResult = await client.query(
+        'SELECT * FROM tournaments WHERE id = $1 FOR UPDATE',
+        [tournamentId]
+      );
+
+      if (tournamentResult.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return sendError(res, 404, 'TOURNAMENT_NOT_FOUND', 'Tournament not found');
+      }
+
+      const tournament = tournamentResult.rows[0];
+      const now = new Date();
+
+      // Check registration period
+      if (now < tournament.registration_start) {
+        await client.query('ROLLBACK');
+        return sendError(res, 400, 'REGISTRATION_NOT_OPEN', 'Registration has not started yet');
+      }
+
+      if (now > tournament.registration_end) {
+        await client.query('ROLLBACK');
+        return sendError(res, 400, 'REGISTRATION_CLOSED', 'Registration has closed');
+      }
+
+      // Check if already registered
+      const existingResult = await client.query(
+        'SELECT * FROM tournament_participants WHERE tournament_id = $1 AND user_id = $2',
+        [tournamentId, userId]
+      );
+
+      if (existingResult.rowCount > 0) {
+        await client.query('ROLLBACK');
+        return sendError(res, 400, 'ALREADY_REGISTERED', 'Already registered for this tournament');
+      }
+
+      // Check participant limit
+      const countResult = await client.query(
+        'SELECT COUNT(*) as count FROM tournament_participants WHERE tournament_id = $1',
+        [tournamentId]
+      );
+      const currentCount = parseInt(countResult.rows[0]?.count || 0);
+
+      if (currentCount >= tournament.max_participants) {
+        await client.query('ROLLBACK');
+        return sendError(res, 400, 'TOURNAMENT_FULL', 'Tournament is full');
+      }
+
+      // Get next seed number
+      const seedResult = await client.query(
+        'SELECT COALESCE(MAX(seed), 0) + 1 as next_seed FROM tournament_participants WHERE tournament_id = $1',
+        [tournamentId]
+      );
+      const seed = parseInt(seedResult.rows[0]?.next_seed || 1);
+
+      // Register participant
+      const participantId = uuidv4();
+      await client.query(
+        `INSERT INTO tournament_participants 
+         (id, tournament_id, user_id, seed, status, registered_at)
+         VALUES ($1, $2, $3, $4, 'registered', now())`,
+        [participantId, tournamentId, userId, seed]
+      );
+
+      // Commit transaction
+      await client.query('COMMIT');
+
+      // Invalidate cache
+      await cache.delByPattern('tournaments:*');
+
+      logger.info('Tournament registration', { tournamentId, userId, seed });
+
+      return res.json({ ok: true, participantId, seed });
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      logger.error('Tournament registration error:', { error: error?.message || error });
+      return sendError(res, 500, 'REGISTRATION_FAILED', 'Failed to register for tournament');
+    } finally {
+      client.release();
+    }
+  });
+
+  // GET /api/tournaments/:id/leaderboard - Get tournament leaderboard
+  router.get('/:id/leaderboard', async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+
+      const tournamentId = req.params.id;
+      const limit = parseInt(req.query.limit) || 50;
+      const offset = parseInt(req.query.offset) || 0;
+
+      // Validate UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(tournamentId)) {
+        return sendError(res, 400, 'INVALID_TOURNAMENT_ID', 'Invalid tournament ID format');
+      }
+
+      // Get leaderboard
+      const leaderboardResult = await pool.query(
+        `SELECT tp.*, p.avatar, p.title, p.level, p.experience, p.reputation
+         FROM tournament_participants tp
+         LEFT JOIN profiles p ON tp.user_id = p.user_id
+         WHERE tp.tournament_id = $1
+         ORDER BY tp.score DESC, tp.wins DESC, tp.registered_at ASC
+         LIMIT $2 OFFSET $3`,
+        [tournamentId, limit, offset]
+      );
+
+      const leaderboard = leaderboardResult.rows.map((row, index) => ({
+        rank: offset + index + 1,
+        id: row.id,
+        userId: row.user_id,
+        seed: row.seed,
+        score: row.score,
+        wins: row.wins,
+        losses: row.losses,
+        status: row.status,
+        avatar: row.avatar || 'pressf',
+        title: row.title,
+        level: row.level,
+        experience: row.experience,
+        reputation: row.reputation
+      }));
+
+      return res.json({ ok: true, leaderboard });
+    } catch (error) {
+      logger.error('Get leaderboard error:', { error: error?.message || error });
+      return sendError(res, 500, 'LEADERBOARD_FETCH_FAILED', 'Failed to fetch leaderboard');
+    }
+  });
+
+  return router;
+};
+
+module.exports = { createTournamentsRoutes };

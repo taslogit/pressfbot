@@ -17,6 +17,7 @@ import StreakIndicator from '../components/StreakIndicator';
 import DailyQuests from '../components/DailyQuests';
 import XPNotification from '../components/XPNotification';
 import SeasonalEvents from '../components/SeasonalEvents';
+import Tournaments from '../components/Tournaments';
 import { Quest } from '../types';
 import { profileAPI } from '../utils/api';
 
@@ -565,6 +566,11 @@ const Landing = () => {
       {/* Seasonal Events */}
       <div className="relative z-10">
         <SeasonalEvents />
+      </div>
+
+      {/* Tournaments */}
+      <div className="relative z-10">
+        <Tournaments />
       </div>
 
       {/* Primary Action - Compact Button Style */}

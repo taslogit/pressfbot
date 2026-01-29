@@ -308,6 +308,25 @@ export const eventsAPI = {
   },
 };
 
+// Tournaments API
+export const tournamentsAPI = {
+  getAll: async (status?: string) => {
+    const query = status ? `?status=${status}` : '';
+    return apiRequest<{ tournaments: any[] }>(`/api/tournaments${query}`);
+  },
+  getOne: async (tournamentId: string) => {
+    return apiRequest<{ tournament: any; participants: any[]; matches: any[]; isRegistered: boolean; userParticipant: any }>(`/api/tournaments/${tournamentId}`);
+  },
+  register: async (tournamentId: string) => {
+    return apiRequest<{ participantId: string; seed: number }>(`/api/tournaments/${tournamentId}/register`, {
+      method: 'POST',
+    });
+  },
+  getLeaderboard: async (tournamentId: string, limit = 50, offset = 0) => {
+    return apiRequest<{ leaderboard: any[] }>(`/api/tournaments/${tournamentId}/leaderboard?limit=${limit}&offset=${offset}`);
+  },
+};
+
 export const tonAPI = {
   createInheritancePlan: async (payload: {
     recipients: { address: string; amount: number }[];

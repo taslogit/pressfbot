@@ -131,6 +131,62 @@ export interface SeasonalEvent {
   rewardsClaimed?: string[];
 }
 
+export interface Tournament {
+  id: string;
+  name: string;
+  description?: string;
+  startDate: string;
+  endDate: string;
+  registrationStart: string;
+  registrationEnd: string;
+  maxParticipants: number;
+  minParticipants: number;
+  status: 'upcoming' | 'registration' | 'active' | 'completed';
+  format: string;
+  prizePool: Record<string, any>;
+  rules: Record<string, any>;
+  bannerUrl?: string;
+  icon?: string;
+  participantCount?: number;
+  isRegistered?: boolean;
+  userParticipant?: {
+    seed: number;
+    score: number;
+    wins: number;
+    losses: number;
+    status: string;
+  };
+}
+
+export interface TournamentParticipant {
+  id: string;
+  userId: number;
+  seed: number;
+  score: number;
+  wins: number;
+  losses: number;
+  status: string;
+  avatar?: string;
+  title?: string;
+  level?: number;
+  experience?: number;
+  reputation?: number;
+  rank?: number;
+}
+
+export interface TournamentMatch {
+  id: string;
+  round: number;
+  matchNumber: number;
+  participant1Id?: string;
+  participant2Id?: string;
+  winnerId?: string;
+  duelId?: string;
+  status: 'pending' | 'active' | 'completed';
+  scheduledAt?: string;
+  completedAt?: string;
+}
+
 export interface Perk {
   id: string;
   key: string; // translation key

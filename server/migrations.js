@@ -440,6 +440,72 @@ const createTables = async (pool) => {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_event_progress_event ON user_event_progress(event_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_event_progress_user_event ON user_event_progress(user_id, event_id)`);
 
+    // Tournaments table (Gamification)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tournaments (
+        id UUID PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        start_date TIMESTAMP NOT NULL,
+        end_date TIMESTAMP NOT NULL,
+        registration_start TIMESTAMP NOT NULL,
+        registration_end TIMESTAMP NOT NULL,
+        max_participants INTEGER DEFAULT 100,
+        min_participants INTEGER DEFAULT 2,
+        status VARCHAR(50) DEFAULT 'upcoming',
+        format VARCHAR(50) DEFAULT 'single_elimination',
+        prize_pool JSONB DEFAULT '{}',
+        rules JSONB DEFAULT '{}',
+        banner_url VARCHAR(500),
+        icon VARCHAR(10),
+        created_at TIMESTAMP DEFAULT now(),
+        updated_at TIMESTAMP DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_tournaments_status ON tournaments(status, start_date)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_tournaments_dates ON tournaments(start_date, end_date)`);
+
+    // Tournament Participants table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tournament_participants (
+        id UUID PRIMARY KEY,
+        tournament_id UUID NOT NULL,
+        user_id BIGINT NOT NULL,
+        seed INTEGER,
+        score INTEGER DEFAULT 0,
+        wins INTEGER DEFAULT 0,
+        losses INTEGER DEFAULT 0,
+        status VARCHAR(50) DEFAULT 'registered',
+        registered_at TIMESTAMP DEFAULT now(),
+        UNIQUE(tournament_id, user_id)
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_tournament_participants_tournament ON tournament_participants(tournament_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_tournament_participants_user ON tournament_participants(user_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_tournament_participants_score ON tournament_participants(tournament_id, score DESC)`);
+
+    // Tournament Matches table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tournament_matches (
+        id UUID PRIMARY KEY,
+        tournament_id UUID NOT NULL,
+        round INTEGER NOT NULL,
+        match_number INTEGER NOT NULL,
+        participant1_id UUID,
+        participant2_id UUID,
+        winner_id UUID,
+        duel_id VARCHAR(255),
+        status VARCHAR(50) DEFAULT 'pending',
+        scheduled_at TIMESTAMP,
+        completed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT now(),
+        updated_at TIMESTAMP DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_tournament_matches_tournament ON tournament_matches(tournament_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_tournament_matches_round ON tournament_matches(tournament_id, round, match_number)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_tournament_matches_status ON tournament_matches(status)`);
+
     console.log('✅ All tables created successfully');
     return true;
   } catch (error) {

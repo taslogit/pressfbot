@@ -540,7 +540,24 @@ export const translations = {
     reward_claimed: "Reward claimed!",
     reward_claim_failed: "Failed to claim reward",
     claiming: "Claiming...",
-    days_left: "days left"
+    days_left: "days left",
+    
+    // Tournaments
+    tournaments: "TOURNAMENTS",
+    tournament_tab_upcoming: "Upcoming",
+    tournament_tab_active: "Active",
+    tournament_tab_past: "Past",
+    no_tournaments: "No tournaments available",
+    registered: "Registered",
+    prize_pool: "Prize Pool",
+    registration_ends_in: "Registration ends in",
+    in_progress: "In Progress",
+    completed: "Completed",
+    registering: "Registering...",
+    register: "REGISTER",
+    view: "VIEW",
+    tournament_registered: "Successfully registered!",
+    tournament_register_failed: "Failed to register"
   },
   ru: {
     app_title: "PRESS F",
@@ -1081,6 +1098,23 @@ export const translations = {
     reward_claimed: "Награда получена!",
     reward_claim_failed: "Не удалось получить награду",
     claiming: "Получение...",
-    days_left: "дней осталось"
+    days_left: "дней осталось",
+    
+    // Tournaments
+    tournaments: "ТУРНИРЫ",
+    tournament_tab_upcoming: "Предстоящие",
+    tournament_tab_active: "Активные",
+    tournament_tab_past: "Прошедшие",
+    no_tournaments: "Турниры недоступны",
+    registered: "Зарегистрирован",
+    prize_pool: "Призовой фонд",
+    registration_ends_in: "Регистрация заканчивается через",
+    in_progress: "В процессе",
+    completed: "Завершен",
+    registering: "Регистрация...",
+    register: "РЕГИСТРАЦИЯ",
+    view: "СМОТРЕТЬ",
+    tournament_registered: "Успешно зарегистрирован!",
+    tournament_register_failed: "Не удалось зарегистрироваться"
   }
 };
