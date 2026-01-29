@@ -548,6 +548,73 @@ const createProfileRoutes = (pool) => {
     }
   });
 
+  // GET /api/profile/referral - Get referral info
+  router.get('/referral', async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+
+      const userId = req.userId;
+      if (!userId) {
+        return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+      }
+
+      // Get user's referral code and stats
+      const profileResult = await pool.query(
+        'SELECT referral_code, referrals_count FROM profiles WHERE user_id = $1',
+        [userId]
+      );
+
+      if (profileResult.rowCount === 0) {
+        return sendError(res, 404, 'PROFILE_NOT_FOUND', 'Profile not found');
+      }
+
+      const referralCode = profileResult.rows[0].referral_code;
+      const referralsCount = profileResult.rows[0].referrals_count || 0;
+
+      // Get list of referred users
+      const referralsResult = await pool.query(
+        `SELECT p.user_id, p.created_at, re.reward_given
+         FROM profiles p
+         JOIN referral_events re ON p.user_id = re.referred_id
+         WHERE re.referrer_id = $1
+         ORDER BY re.created_at DESC
+         LIMIT 50`,
+        [userId]
+      );
+
+      const referrals = referralsResult.rows.map(row => ({
+        userId: row.user_id,
+        joinedAt: row.created_at,
+        rewardGiven: row.reward_given
+      }));
+
+      // Calculate next milestone rewards
+      const milestones = [
+        { count: 1, reward: 50, xp: 100 },
+        { count: 5, reward: 250, xp: 500 },
+        { count: 10, reward: 500, xp: 1000 },
+        { count: 25, reward: 1500, xp: 2500 },
+        { count: 50, reward: 3000, xp: 5000 }
+      ];
+
+      const nextMilestone = milestones.find(m => referralsCount < m.count) || null;
+
+      return res.json({
+        ok: true,
+        referralCode: referralCode || null,
+        referralsCount,
+        referrals,
+        nextMilestone,
+        referralLink: referralCode ? `https://t.me/${process.env.BOT_USERNAME || 'LastMemeBot'}?start=ref_${referralCode}` : null
+      });
+    } catch (error) {
+      logger.error('Get referral info error', error);
+      return sendError(res, 500, 'REFERRAL_FETCH_FAILED', 'Failed to fetch referral info');
+    }
+  });
+
   return router;
 };
 

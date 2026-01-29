@@ -12,6 +12,7 @@ import InfoSection from '../components/InfoSection';
 import { playSound } from '../utils/sound';
 import { calculateLevel, getLevelProgress, getTitleForLevel, xpForLevel } from '../utils/levelSystem';
 import confetti from 'canvas-confetti';
+import ReferralSection from '../components/ReferralSection';
 
 // Default avatar is pressf.jpg from server
 const DEFAULT_AVATAR_ID = 'pressf';
@@ -649,6 +650,9 @@ const Profile = () => {
                     <span className="text-[9px] text-muted uppercase font-bold">{t('stat_days')}</span>
                  </div>
                </div>
+
+               {/* Referral Section */}
+               <ReferralSection className="mt-4" />
             </motion.div>
           )}
 

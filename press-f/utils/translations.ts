@@ -504,7 +504,17 @@ export const translations = {
     help_resurrection: "# STAY ALIVE, BRO\n\nTap the skull if you’re alive so your stash stays yours.\n\n[WARN] Use only if you’re actually alive.\n\n• Tap the button.\n• Timer resets, streak stays.",
     help_search: "# LOCAL YANDEX\n\nSearch letters, beefs, and stashes.\n\n[NOTE] Needs 2+ chars or it won’t start (feature, not a bug).\n\n• Tap a card to open it.\n• Empty? Nothing found (also a feature).",
     help_create_letter: "# NEW STASH\n\nDo it smart. Keep the important stuff important (or not).\n\n[NOTE] Drafts auto‑save.\n\n• Title + tags = who gets it.\n• Unlock date = when it lands.\n• Attachments: media + audio + whatever pops in your head.\n• Burn on read = one‑shot (we judge, but ok).",
-    help_settings: "# SETTINGS\n\nPut the system in order.\n\n[NOTE] Notifications are configurable here.\n\n• Language: RU/EN.\n• Notifications: app + Telegram.\n• Wallet: connect/disconnect for TON."
+    help_settings: "# SETTINGS\n\nPut the system in order.\n\n[NOTE] Notifications are configurable here.\n\n• Language: RU/EN.\n• Notifications: app + Telegram.\n• Wallet: connect/disconnect for TON.",
+    
+    // Referral System
+    referral_system: "INVITE FRIENDS",
+    your_referral_link: "Your Referral Link",
+    link_copied: "Link copied!",
+    referral_share_text: "Join Press F and get rewards!",
+    next_milestone: "Next Milestone",
+    referrals: "referrals",
+    reward: "Reward",
+    your_referrals: "Your Referrals"
   },
   ru: {
     app_title: "PRESS F",
@@ -1009,6 +1019,16 @@ export const translations = {
     // Profile
     profile_avatar_select: "Выбрать аватар",
     profile_avatars_server: "С сервера",
-    profile_avatars_default: "По умолчанию"
+    profile_avatars_default: "По умолчанию",
+    
+    // Referral System
+    referral_system: "ПРИГЛАСИ ДРУЗЕЙ",
+    your_referral_link: "Ваша реферальная ссылка",
+    link_copied: "Ссылка скопирована!",
+    referral_share_text: "Присоединяйся к Press F и получай награды!",
+    next_milestone: "Следующий milestone",
+    referrals: "рефералов",
+    reward: "Награда",
+    your_referrals: "Ваши рефералы"
   }
 };

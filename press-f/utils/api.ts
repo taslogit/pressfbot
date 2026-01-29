@@ -198,6 +198,15 @@ export const profileAPI = {
   getStreak: async () => {
     return apiRequest<{ streak: any }>('/api/profile/streak');
   },
+  getReferral: async () => {
+    return apiRequest<{ 
+      referralCode: string; 
+      referralsCount: number; 
+      referrals: any[]; 
+      nextMilestone: any; 
+      referralLink: string;
+    }>('/api/profile/referral');
+  },
   updateSettings: async (settings: Partial<any>) => {
     return apiRequest('/api/profile/settings', {
       method: 'PUT',

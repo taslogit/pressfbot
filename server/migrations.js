@@ -134,6 +134,12 @@ const createTables = async (pool) => {
     // Gamification: Experience and Levels
     await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS experience INTEGER DEFAULT 0`);
     await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS total_xp_earned INTEGER DEFAULT 0`);
+    // Gamification: Referral System
+    await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE`);
+    await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS referred_by BIGINT`);
+    await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS referrals_count INTEGER DEFAULT 0`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_profiles_referral_code ON profiles(referral_code)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_profiles_referred_by ON profiles(referred_by)`);
 
     // TON inheritance plans
     await pool.query(`
@@ -300,6 +306,20 @@ const createTables = async (pool) => {
     `);
     await pool.query(`ALTER TABLE notification_events ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT false`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notification_events(user_id)`);
+
+    // Referral events table (Gamification)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS referral_events (
+        id UUID PRIMARY KEY,
+        referrer_id BIGINT NOT NULL,
+        referred_id BIGINT NOT NULL,
+        reward_given BOOLEAN DEFAULT false,
+        reward_amount INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_referral_events_referrer ON referral_events(referrer_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_referral_events_referred ON referral_events(referred_id)`);
 
     console.log('✅ All tables created successfully');
     return true;

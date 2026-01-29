@@ -675,6 +675,103 @@ app.post('/api/verify', async (req, res) => {
         'INSERT INTO sessions(id, telegram_id, expires_at, last_seen_at) VALUES($1, $2, $3, now())',
         [sessionId, tgUserId, expiresAt]
       );
+
+      // Handle referral code from start_param
+      const startParam = params.get('start_param');
+      if (startParam && startParam.startsWith('ref_')) {
+        const referralCode = startParam.replace('ref_', '');
+        try {
+          // Find referrer by referral code
+          const referrerResult = await pool.query(
+            'SELECT user_id FROM profiles WHERE referral_code = $1',
+            [referralCode]
+          );
+
+          if (referrerResult.rowCount > 0 && referrerResult.rows[0].user_id !== tgUserId) {
+            const referrerId = referrerResult.rows[0].user_id;
+
+            // Check if user already exists
+            const userProfile = await pool.query(
+              'SELECT user_id, referred_by FROM profiles WHERE user_id = $1',
+              [tgUserId]
+            );
+
+            // Only process referral if user is new (no profile) or not already referred
+            if (userProfile.rowCount === 0 || !userProfile.rows[0].referred_by) {
+              // Create or update profile with referral
+              await pool.query(
+                `INSERT INTO profiles (user_id, referred_by, created_at, updated_at)
+                 VALUES ($1, $2, now(), now())
+                 ON CONFLICT (user_id) DO UPDATE SET referred_by = EXCLUDED.referred_by WHERE profiles.referred_by IS NULL`,
+                [tgUserId, referrerId]
+              );
+
+              // Create referral event
+              await pool.query(
+                `INSERT INTO referral_events (id, referrer_id, referred_id, reward_given, created_at)
+                 VALUES ($1, $2, $3, false, now())
+                 ON CONFLICT DO NOTHING`,
+                [uuidv4(), referrerId, tgUserId]
+              );
+
+              // Update referrer's referrals count
+              await pool.query(
+                'UPDATE profiles SET referrals_count = referrals_count + 1 WHERE user_id = $1',
+                [referrerId]
+              );
+
+              // Award XP to referrer (100 XP for inviting friend)
+              const { getXPReward } = require('./utils/xpSystem');
+              const xpReward = getXPReward('invite_friend');
+              if (xpReward > 0) {
+                await pool.query(
+                  `UPDATE profiles 
+                   SET experience = experience + $1, total_xp_earned = total_xp_earned + $1, updated_at = now()
+                   WHERE user_id = $2`,
+                  [xpReward, referrerId]
+                );
+              }
+
+              logger.info('Referral processed', { referrerId, referredId: tgUserId, referralCode });
+            }
+          }
+        } catch (refError) {
+          logger.warn('Failed to process referral', { error: refError.message, referralCode });
+          // Don't fail the session creation if referral processing fails
+        }
+      }
+
+      // Generate referral code for new user if doesn't exist
+      if (tgUserId) {
+        const userProfile = await pool.query(
+          'SELECT referral_code FROM profiles WHERE user_id = $1',
+          [tgUserId]
+        );
+
+        if (userProfile.rowCount === 0 || !userProfile.rows[0].referral_code) {
+          // Generate unique referral code (6-8 characters)
+          let referralCode = '';
+          let attempts = 0;
+          while (attempts < 10) {
+            referralCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+            const existing = await pool.query(
+              'SELECT user_id FROM profiles WHERE referral_code = $1',
+              [referralCode]
+            );
+            if (existing.rowCount === 0) break;
+            attempts++;
+          }
+
+          if (referralCode) {
+            await pool.query(
+              `INSERT INTO profiles (user_id, referral_code, created_at, updated_at)
+               VALUES ($1, $2, now(), now())
+               ON CONFLICT (user_id) DO UPDATE SET referral_code = EXCLUDED.referral_code WHERE profiles.referral_code IS NULL`,
+              [tgUserId, referralCode]
+            );
+          }
+        }
+      }
     }
     return res.json({ ok: true, sessionId });
   } catch (e) {

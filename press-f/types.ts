@@ -196,3 +196,25 @@ export interface Quest {
   maxProgress: number;
   trigger: 'check_in' | 'create_letter' | 'update_profile' | 'create_squad';
 }
+
+// --- REFERRAL SYSTEM TYPES ---
+
+export interface ReferralInfo {
+  referralCode: string | null;
+  referralsCount: number;
+  referrals: Referral[];
+  nextMilestone: ReferralMilestone | null;
+  referralLink: string | null;
+}
+
+export interface Referral {
+  userId: number;
+  joinedAt: string;
+  rewardGiven: boolean;
+}
+
+export interface ReferralMilestone {
+  count: number;
+  reward: number;
+  xp: number;
+}
