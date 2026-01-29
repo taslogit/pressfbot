@@ -75,40 +75,16 @@ const sendStartMessage = async (ctx) => {
   if (BOT_INFO_IMAGE_URL) {
     console.log('[/start] Attempting to send image:', BOT_INFO_IMAGE_URL);
     try {
-      // Проверяем доступность URL перед отправкой
-      const https = require('https');
-      const http = require('http');
-      const url = require('url');
-      const imageUrl = new URL(BOT_INFO_IMAGE_URL);
-      const client = imageUrl.protocol === 'https:' ? https : http;
-      
-      // Быстрая проверка доступности (таймаут 3 секунды)
-      await new Promise((resolve, reject) => {
-        const req = client.get(imageUrl.href, { timeout: 3000 }, (res) => {
-          if (res.statusCode === 200) {
-            res.destroy();
-            resolve();
-          } else {
-            reject(new Error(`HTTP ${res.statusCode}`));
-          }
-        });
-        req.on('error', reject);
-        req.on('timeout', () => {
-          req.destroy();
-          reject(new Error('Timeout'));
-        });
-      });
-      
-      console.log('[/start] Image URL is accessible, sending...');
       const result = await ctx.replyWithPhoto(
         { url: BOT_INFO_IMAGE_URL },
-        { caption: BOT_INFO_TEXT, ...buildStartKeyboard(), parse_mode: 'HTML' }
+        { caption: BOT_INFO_TEXT, ...buildStartKeyboard() }
       );
-      console.log('[/start] Image sent successfully');
+      console.log('[/start] Image sent successfully, message_id:', result?.message_id);
       return result;
     } catch (error) {
       console.error('[/start] Failed to send bot info image:', error?.message || error);
-      console.log('[/start] Image URL may be inaccessible or invalid, falling back to text message');
+      console.error('[/start] Error details:', JSON.stringify(error, null, 2));
+      console.log('[/start] Falling back to text message');
     }
   } else {
     console.log('[/start] BOT_INFO_IMAGE_URL not set, sending text only');
