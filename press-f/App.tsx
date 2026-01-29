@@ -34,14 +34,11 @@ const TelegramHandler = () => {
     // 2. Handle Deep Links (Start Params)
     // Format: t.me/bot?start=witness_123 or t.me/bot?start=duel_456
     const startParam = tg.initDataUnsafe?.start_param;
-    const currentPath = location.pathname;
 
     if (startParam) {
       console.log("Deep Link Detected:", startParam);
       
       if (startParam.startsWith('witness_')) {
-        // Example: witness_USERID
-        // In a real app, you might save the inviter ID to storage here
         localStorage.setItem('lastmeme_pending_witness', startParam.replace('witness_', ''));
         navigate('/witness-approval', { replace: true });
         return;
@@ -56,43 +53,27 @@ const TelegramHandler = () => {
       }
     }
 
-    // 3. If no deep link, ensure we're on home page
-    // Check if path is empty, invalid, or not home
-    const validRoutes = ['/', '/resurrection', '/create-letter', '/letters', '/search', '/duels', 
-                         '/funeral-dj', '/witness-approval', '/squads', '/profile', '/settings', '/share'];
-    
+    // 3. ALWAYS redirect to home if no deep link (guarantee home page on start)
     if (!startParam) {
-      // If path is empty, invalid, or not home, redirect to home
-      if (!currentPath || currentPath === '' || currentPath === '/#' || currentPath === '#/' || 
-          (!validRoutes.includes(currentPath) && currentPath !== '/')) {
-        console.log("Initial load: redirecting to home page from:", currentPath);
+      console.log("No deep link: forcing navigation to home page");
+      // Use setTimeout to ensure router is ready
+      setTimeout(() => {
         navigate('/', { replace: true });
-      } else if (currentPath !== '/') {
-        // If on a valid route but not home, and no deep link, go to home
-        console.log("No deep link, redirecting to home from:", currentPath);
-        navigate('/', { replace: true });
-      }
+      }, 0);
     }
   }, []);
 
-  // 4. Fallback: ensure home page on route changes (if somehow we're on invalid route)
+  // 4. Fallback: ensure home page on initial mount if no deep link
   useEffect(() => {
-    const currentPath = location.pathname;
     const startParam = tg.initDataUnsafe?.start_param;
+    const currentPath = location.pathname;
     
-    // Valid routes that should not trigger redirect
-    const validRoutes = ['/', '/resurrection', '/create-letter', '/letters', '/search', '/duels', 
-                         '/funeral-dj', '/witness-approval', '/squads', '/profile', '/settings', '/share'];
-    
-    // Only redirect if:
-    // 1. No start param (not a deep link)
-    // 2. Current path is not a valid route
-    // 3. Not already on home page
-    if (!startParam && currentPath && !validRoutes.includes(currentPath) && currentPath !== '/') {
-      console.log("Route change: redirecting to home page from invalid route:", currentPath);
+    // If no deep link and not on home, redirect to home
+    if (!startParam && currentPath !== '/') {
+      console.log("Fallback: redirecting to home from:", currentPath);
       navigate('/', { replace: true });
     }
-  }, [location.pathname, navigate]);
+  }, []);
 
   // 3. Handle Back Button
   useEffect(() => {
