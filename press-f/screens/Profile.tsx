@@ -154,7 +154,7 @@ const Profile = () => {
   const handleShareProfile = () => {
     const username = tg.initDataUnsafe?.user?.username;
     const url = username ? `https://t.me/${username}` : window.location.href;
-    const text = `PRESS F // LVL ${profile.level} // ${profile.title}`;
+    const text = `PRESS F // LVL ${currentLevel} // ${levelTitle}`;
     tg.openLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
     setShowShareModal(false);
   };
@@ -216,7 +216,7 @@ const Profile = () => {
                             <CurrentAvatar className="w-full h-full drop-shadow-[0_0_15px_rgba(0,224,255,0.5)]" />
                         </div>
                         <h2 className="text-2xl font-black text-white">{tg.initDataUnsafe?.user?.first_name}</h2>
-                        <p className="text-accent-cyan font-mono tracking-widest text-xs mb-4">LVL {profile.level} // {profile.title}</p>
+                        <p className="text-accent-cyan font-mono tracking-widest text-xs mb-4">LVL {currentLevel} // {levelTitle}</p>
                         
                         <div className="grid grid-cols-2 gap-2 mb-6">
                             <div className="bg-white/5 p-2 rounded">

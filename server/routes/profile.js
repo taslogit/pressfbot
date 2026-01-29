@@ -222,11 +222,20 @@ const createProfileRoutes = (pool) => {
         }
       }
 
-      return res.json({ ok: true });
       // Invalidate cache after update
       await cache.del(`profile:${userId}`);
 
-      return res.json({ ok: true, profile: normalizeProfile(profileResult.rows[0]) });
+      // Get updated profile
+      const updatedProfileResult = await pool.query(
+        'SELECT * FROM profiles WHERE user_id = $1',
+        [userId]
+      );
+
+      if (updatedProfileResult.rowCount > 0) {
+        return res.json({ ok: true, profile: normalizeProfile(updatedProfileResult.rows[0]) });
+      }
+
+      return res.json({ ok: true });
     } catch (error) {
       logger.error('Update profile error', error);
       return sendError(res, 500, 'PROFILE_UPDATE_FAILED', 'Failed to update profile');

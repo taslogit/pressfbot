@@ -420,7 +420,9 @@ export const storage = {
         contracts: apiProfile.contracts || initialContracts,
         reputation: apiProfile.reputation || 0,
         karma: apiProfile.karma || 50,
-        stats: apiProfile.stats || { beefsWon: 0, leaksDropped: 0, daysAlive: 1 }
+        stats: apiProfile.stats || { beefsWon: 0, leaksDropped: 0, daysAlive: 1 },
+        experience: apiProfile.experience || 0,
+        totalXpEarned: apiProfile.totalXpEarned || 0
       };
       safeSave(KEYS.PROFILE, profile);
       return profile;
