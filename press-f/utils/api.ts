@@ -216,6 +216,16 @@ export const dailyQuestsAPI = {
   },
 };
 
+// Avatars API
+export const avatarsAPI = {
+  getAll: async () => {
+    return apiRequest<{ avatars: Array<{ id: string; name: string; url: string; filename: string }> }>('/api/avatars');
+  },
+  getOne: async (id: string) => {
+    return apiRequest<{ avatar: { id: string; name: string; url: string; filename: string } }>(`/api/avatars/${id}`);
+  },
+};
+
 export const tonAPI = {
   createInheritancePlan: async (payload: {
     recipients: { address: string; amount: number }[];

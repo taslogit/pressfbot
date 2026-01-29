@@ -470,6 +470,11 @@ export const translations = {
     daily_quests: "DAILY QUESTS",
     claimed: "CLAIMED",
     all_quests_completed: "All quests completed! 🎉",
+    
+    // Profile
+    profile_avatar_select: "Select Avatar",
+    profile_avatars_server: "From Server",
+    profile_avatars_default: "Default",
     active_mission: "CURRENT OBJ",
     btn_understood: "ACKNOWLEDGED",
     dont_show_again: "Don't show again",
@@ -994,6 +999,11 @@ export const translations = {
     daily_quests: "ЕЖЕДНЕВНЫЕ ЗАДАНИЯ",
     claim_reward: "ЗАБРАТЬ",
     claimed: "ЗАБРАНО",
-    all_quests_completed: "Все задания выполнены! 🎉"
+    all_quests_completed: "Все задания выполнены! 🎉",
+    
+    // Profile
+    profile_avatar_select: "Выбрать аватар",
+    profile_avatars_server: "С сервера",
+    profile_avatars_default: "По умолчанию"
   }
 };

@@ -128,9 +128,20 @@ bot.command('info', (ctx) => ctx.reply(BOT_INFO_TEXT));
 const app = express();
 app.use(express.json({ limit: '200kb' }));
 
-// Serve static files (for bot images, etc.) with caching
+// Serve static files (for bot images, avatars, etc.) with caching
 const path = require('path');
 const staticPath = path.join(__dirname, 'static');
+// Serve avatars from subdirectory
+app.use('/api/static/avatars', express.static(path.join(staticPath, 'avatars'), {
+  maxAge: '1y',
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.jpg') || filePath.endsWith('.png') || filePath.endsWith('.gif') || filePath.endsWith('.webp')) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  }
+}));
 app.use('/api/static', express.static(staticPath, {
   maxAge: '1y', // Cache for 1 year
   etag: true,
@@ -258,6 +269,7 @@ const { createLegacyRoutes } = require('./routes/legacy');
 const { createNotificationsRoutes } = require('./routes/notifications');
 const { createTonRoutes } = require('./routes/ton');
 const { createDailyQuestsRoutes } = require('./routes/dailyQuests');
+const { createAvatarsRoutes } = require('./routes/avatars');
 const { normalizeLetter } = require('./services/lettersService');
 const { normalizeDuel } = require('./services/duelsService');
 const { normalizeLegacyItem } = require('./services/legacyService');
@@ -274,6 +286,7 @@ app.use('/api/legacy', authMiddleware, createLegacyRoutes(pool));
 app.use('/api/notifications', authMiddleware, createNotificationsRoutes(pool));
 app.use('/api/ton', authMiddleware, createTonRoutes(pool));
 app.use('/api/daily-quests', authMiddleware, createDailyQuestsRoutes(pool));
+app.use('/api/avatars', createAvatarsRoutes()); // No auth needed for public avatars list
 
 // Global search across letters, duels, legacy (with rate limiting and pagination)
 app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {

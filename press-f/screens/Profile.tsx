@@ -5,12 +5,13 @@ import { Edit2, Save, Fingerprint, Target, Sparkles, Shield, Zap, Hourglass, Bra
 import { useNavigate } from 'react-router-dom';
 import { tg } from '../utils/telegram';
 import { storage } from '../utils/storage';
-import { notificationsAPI } from '../utils/api';
+import { notificationsAPI, avatarsAPI, profileAPI } from '../utils/api';
 import { UserProfile } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
 import { playSound } from '../utils/sound';
 import { AvatarNetRunner, AvatarGlitchSkull, AvatarNeonDemon, AvatarGhostOps } from '../components/Avatars';
+import { calculateLevel, getLevelProgress, getTitleForLevel } from '../utils/levelSystem';
 
 const avatarOptions = [
   { id: 'default', Component: AvatarNetRunner, name: 'NetRunner' },
@@ -44,6 +45,9 @@ const Profile = () => {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const unreadCount = notificationEvents.filter((e) => !e.is_read).length;
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [availableAvatars, setAvailableAvatars] = useState<Array<{ id: string; name: string; url: string }>>([]);
+  const [showAvatarSelector, setShowAvatarSelector] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -54,6 +58,13 @@ const Profile = () => {
       }
     });
     setShareHistory(storage.getShareHistory());
+
+    // Load available avatars from server
+    avatarsAPI.getAll().then((result) => {
+      if (isMounted && result.ok && result.data?.avatars) {
+        setAvailableAvatars(result.data.avatars);
+      }
+    });
 
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let idleId: number | null = null;
@@ -87,16 +98,11 @@ const Profile = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const newLevel = Math.floor(Math.sqrt(profile.reputation / 100)) + 1;
-    if (newLevel !== profile.level) {
-      const titles = ["Noob", "Script Kiddie", "Hacker", "Netrunner", "Cyberpunk", "Legend", "GigaChad"];
-      const newTitle = titles[Math.min(newLevel - 1, titles.length - 1)];
-      const updated = { ...profile, level: newLevel, title: newTitle };
-      setProfile(updated);
-      storage.saveUserProfile(updated);
-    }
-  }, [profile.reputation]);
+  // Calculate level from experience
+  const currentXP = profile.experience || 0;
+  const currentLevel = calculateLevel(currentXP);
+  const levelProgress = getLevelProgress(currentXP);
+  const levelTitle = getTitleForLevel(currentLevel);
 
 
   const markAllNotificationsRead = async () => {
@@ -118,11 +124,19 @@ const Profile = () => {
     setIsEditing(false);
   };
 
-  const handleAvatarChange = (avatarId: string) => {
+  const handleAvatarChange = async (avatarId: string) => {
     playSound('click');
-    const updated = { ...profile, avatar: avatarId };
-    storage.saveUserProfileAsync(updated);
-    setProfile(updated);
+    setAvatarLoading(true);
+    try {
+      const updated = { ...profile, avatar: avatarId };
+      await storage.saveUserProfileAsync(updated);
+      setProfile(updated);
+      setShowAvatarSelector(false);
+    } catch (error) {
+      console.error('Failed to update avatar:', error);
+    } finally {
+      setAvatarLoading(false);
+    }
   };
 
   const handleShareProfile = () => {
@@ -334,30 +348,24 @@ const Profile = () => {
            <div className="flex flex-col items-center">
               {/* Avatar Selector */}
               <div className="relative mb-4">
-                 <motion.div 
+                 <motion.button
                    whileTap={{ scale: 0.95 }}
-                   className="w-32 h-32 relative z-10"
+                   onClick={() => setShowAvatarSelector(true)}
+                   className="w-32 h-32 relative z-10 rounded-full overflow-hidden border-2 border-purple-500/30 hover:border-purple-500/60 transition-all"
                  >
-                   <CurrentAvatar className="w-full h-full drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]" />
-                 </motion.div>
-                 
-                 {/* Selector Dots */}
-                 <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2 bg-card/80 border border-border rounded-full p-1.5 shadow-lg backdrop-blur-md">
-                    {avatarOptions.filter(a => a.id !== 'cyber').map(a => ( // Filter out legacy 'cyber' if 'default' exists
-                      <button 
-                        key={a.id}
-                        onClick={() => handleAvatarChange(a.id)}
-                        className={`w-8 h-8 rounded-full overflow-hidden border-2 transition-all relative ${
-                            profile.avatar === a.id || (profile.avatar === 'cyber' && a.id === 'default') 
-                            ? 'border-accent-cyan scale-110 shadow-[0_0_10px_rgba(0,224,255,0.5)]' 
-                            : 'border-transparent opacity-50 hover:opacity-100 hover:scale-105'
-                        }`}
-                        title={a.name}
-                      >
-                         <a.Component className="w-full h-full" />
-                      </button>
-                    ))}
-                 </div>
+                   {serverAvatar ? (
+                     <img 
+                       src={serverAvatar.url} 
+                       alt={serverAvatar.name}
+                       className="w-full h-full object-cover drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+                     />
+                   ) : (
+                     <CurrentAvatar className="w-full h-full drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]" />
+                   )}
+                   <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center">
+                     <Edit2 size={16} className="opacity-0 hover:opacity-100 transition-opacity text-white" />
+                   </div>
+                 </motion.button>
               </div>
 
               <div className="text-center mb-2 mt-4">
