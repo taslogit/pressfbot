@@ -34,6 +34,7 @@ const TelegramHandler = () => {
     // 2. Handle Deep Links (Start Params)
     // Format: t.me/bot?start=witness_123 or t.me/bot?start=duel_456
     const startParam = tg.initDataUnsafe?.start_param;
+    const currentPath = location.pathname;
 
     if (startParam) {
       console.log("Deep Link Detected:", startParam);
@@ -54,9 +55,27 @@ const TelegramHandler = () => {
         return;
       }
     }
+
+    // 3. If no deep link, ensure we're on home page
+    // Check if path is empty, invalid, or not home
+    const validRoutes = ['/', '/resurrection', '/create-letter', '/letters', '/search', '/duels', 
+                         '/funeral-dj', '/witness-approval', '/squads', '/profile', '/settings', '/share'];
+    
+    if (!startParam) {
+      // If path is empty, invalid, or not home, redirect to home
+      if (!currentPath || currentPath === '' || currentPath === '/#' || currentPath === '#/' || 
+          (!validRoutes.includes(currentPath) && currentPath !== '/')) {
+        console.log("Initial load: redirecting to home page from:", currentPath);
+        navigate('/', { replace: true });
+      } else if (currentPath !== '/') {
+        // If on a valid route but not home, and no deep link, go to home
+        console.log("No deep link, redirecting to home from:", currentPath);
+        navigate('/', { replace: true });
+      }
+    }
   }, []);
 
-  // 3. Ensure we're on home page if no deep link and on invalid route
+  // 4. Fallback: ensure home page on route changes (if somehow we're on invalid route)
   useEffect(() => {
     const currentPath = location.pathname;
     const startParam = tg.initDataUnsafe?.start_param;
@@ -69,12 +88,8 @@ const TelegramHandler = () => {
     // 1. No start param (not a deep link)
     // 2. Current path is not a valid route
     // 3. Not already on home page
-    if (!startParam && !validRoutes.includes(currentPath) && currentPath !== '/') {
-      console.log("Redirecting to home page from invalid route:", currentPath);
-      navigate('/', { replace: true });
-    } else if (currentPath === '' || currentPath === '/#' || currentPath === '#/') {
-      // Handle empty or malformed hash routes
-      console.log("Redirecting to home page from empty route");
+    if (!startParam && currentPath && !validRoutes.includes(currentPath) && currentPath !== '/') {
+      console.log("Route change: redirecting to home page from invalid route:", currentPath);
       navigate('/', { replace: true });
     }
   }, [location.pathname, navigate]);
