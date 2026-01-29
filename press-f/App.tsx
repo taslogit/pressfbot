@@ -20,6 +20,7 @@ const SharePost = lazy(() => import('./screens/SharePost'));
 const Notifications = lazy(() => import('./screens/Notifications'));
 import { tg, initTelegramApp } from './utils/telegram';
 import { useTelegramSession } from './hooks/useTelegramSession';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Component to handle Telegram Logic inside Router context
 const TelegramHandler = () => {
@@ -114,42 +115,44 @@ const App = () => {
   }
   
   return (
-    <LanguageProvider>
-      <ThemeProvider>
-        <TonConnectUIProvider manifestUrl={manifestUrl}>
-          <HashRouter>
-            <TelegramHandler />
-            <Suspense fallback={<div className="p-6 text-center text-muted">Loading...</div>}>
-              <Routes>
-                {/* Routes without Layout */}
-                <Route path="/resurrection" element={<Resurrection />} />
-                
-                {/* Routes with Layout */}
-                <Route path="*" element={
-                  <Layout>
-                    <Routes>
-                      <Route index element={<Landing />} />
-                      <Route path="/" element={<Landing />} />
-                      <Route path="/create-letter" element={<CreateLetter />} />
-                      <Route path="/letters" element={<Letters />} />
-                      <Route path="/search" element={<SearchScreen />} />
-                      <Route path="/duels" element={<Duels />} />
-                      <Route path="/funeral-dj" element={<FuneralDJ />} />
-                      <Route path="/witness-approval" element={<WitnessApproval />} />
-                      <Route path="/squads" element={<Squads />} />
-                      <Route path="/profile" element={<Profile />} />
-                      <Route path="/settings" element={<Settings />} />
-                      <Route path="/share" element={<SharePost />} />
-                      <Route path="/notifications" element={<Notifications />} />
-                    </Routes>
-                  </Layout>
-                } />
-              </Routes>
-            </Suspense>
-          </HashRouter>
-        </TonConnectUIProvider>
-      </ThemeProvider>
-    </LanguageProvider>
+    <ErrorBoundary>
+      <LanguageProvider>
+        <ThemeProvider>
+          <TonConnectUIProvider manifestUrl={manifestUrl}>
+            <HashRouter>
+              <TelegramHandler />
+              <Suspense fallback={<div className="p-6 text-center text-muted">Loading...</div>}>
+                <Routes>
+                  {/* Routes without Layout */}
+                  <Route path="/resurrection" element={<Resurrection />} />
+                  
+                  {/* Routes with Layout */}
+                  <Route path="*" element={
+                    <Layout>
+                      <Routes>
+                        <Route index element={<Landing />} />
+                        <Route path="/" element={<Landing />} />
+                        <Route path="/create-letter" element={<CreateLetter />} />
+                        <Route path="/letters" element={<Letters />} />
+                        <Route path="/search" element={<SearchScreen />} />
+                        <Route path="/duels" element={<Duels />} />
+                        <Route path="/funeral-dj" element={<FuneralDJ />} />
+                        <Route path="/witness-approval" element={<WitnessApproval />} />
+                        <Route path="/squads" element={<Squads />} />
+                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/settings" element={<Settings />} />
+                        <Route path="/share" element={<SharePost />} />
+                        <Route path="/notifications" element={<Notifications />} />
+                      </Routes>
+                    </Layout>
+                  } />
+                </Routes>
+              </Suspense>
+            </HashRouter>
+          </TonConnectUIProvider>
+        </ThemeProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
   );
 };
 

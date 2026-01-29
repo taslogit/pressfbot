@@ -102,17 +102,34 @@
 <link rel="stylesheet" href="/index.css">
 </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="padding: 20px; color: white; background: #0f0d16; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+        <div style="text-align: center;">
+          <div style="font-size: 24px; margin-bottom: 10px;">PRESS F</div>
+          <div style="color: #9ca3af;">Loading...</div>
+        </div>
+      </div>
+    </div>
     <script>
+       console.log('[index.html] Script loading...');
+       
        // Immediate init to prevent white flash
        if (window.Telegram && window.Telegram.WebApp) {
+           console.log('[index.html] Telegram WebApp detected');
            window.Telegram.WebApp.ready();
            window.Telegram.WebApp.expand();
            try {
              window.Telegram.WebApp.setHeaderColor('#0f0d16');
              window.Telegram.WebApp.setBackgroundColor('#0f0d16');
-           } catch(e) {}
+           } catch(e) {
+             console.warn('[index.html] Failed to set Telegram colors:', e);
+           }
+       } else {
+         console.log('[index.html] Telegram WebApp not detected, using fallback');
        }
+       
+       // Log when script is about to load
+       console.log('[index.html] Loading index.tsx module...');
     </script>
   <script type="module" src="/index.tsx"></script>
 </body>
