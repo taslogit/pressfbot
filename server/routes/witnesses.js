@@ -225,9 +225,13 @@ const createWitnessesRoutes = (pool) => {
 
       if (name !== undefined) {
         if (typeof name !== 'string' || name.trim().length === 0) {
+          await client.query('ROLLBACK');
+          client.release();
           return sendError(res, 400, 'VALIDATION_ERROR', 'Witness name must be a non-empty string');
         }
         if (name.length > 255) {
+          await client.query('ROLLBACK');
+          client.release();
           return sendError(res, 400, 'VALIDATION_ERROR', 'Witness name exceeds maximum length');
         }
         updateFields.push(`name = $${paramIndex++}`);
@@ -236,6 +240,8 @@ const createWitnessesRoutes = (pool) => {
 
       if (status !== undefined) {
         if (!['pending', 'confirmed'].includes(status)) {
+          await client.query('ROLLBACK');
+          client.release();
           return sendError(res, 400, 'VALIDATION_ERROR', 'Status must be "pending" or "confirmed"');
         }
         updateFields.push(`status = $${paramIndex++}`);
@@ -243,6 +249,8 @@ const createWitnessesRoutes = (pool) => {
       }
 
       if (updateFields.length === 0) {
+        await client.query('ROLLBACK');
+        client.release();
         return sendError(res, 400, 'VALIDATION_ERROR', 'No fields to update');
       }
 
