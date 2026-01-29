@@ -231,7 +231,6 @@ const createDailyQuestsRoutes = (pool) => {
       }
 
       // Invalidate cache for this user's daily quests
-      const today = new Date().toISOString().split('T')[0];
       const cacheKey = `daily-quests:${userId}:${today}`;
       await cache.del(cacheKey);
 
