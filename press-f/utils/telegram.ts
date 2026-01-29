@@ -58,7 +58,7 @@ const mockWebApp = {
 
 // Detect if running inside Telegram
 // @ts-ignore
-const isTg = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData !== '';
+const isTg = typeof window !== 'undefined' && window.Telegram?.WebApp && typeof window.Telegram.WebApp.initData !== 'undefined';
 
 // Export the real WebApp or the Mock
 // @ts-ignore

@@ -27,6 +27,11 @@ const Landing = () => {
   const { daysRemaining, isDead, imAlive } = useDeadManSwitch();
   const { t } = useTranslation();
   const { theme, toggleTheme } = useTheme();
+  
+  // Log component mount
+  React.useEffect(() => {
+    console.log('[Landing] Component mounted');
+  }, []);
   const [justCheckedIn, setJustCheckedIn] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   // showQuestLog removed - use Daily Quests component instead

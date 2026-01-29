@@ -1,6 +1,11 @@
 // Use current origin for API if VITE_API_URL is not set (production mode)
 const API_BASE = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
 
+// Log API_BASE for debugging (only in development or when API_BASE is not set)
+if (typeof window !== 'undefined' && (!import.meta.env.VITE_API_URL || import.meta.env.DEV)) {
+  console.log('[API] API_BASE:', API_BASE);
+}
+
 // Get session ID from storage
 function getSessionId(): string | null {
   try {

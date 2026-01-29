@@ -29,15 +29,23 @@ const TelegramHandler = () => {
   useTelegramSession();
 
   useEffect(() => {
+    console.log('[App] Initializing TelegramHandler...');
+    
     // 1. Initialize TG (Expand, Colors)
-    initTelegramApp();
+    try {
+      initTelegramApp();
+      console.log('[App] Telegram initialized');
+    } catch (error) {
+      console.error('[App] Error initializing Telegram:', error);
+    }
 
     // 2. Handle Deep Links (Start Params)
     // Format: t.me/bot?start=witness_123 or t.me/bot?start=duel_456
     const startParam = tg.initDataUnsafe?.start_param;
+    console.log('[App] Start param:', startParam);
 
     if (startParam) {
-      console.log("Deep Link Detected:", startParam);
+      console.log("[App] Deep Link Detected:", startParam);
       
       if (startParam.startsWith('witness_')) {
         localStorage.setItem('lastmeme_pending_witness', startParam.replace('witness_', ''));
@@ -58,7 +66,7 @@ const TelegramHandler = () => {
 
     // 3. ALWAYS redirect to home if no deep link (guarantee home page on start)
     if (!startParam) {
-      console.log("No deep link: forcing navigation to home page");
+      console.log("[App] No deep link: forcing navigation to home page");
       // Use setTimeout to ensure router is ready
       setTimeout(() => {
         navigate('/', { replace: true });
@@ -95,6 +103,16 @@ const TelegramHandler = () => {
 
 const App = () => {
   const manifestUrl = `${window.location.origin}/tonconnect-manifest.json`;
+  
+  // Log app initialization
+  if (typeof window !== 'undefined') {
+    console.log('[App] Initializing app...', {
+      origin: window.location.origin,
+      pathname: window.location.pathname,
+      hash: window.location.hash
+    });
+  }
+  
   return (
     <LanguageProvider>
       <ThemeProvider>
