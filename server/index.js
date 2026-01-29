@@ -90,28 +90,42 @@ const buildStartKeyboard = () => ({
 });
 
 const sendStartMessage = async (ctx) => {
-  logger.info('[/start] Received start command', { userId: ctx.from?.id });
-  if (!WEB_APP_URL) {
-    logger.warn('[/start] WEB_APP_URL not set');
-    return ctx.reply('WebApp URL is not set. Define WEB_APP_URL in .env');
-  }
-  if (BOT_INFO_IMAGE_URL) {
-    logger.debug('[/start] Attempting to send image', { imageUrl: BOT_INFO_IMAGE_URL });
-    try {
-      const result = await ctx.replyWithPhoto(
-        { url: BOT_INFO_IMAGE_URL },
-        { caption: BOT_INFO_TEXT, ...buildStartKeyboard() }
-      );
-      logger.info('[/start] Image sent successfully', { messageId: result?.message_id });
-      return result;
-    } catch (error) {
-      logger.error('[/start] Failed to send bot info image', error);
-      logger.debug('[/start] Falling back to text message');
+  try {
+    logger.info('[/start] Received start command', { userId: ctx.from?.id, username: ctx.from?.username });
+    
+    if (!WEB_APP_URL) {
+      logger.warn('[/start] WEB_APP_URL not set');
+      return await ctx.reply('WebApp URL is not set. Define WEB_APP_URL in .env');
     }
-  } else {
-    logger.debug('[/start] BOT_INFO_IMAGE_URL not set, sending text only');
+    
+    if (BOT_INFO_IMAGE_URL) {
+      logger.debug('[/start] Attempting to send image', { imageUrl: BOT_INFO_IMAGE_URL });
+      try {
+        const result = await ctx.replyWithPhoto(
+          { url: BOT_INFO_IMAGE_URL },
+          { caption: BOT_INFO_TEXT, ...buildStartKeyboard() }
+        );
+        logger.info('[/start] Image sent successfully', { messageId: result?.message_id });
+        return result;
+      } catch (error) {
+        logger.error('[/start] Failed to send bot info image', { error: error?.message || error, stack: error?.stack });
+        logger.debug('[/start] Falling back to text message');
+      }
+    } else {
+      logger.debug('[/start] BOT_INFO_IMAGE_URL not set, sending text only');
+    }
+    
+    const result = await ctx.reply(BOT_INFO_TEXT, buildStartKeyboard());
+    logger.info('[/start] Text message sent successfully', { messageId: result?.message_id });
+    return result;
+  } catch (error) {
+    logger.error('[/start] Error in sendStartMessage', { error: error?.message || error, stack: error?.stack });
+    try {
+      return await ctx.reply('Произошла ошибка. Попробуйте позже.');
+    } catch (replyError) {
+      logger.error('[/start] Failed to send error message', { error: replyError?.message || replyError });
+    }
   }
-  return ctx.reply(BOT_INFO_TEXT, buildStartKeyboard());
 };
 
 const sendWebAppButton = (ctx) => {
@@ -121,9 +135,32 @@ const sendWebAppButton = (ctx) => {
   return ctx.reply('Открыть WebApp', buildStartKeyboard());
 };
 
+// Error handling for bot commands
+bot.catch((err, ctx) => {
+  logger.error('Bot error', { 
+    error: err?.message || err, 
+    stack: err?.stack,
+    updateType: ctx.updateType,
+    userId: ctx.from?.id
+  });
+  
+  // Try to send error message to user
+  try {
+    ctx.reply('Произошла ошибка. Попробуйте позже.').catch(() => {});
+  } catch (e) {
+    logger.error('Failed to send error message to user', { error: e?.message });
+  }
+});
+
 bot.start(sendStartMessage);
 bot.command('open', sendWebAppButton);
-bot.command('info', (ctx) => ctx.reply(BOT_INFO_TEXT));
+bot.command('info', async (ctx) => {
+  try {
+    await ctx.reply(BOT_INFO_TEXT);
+  } catch (error) {
+    logger.error('Error in /info command', { error: error?.message || error });
+  }
+});
 
 const app = express();
 app.use(express.json({ limit: '200kb' }));
@@ -157,17 +194,30 @@ console.log('Static files served from:', staticPath);
 if (USE_WEBHOOK) {
   // Add a simple handler for HEAD/GET requests to /bot for debugging (BEFORE webhookCallback)
   app.head('/bot', (req, res) => {
-    console.log('HEAD /bot received');
+    logger.debug('HEAD /bot received');
     res.status(200).end();
   });
   app.get('/bot', (req, res) => {
-    console.log('GET /bot received');
+    logger.debug('GET /bot received');
     res.status(200).json({ ok: true, message: 'Webhook endpoint is active' });
   });
-  app.use(bot.webhookCallback('/bot'));
-  console.log('✅ Webhook callback registered at /bot');
+  
+  // Error handling middleware for webhook
+  app.use((err, req, res, next) => {
+    if (req.path === '/bot') {
+      logger.error('Webhook error', { error: err?.message || err, path: req.path });
+      res.status(200).end(); // Telegram expects 200 even on errors
+      return;
+    }
+    next(err);
+  });
+  
+  app.use(bot.webhookCallback('/bot', {
+    secretToken: process.env.WEBHOOK_SECRET || undefined
+  }));
+  logger.info('✅ Webhook callback registered at /bot', { webhookUrl: WEBHOOK_URL });
 } else {
-  console.warn('⚠️  Webhook callback NOT registered. USE_WEBHOOK=false');
+  logger.warn('⚠️  Webhook callback NOT registered. USE_WEBHOOK=false');
 }
 
 // Security: Configure Helmet with proper CSP for Telegram Mini App
@@ -835,19 +885,50 @@ app.get('/api/session/:id', async (req, res) => {
 (async () => {
   try {
     if (USE_WEBHOOK) {
-      await bot.telegram.setWebhook(`${WEBHOOK_URL}/bot`);
-      console.log('Webhook set to', `${WEBHOOK_URL}/bot`);
-    } else if (WEBHOOK_URL) {
-      await bot.telegram.deleteWebhook();
-      console.log('Webhook disabled, using long polling');
-      await bot.launch();
-      console.log('Bot launched via long polling');
+      const webhookUrl = `${WEBHOOK_URL}/bot`;
+      await bot.telegram.setWebhook(webhookUrl, {
+        secret_token: process.env.WEBHOOK_SECRET || undefined
+      });
+      logger.info('✅ Webhook set successfully', { webhookUrl });
+      
+      // Verify webhook
+      const webhookInfo = await bot.telegram.getWebhookInfo();
+      logger.info('Webhook info', { 
+        url: webhookInfo.url, 
+        pendingUpdateCount: webhookInfo.pending_update_count,
+        lastErrorDate: webhookInfo.last_error_date,
+        lastErrorMessage: webhookInfo.last_error_message
+      });
+      
+      if (webhookInfo.last_error_message) {
+        logger.warn('Webhook has errors', { 
+          lastErrorDate: webhookInfo.last_error_date,
+          lastErrorMessage: webhookInfo.last_error_message
+        });
+      }
     } else {
+      // Delete webhook if exists
+      try {
+        await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+        logger.info('Webhook deleted, using long polling');
+      } catch (deleteError) {
+        logger.debug('No webhook to delete or error deleting', { error: deleteError?.message });
+      }
+      
       await bot.launch();
-      console.log('Bot launched via long polling');
+      logger.info('✅ Bot launched via long polling');
+      
+      // Graceful shutdown
+      process.once('SIGINT', () => bot.stop('SIGINT'));
+      process.once('SIGTERM', () => bot.stop('SIGTERM'));
     }
   } catch (e) {
-    logger.error('Failed to set webhook or launch bot', e);
+    logger.error('❌ Failed to set webhook or launch bot', { 
+      error: e?.message || e, 
+      stack: e?.stack,
+      useWebhook: USE_WEBHOOK,
+      webhookUrl: WEBHOOK_URL
+    });
   }
 })();
 
