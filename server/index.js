@@ -9,17 +9,21 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const { sendError } = require('./utils/errors');
 const logger = require('./utils/logger');
+const { initCache, cache } = require('./utils/cache');
 
 // Redis / Bull (job queue)
 const Queue = require('bull');
 const REDIS_URL = process.env.REDIS_URL;
 const jobsQueue = REDIS_URL ? new Queue('jobs', REDIS_URL) : null;
 if (jobsQueue) {
-  jobsQueue.on('error', (err) => console.error('Jobs queue error', err));
-  jobsQueue.on('failed', (job, err) => console.error('Job failed', job.id, err));
+  jobsQueue.on('error', (err) => logger.error('Jobs queue error', err));
+  jobsQueue.on('failed', (job, err) => logger.error('Job failed', { jobId: job.id, error: err }));
 } else {
-  console.warn('⚠️  REDIS_URL not set - job queue disabled');
+  logger.warn('REDIS_URL not set - job queue disabled');
 }
+
+// Initialize Redis cache (uses same REDIS_URL)
+initCache(REDIS_URL);
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBHOOK_URL = process.env.WEBHOOK_URL; // https://your-backend-domain

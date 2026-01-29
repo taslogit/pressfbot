@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const { z, validateBody } = require('../validation');
 const { normalizeLegacyItem } = require('../services/legacyService');
 const { sendError } = require('../utils/errors');
+const logger = require('../utils/logger');
 const VALID_LEGACY_TYPES = ['enemy', 'loot', 'manifesto', 'ghost'];
 const VALID_LEGACY_SORT = ['created_at', 'severity', 'rarity', 'title'];
 

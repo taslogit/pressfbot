@@ -4,6 +4,8 @@ const router = express.Router();
 const { z, validateBody } = require('../validation');
 const { normalizeProfile, normalizeSettings } = require('../services/profileService');
 const { sendError } = require('../utils/errors');
+const logger = require('../utils/logger');
+const { cache } = require('../utils/cache');
 
 const profileUpdateSchema = z.object({
   avatar: z.string().optional(),
@@ -36,7 +38,7 @@ const settingsUpdateSchema = z.object({
 });
 
 const createProfileRoutes = (pool) => {
-  // GET /api/profile - Get user profile
+  // GET /api/profile - Get user profile (with caching)
   router.get('/', async (req, res) => {
     try {
       if (!pool) {
@@ -48,13 +50,21 @@ const createProfileRoutes = (pool) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      // Get profile
+      // Try to get from cache first
+      const cacheKey = `profile:${userId}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        logger.debug('Profile cache hit', { userId });
+        return res.json({ ok: true, ...cached, _cached: true });
+      }
+
+      // Get profile from database
       const profileResult = await pool.query(
         'SELECT * FROM profiles WHERE user_id = $1',
         [userId]
       );
 
-      // Get settings
+      // Get settings from database
       const settingsResult = await pool.query(
         'SELECT * FROM user_settings WHERE user_id = $1',
         [userId]
@@ -71,9 +81,14 @@ const createProfileRoutes = (pool) => {
         settings = normalizeSettings(settingsResult.rows[0]);
       }
 
-      return res.json({ ok: true, profile, settings });
+      const response = { ok: true, profile, settings };
+
+      // Cache for 5 minutes
+      await cache.set(cacheKey, response, 300);
+
+      return res.json(response);
     } catch (error) {
-      console.error('Get profile error:', error);
+      logger.error('Get profile error', error);
       return sendError(res, 500, 'PROFILE_FETCH_FAILED', 'Failed to fetch profile');
     }
   });
@@ -201,8 +216,12 @@ const createProfileRoutes = (pool) => {
       }
 
       return res.json({ ok: true });
+      // Invalidate cache after update
+      await cache.del(`profile:${userId}`);
+
+      return res.json({ ok: true, profile: normalizeProfile(profileResult.rows[0]) });
     } catch (error) {
-      console.error('Update profile error:', error);
+      logger.error('Update profile error', error);
       return sendError(res, 500, 'PROFILE_UPDATE_FAILED', 'Failed to update profile');
     }
   });
@@ -237,9 +256,12 @@ const createProfileRoutes = (pool) => {
         );
       }
 
+      // Invalidate cache after check-in
+      await cache.del(`profile:${userId}`);
+
       return res.json({ ok: true, timestamp: Date.now() });
     } catch (error) {
-      console.error('Check-in error:', error);
+      logger.error('Check-in error', error);
       return sendError(res, 500, 'CHECKIN_FAILED', 'Failed to check in');
     }
   });
