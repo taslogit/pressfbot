@@ -126,6 +126,7 @@ const App = () => {
                 <Route path="*" element={
                   <Layout>
                     <Routes>
+                      <Route index element={<Landing />} />
                       <Route path="/" element={<Landing />} />
                       <Route path="/create-letter" element={<CreateLetter />} />
                       <Route path="/letters" element={<Letters />} />
