@@ -236,6 +236,30 @@ const createProfileRoutes = (pool) => {
 
         // Only allow whitelisted fields to be updated
         if (avatar !== undefined && allowedFields.avatar) {
+          // Security: Validate that avatar exists on server
+          if (typeof avatar === 'string' && avatar.trim()) {
+            const fs = require('fs');
+            const path = require('path');
+            const avatarsDir = path.join(__dirname, '..', 'static', 'avatars');
+            const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
+            
+            // Check if avatar file exists
+            let avatarExists = false;
+            if (fs.existsSync(avatarsDir)) {
+              const files = fs.readdirSync(avatarsDir);
+              avatarExists = files.some(file => {
+                const ext = path.extname(file).toLowerCase();
+                const name = path.basename(file, ext);
+                return name === avatar && imageExtensions.includes(ext);
+              });
+            }
+            
+            if (!avatarExists) {
+              logger.warn('Avatar not found on server', { avatar, userId });
+              return sendError(res, 400, 'AVATAR_NOT_FOUND', 'Selected avatar does not exist on server');
+            }
+          }
+          
           updateFields.push(`avatar = $${paramIndex++}`);
           updateValues.push(avatar);
         }

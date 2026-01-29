@@ -262,9 +262,9 @@ const createGiftsRoutes = (pool) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      // Validation: Validate UUID format
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(giftId)) {
+      // Security: Validate UUID format using uuid library
+      const { validate: validateUUID } = require('uuid');
+      if (!validateUUID(giftId)) {
         return sendError(res, 400, 'INVALID_GIFT_ID', 'Invalid gift ID format');
       }
 

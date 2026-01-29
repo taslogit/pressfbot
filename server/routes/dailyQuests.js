@@ -293,22 +293,32 @@ async function generateDailyQuestsForAllUsers(pool, date) {
   }
 
   try {
-    // Get all active users (users who have checked in at least once or have profiles)
+    // Optimization: Use more efficient query instead of UNION
     const usersResult = await pool.query(
-      `SELECT DISTINCT user_id FROM user_settings WHERE last_check_in IS NOT NULL
-       UNION
-       SELECT DISTINCT user_id FROM profiles`
+      `SELECT DISTINCT COALESCE(us.user_id, p.user_id) as user_id
+       FROM profiles p
+       FULL OUTER JOIN user_settings us ON p.user_id = us.user_id
+       WHERE p.user_id IS NOT NULL OR us.last_check_in IS NOT NULL`
     );
 
     const users = usersResult.rows;
     const today = date || new Date().toISOString().split('T')[0];
     logger.info(`Generating daily quests for ${users.length} users`, { date: today });
 
+    // Optimization: Process users in batches to reduce memory usage
+    const BATCH_SIZE = 100;
     let generated = 0;
     let errors = 0;
     
-    // Security: Process each user separately to prevent one error from stopping the entire process
-    for (const user of users) {
+    for (let i = 0; i < users.length; i += BATCH_SIZE) {
+      const batch = users.slice(i, i + BATCH_SIZE);
+      logger.debug(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1} of ${Math.ceil(users.length / BATCH_SIZE)}`, {
+        batchSize: batch.length,
+        totalUsers: users.length
+      });
+      
+      // Security: Process each user separately to prevent one error from stopping the entire process
+      for (const user of batch) {
       const userId = user.user_id;
 
       try {

@@ -234,6 +234,10 @@ if (USE_WEBHOOK) {
   logger.warn('⚠️  Webhook callback NOT registered. USE_WEBHOOK=false');
 }
 
+// Performance: Add request performance monitoring
+const performanceMonitor = require('./middleware/performanceMonitor');
+app.use(performanceMonitor);
+
 // Security: Configure Helmet with proper CSP for Telegram Mini App
 app.use(helmet({
   contentSecurityPolicy: {
@@ -780,13 +784,22 @@ app.post('/api/verify', async (req, res) => {
                 [tgUserId, referrerId]
               );
 
-              // Create referral event
-              await pool.query(
-                `INSERT INTO referral_events (id, referrer_id, referred_id, reward_given, created_at)
-                 VALUES ($1, $2, $3, false, now())
-                 ON CONFLICT DO NOTHING`,
-                [uuidv4(), referrerId, tgUserId]
+              // Security: Check for duplicate referral event before creating
+              const existingEvent = await pool.query(
+                'SELECT id FROM referral_events WHERE referrer_id = $1 AND referred_id = $2',
+                [referrerId, tgUserId]
               );
+              
+              if (existingEvent.rowCount === 0) {
+                // Create referral event only if it doesn't exist
+                await pool.query(
+                  `INSERT INTO referral_events (id, referrer_id, referred_id, reward_given, created_at)
+                   VALUES ($1, $2, $3, false, now())`,
+                  [uuidv4(), referrerId, tgUserId]
+                );
+              } else {
+                logger.debug('Referral event already exists', { referrerId, referredId: tgUserId });
+              }
 
               // Update referrer's referrals count
               await pool.query(

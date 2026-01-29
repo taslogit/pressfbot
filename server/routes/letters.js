@@ -191,10 +191,23 @@ const createLettersRoutes = (pool, createLimiter) => {
       // Security: Generate ID on server to prevent conflicts
       const letterId = id || `letter_${Date.now()}_${uuidv4()}`;
       
-      // Security: Validate unlock_date is not in the past
-      let unlockDateValue = unlockDate ? new Date(unlockDate) : null;
-      if (unlockDateValue && unlockDateValue < new Date()) {
-        return sendError(res, 400, 'INVALID_UNLOCK_DATE', 'unlock_date cannot be in the past');
+      // Security: Validate unlock_date format (ISO 8601) and is not in the past
+      let unlockDateValue = null;
+      if (unlockDate) {
+        // Validate ISO 8601 format
+        const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/;
+        if (typeof unlockDate === 'string' && !iso8601Regex.test(unlockDate)) {
+          return sendError(res, 400, 'INVALID_DATE_FORMAT', 'unlock_date must be in ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)');
+        }
+        
+        unlockDateValue = new Date(unlockDate);
+        if (isNaN(unlockDateValue.getTime())) {
+          return sendError(res, 400, 'INVALID_DATE', 'unlock_date is not a valid date');
+        }
+        
+        if (unlockDateValue < new Date()) {
+          return sendError(res, 400, 'INVALID_UNLOCK_DATE', 'unlock_date cannot be in the past');
+        }
       }
       
       // Security: Check for duplicate letter ID (if ID was provided)

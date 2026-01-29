@@ -191,7 +191,20 @@ const createDuelsRoutes = (pool, createLimiter) => {
         isFavorite = false
       } = req.body;
 
+      // Security: Generate ID on server to prevent conflicts
       const duelId = id || `duel_${Date.now()}_${uuidv4()}`;
+      
+      // Security: Check for duplicate duel ID (if ID was provided)
+      if (id) {
+        const existingDuel = await pool.query(
+          'SELECT id FROM duels WHERE id = $1',
+          [duelId]
+        );
+        if (existingDuel.rowCount > 0) {
+          return sendError(res, 409, 'DUEL_ID_EXISTS', 'Duel with this ID already exists');
+        }
+      }
+      
       const deadlineValue = deadline ? new Date(deadline) : new Date();
       const opponentIdValue = opponentId ? Number(opponentId) : (Number(opponent) || null);
       const opponentNameValue = opponentIdValue ? null : (opponent || null);
