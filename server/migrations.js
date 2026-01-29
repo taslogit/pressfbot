@@ -506,6 +506,23 @@ const createTables = async (pool) => {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_tournament_matches_round ON tournament_matches(tournament_id, round, match_number)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_tournament_matches_status ON tournament_matches(status)`);
 
+    // Activity Feed table (Gamification)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS activity_feed (
+        id UUID PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        activity_type VARCHAR(50) NOT NULL,
+        activity_data JSONB DEFAULT '{}',
+        target_id VARCHAR(255),
+        target_type VARCHAR(50),
+        is_public BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_activity_feed_user ON activity_feed(user_id, created_at DESC)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_activity_feed_public ON activity_feed(is_public, created_at DESC) WHERE is_public = true`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_activity_feed_type ON activity_feed(activity_type, created_at DESC)`);
+
     console.log('✅ All tables created successfully');
     return true;
   } catch (error) {

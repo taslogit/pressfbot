@@ -207,6 +207,18 @@ const createGiftsRoutes = (pool) => {
       // Commit transaction
       await client.query('COMMIT');
 
+      // Log activity
+      try {
+        const { logActivity } = require('./activity');
+        await logActivity(pool, recipientId, 'gift_received', {
+          giftId,
+          giftType,
+          from: userId
+        }, giftId, 'gift', true);
+      } catch (activityError) {
+        logger.debug('Failed to log activity for gift', { error: activityError?.message });
+      }
+
       logger.info('Gift sent', { giftId, senderId: userId, recipientId, giftType, cost: giftConfig.cost });
 
       return res.json({ ok: true, giftId, cost: giftConfig.cost });
