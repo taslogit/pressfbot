@@ -247,6 +247,16 @@ const createDuelsRoutes = (pool, createLimiter) => {
         }
       }
 
+      // Update seasonal events progress
+      try {
+        const eventsAPI = require('../utils/eventsAPI');
+        if (eventsAPI && eventsAPI.updateProgress) {
+          await eventsAPI.updateProgress(pool, userId, 'create_duel', 1);
+        }
+      } catch (eventError) {
+        logger.debug('Failed to update event progress for duel creation', { error: eventError?.message });
+      }
+
       return res.json({ ok: true, id: duelId, xp: xpReward || 0 });
     } catch (error) {
       logger.error('Create duel error:', { error: error?.message || error, userId });

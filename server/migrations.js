@@ -404,6 +404,42 @@ const createTables = async (pool) => {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_gifts_recipient ON gifts(recipient_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_gifts_recipient_claimed ON gifts(recipient_id, is_claimed)`);
 
+    // Seasonal Events table (Gamification)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS seasonal_events (
+        id UUID PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        is_active BOOLEAN DEFAULT true,
+        config JSONB DEFAULT '{}',
+        banner_url VARCHAR(500),
+        icon VARCHAR(10),
+        created_at TIMESTAMP DEFAULT now(),
+        updated_at TIMESTAMP DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_seasonal_events_active ON seasonal_events(is_active, start_date, end_date)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_seasonal_events_dates ON seasonal_events(start_date, end_date)`);
+
+    // User Event Progress table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_event_progress (
+        id UUID PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        event_id UUID NOT NULL,
+        progress JSONB DEFAULT '{}',
+        rewards_claimed TEXT[] DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT now(),
+        updated_at TIMESTAMP DEFAULT now(),
+        UNIQUE(user_id, event_id)
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_event_progress_user ON user_event_progress(user_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_event_progress_event ON user_event_progress(event_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_event_progress_user_event ON user_event_progress(user_id, event_id)`);
+
     console.log('✅ All tables created successfully');
     return true;
   } catch (error) {

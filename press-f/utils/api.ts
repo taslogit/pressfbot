@@ -292,6 +292,22 @@ export const giftsAPI = {
   },
 };
 
+// Events API
+export const eventsAPI = {
+  getActive: async () => {
+    return apiRequest<{ events: any[] }>('/api/events/active');
+  },
+  getProgress: async (eventId: string) => {
+    return apiRequest<{ event: any; progress: Record<string, number>; rewardsClaimed: string[] }>(`/api/events/${eventId}/progress`);
+  },
+  claimReward: async (eventId: string, rewardId: string) => {
+    return apiRequest<{ reward: { reputation: number; xp: number } }>(`/api/events/${eventId}/claim`, {
+      method: 'POST',
+      body: JSON.stringify({ rewardId }),
+    });
+  },
+};
+
 export const tonAPI = {
   createInheritancePlan: async (payload: {
     recipients: { address: string; amount: number }[];

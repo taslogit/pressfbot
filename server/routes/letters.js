@@ -254,6 +254,16 @@ const createLettersRoutes = (pool, createLimiter) => {
         }
       }
 
+      // Update seasonal events progress
+      try {
+        const eventsAPI = require('../utils/eventsAPI');
+        if (eventsAPI && eventsAPI.updateProgress) {
+          await eventsAPI.updateProgress(pool, userId, 'create_letter', 1);
+        }
+      } catch (eventError) {
+        logger.debug('Failed to update event progress for letter creation', { error: eventError?.message });
+      }
+
       return res.json({ ok: true, id: letterId, xp: xpReward || 0 });
     } catch (error) {
       logger.error('Create letter error:', { error: error?.message || error, userId });

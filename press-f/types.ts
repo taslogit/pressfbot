@@ -100,6 +100,37 @@ export interface Achievement {
   maxProgress: number;
 }
 
+export interface SeasonalEvent {
+  id: string;
+  name: string;
+  description?: string;
+  startDate: string;
+  endDate: string;
+  config: {
+    quests?: Array<{
+      id: string;
+      type: string;
+      name: string;
+      description: string;
+      target: number;
+      icon?: string;
+    }>;
+    rewards?: Array<{
+      id: string;
+      questId: string;
+      name: string;
+      description: string;
+      reputation?: number;
+      xp?: number;
+      icon?: string;
+    }>;
+  };
+  bannerUrl?: string;
+  icon?: string;
+  progress?: Record<string, number>;
+  rewardsClaimed?: string[];
+}
+
 export interface Perk {
   id: string;
   key: string; // translation key

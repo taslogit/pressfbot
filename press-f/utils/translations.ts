@@ -531,7 +531,16 @@ export const translations = {
     message_optional: "Message (optional)",
     gift_message_placeholder: "Add a message...",
     sending: "Sending...",
-    to: "To"
+    to: "To",
+    
+    // Seasonal Events
+    seasonal_events: "SEASONAL EVENTS",
+    event_quests: "Quests",
+    event_rewards: "Rewards",
+    reward_claimed: "Reward claimed!",
+    reward_claim_failed: "Failed to claim reward",
+    claiming: "Claiming...",
+    days_left: "days left"
   },
   ru: {
     app_title: "PRESS F",
@@ -1063,6 +1072,15 @@ export const translations = {
     message_optional: "Сообщение (необязательно)",
     gift_message_placeholder: "Добавьте сообщение...",
     sending: "Отправка...",
-    to: "Кому"
+    to: "Кому",
+    
+    // Seasonal Events
+    seasonal_events: "СЕЗОННЫЕ СОБЫТИЯ",
+    event_quests: "Задания",
+    event_rewards: "Награды",
+    reward_claimed: "Награда получена!",
+    reward_claim_failed: "Не удалось получить награду",
+    claiming: "Получение...",
+    days_left: "дней осталось"
   }
 };
