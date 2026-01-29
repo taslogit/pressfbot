@@ -1,4 +1,4 @@
-import { Letter, Duel, LegacyItem, UserSettings, Witness, UserProfile, Gift, Achievement, Perk, Contract, Squad, LeaderboardEntry, Quest, ShareEvent } from '../types';
+import { Letter, Duel, LegacyItem, UserSettings, Witness, UserProfile, Gift, Achievement, Perk, Contract, Squad, LeaderboardEntry, ShareEvent } from '../types';
 import { tg } from './telegram';
 import { lettersAPI, duelsAPI, legacyAPI, profileAPI } from './api';
 
@@ -11,7 +11,7 @@ const KEYS = {
   DRAFT: 'lastmeme_letter_draft',
   PROFILE: 'lastmeme_user_profile',
   SQUAD: 'lastmeme_squad',
-  QUESTS: 'lastmeme_quests',
+  // QUESTS: 'lastmeme_quests', // Removed - replaced with Daily Quests API
   INFO_DISMISSED: 'lastmeme_info_dismissed',
   HAS_SEEN_GUIDE: 'lastmeme_has_seen_guide_v10', 
   HAS_SEEN_DROPS_GUIDE: 'lastmeme_has_seen_drops_guide_v2',
@@ -57,12 +57,7 @@ const initialContracts: Contract[] = [
   { id: 'c3', key: 'contract_witness', progress: 0, total: 2, reward: 100, completed: false },
 ];
 
-const initialQuests: Quest[] = [
-  { id: 'q1', titleKey: 'quest_pulse_title', descKey: 'quest_pulse_desc', reward: 50, isCompleted: false, isClaimed: false, progress: 0, maxProgress: 1, trigger: 'check_in' },
-  { id: 'q2', titleKey: 'quest_drop_title', descKey: 'quest_drop_desc', reward: 100, isCompleted: false, isClaimed: false, progress: 0, maxProgress: 1, trigger: 'create_letter' },
-  { id: 'q3', titleKey: 'quest_id_title', descKey: 'quest_id_desc', reward: 50, isCompleted: false, isClaimed: false, progress: 0, maxProgress: 1, trigger: 'update_profile' },
-  { id: 'q4', titleKey: 'quest_squad_title', descKey: 'quest_squad_desc', reward: 150, isCompleted: false, isClaimed: false, progress: 0, maxProgress: 1, trigger: 'create_squad' },
-];
+// Old quests system removed - replaced with Daily Quests API
 
 // In-memory cache to prevent JSON parse lag
 let cache: Record<string, any> = {};
@@ -145,7 +140,7 @@ export const storage = {
       if (existingIndex > -1) letters[existingIndex] = letter;
       else letters.push(letter);
       safeSave(KEYS.LETTERS, letters);
-      storage.checkQuestTrigger('create_letter');
+      // Quest trigger removed - use Daily Quests API instead
       return { xp: result.data.xp };
     }
     // Fallback to localStorage only
@@ -493,43 +488,8 @@ export const storage = {
      }
   },
 
-  getQuests: (): Quest[] => {
-    const s = localStorage.getItem(KEYS.QUESTS);
-    if (!s) {
-       safeSave(KEYS.QUESTS, initialQuests);
-       return initialQuests;
-    }
-    return JSON.parse(s);
-  },
-  
-  checkQuestTrigger: (trigger: Quest['trigger']) => {
-      const quests = storage.getQuests();
-      let updated = false;
-      const newQuests = quests.map(q => {
-          if (q.trigger === trigger && !q.isCompleted) {
-              updated = true;
-              return { ...q, isCompleted: true, progress: q.maxProgress };
-          }
-          return q;
-      });
-      
-      if (updated) {
-          safeSave(KEYS.QUESTS, newQuests);
-      }
-  },
-
-  claimQuestReward: (questId: string) => {
-      const quests = storage.getQuests();
-      const quest = quests.find(q => q.id === questId);
-      if (quest && quest.isCompleted && !quest.isClaimed) {
-          quest.isClaimed = true;
-          safeSave(KEYS.QUESTS, quests);
-          const profile = storage.getUserProfile();
-          storage.updateUserProfile({ reputation: profile.reputation + quest.reward });
-          return true;
-      }
-      return false;
-  },
+  // Old quests system removed - use Daily Quests API instead
+  // getQuests, checkQuestTrigger, claimQuestReward removed
 
   isInfoDismissed: (id: string) => {
       const list = safeParse<string[]>(KEYS.INFO_DISMISSED, []);

@@ -312,25 +312,7 @@ const createTables = async (pool) => {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_witnesses_letter ON witnesses(letter_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_witnesses_user ON witnesses(user_id)`);
 
-    // Quests table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS quests (
-        id VARCHAR(255) PRIMARY KEY,
-        user_id BIGINT NOT NULL,
-        title_key VARCHAR(255) NOT NULL,
-        desc_key VARCHAR(255) NOT NULL,
-        reward INTEGER DEFAULT 0,
-        is_completed BOOLEAN DEFAULT false,
-        is_claimed BOOLEAN DEFAULT false,
-        progress INTEGER DEFAULT 0,
-        max_progress INTEGER DEFAULT 1,
-        trigger_type VARCHAR(50),
-        created_at TIMESTAMP DEFAULT now(),
-        updated_at TIMESTAMP DEFAULT now()
-      )
-    `);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_quests_user_id ON quests(user_id)`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_quests_completed ON quests(is_completed)`);
+    // Old quests table removed - replaced with daily_quests table (see Daily Quests section)
 
     // Daily Quests table (Gamification)
     await pool.query(`

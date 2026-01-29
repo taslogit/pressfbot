@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { sendError } = require('../utils/errors');
+const logger = require('../utils/logger');
 
 const createNotificationsRoutes = (pool) => {
   // GET /api/notifications - List recent notifications
@@ -26,7 +27,7 @@ const createNotificationsRoutes = (pool) => {
 
       return res.json({ ok: true, events: result.rows });
     } catch (error) {
-      console.error('Get notifications error:', error);
+      logger.error('Get notifications error:', error);
       return sendError(res, 500, 'NOTIFICATIONS_FETCH_FAILED', 'Failed to fetch notifications');
     }
   });
@@ -62,7 +63,7 @@ const createNotificationsRoutes = (pool) => {
 
       return res.json({ ok: true });
     } catch (error) {
-      console.error('Mark read error:', error);
+      logger.error('Mark read error:', error);
       return sendError(res, 500, 'NOTIFICATIONS_MARK_READ_FAILED', 'Failed to mark notifications as read');
     }
   });

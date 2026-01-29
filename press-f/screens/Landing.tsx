@@ -12,14 +12,14 @@ import { playSound } from '../utils/sound';
 import confetti from 'canvas-confetti';
 import OnboardingGuide from '../components/OnboardingGuide';
 import InfoSection from '../components/InfoSection';
-import QuestLog from '../components/QuestLog';
+// QuestLog removed - replaced with DailyQuests component
 import StreakIndicator from '../components/StreakIndicator';
 import DailyQuests from '../components/DailyQuests';
 import XPNotification from '../components/XPNotification';
 import SeasonalEvents from '../components/SeasonalEvents';
 import Tournaments from '../components/Tournaments';
 import ActivityFeed from '../components/ActivityFeed';
-import { Quest } from '../types';
+// Quest type removed - replaced with DailyQuest
 import { profileAPI } from '../utils/api';
 
 const Landing = () => {
@@ -29,7 +29,7 @@ const Landing = () => {
   const { theme, toggleTheme } = useTheme();
   const [justCheckedIn, setJustCheckedIn] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
-  const [showQuestLog, setShowQuestLog] = useState(false);
+  // showQuestLog removed - use Daily Quests component instead
   const [settings, setSettings] = useState(storage.getSettings());
   const [showSharePulse, setShowSharePulse] = useState(false);
   const [xpNotification, setXpNotification] = useState<{ xp: number; level?: number; levelUp?: boolean } | null>(null);
@@ -40,8 +40,7 @@ const Landing = () => {
   const [witnessCount, setWitnessCount] = useState(0); 
   const [nextUnlockDate, setNextUnlockDate] = useState<string | null>(null);
   
-  // Quest State
-  const [activeQuest, setActiveQuest] = useState<Quest | null>(null);
+  // Quest State removed - use Daily Quests instead
 
   // System Log State
   const [currentLog, setCurrentLog] = useState(0);
@@ -91,10 +90,7 @@ const Landing = () => {
         setCurrentLog(prev => (prev + 1) % logs.length);
     }, 4000);
 
-    // Load active quest (first uncompleted)
-    const quests = storage.getQuests();
-    const next = quests.find(q => !q.isCompleted);
-    setActiveQuest(next || null);
+    // Old quests system removed - Daily Quests are loaded via DailyQuests component
 
     return () => {
       isMounted = false;
@@ -230,7 +226,7 @@ const Landing = () => {
   return (
     <div className="space-y-4 pt-2 pb-24 relative">
       <OnboardingGuide isVisible={showGuide} onClose={handleCloseGuide} />
-      <QuestLog isOpen={showQuestLog} onClose={() => setShowQuestLog(false)} />
+      {/* QuestLog removed - replaced with DailyQuests component */}
       {xpNotification && (
         <XPNotification
           xp={xpNotification.xp}

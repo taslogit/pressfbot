@@ -338,6 +338,80 @@ export const activityAPI = {
   },
 };
 
+// Squads API
+export const squadsAPI = {
+  get: async () => {
+    return apiRequest<{ squad: any }>('/api/squads');
+  },
+  create: async (name: string) => {
+    return apiRequest<{ squad: any }>('/api/squads', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+  },
+  update: async (id: string, updates: { name?: string; sharedPayload?: string; pactHealth?: number }) => {
+    return apiRequest<{ squad: any }>(`/api/squads/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  },
+  addMember: async (id: string, memberId: string, memberName?: string, avatarId?: string) => {
+    return apiRequest<{ member: any }>(`/api/squads/${id}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ memberId, memberName, avatarId }),
+    });
+  },
+  removeMember: async (id: string, memberId: string) => {
+    return apiRequest(`/api/squads/${id}/members/${memberId}`, {
+      method: 'DELETE',
+    });
+  },
+  join: async (id: string) => {
+    return apiRequest<{ squad: any }>(`/api/squads/${id}/join`, {
+      method: 'POST',
+    });
+  },
+  getLeaderboard: async (limit = 50, offset = 0) => {
+    return apiRequest<{ leaderboard: any[] }>(`/api/squads/leaderboard?limit=${limit}&offset=${offset}`);
+  },
+};
+
+// Witnesses API
+export const witnessesAPI = {
+  getAll: async (letterId?: string) => {
+    const query = letterId ? `?letterId=${letterId}` : '';
+    return apiRequest<{ witnesses: any[] }>(`/api/witnesses${query}`);
+  },
+  getOne: async (id: string) => {
+    return apiRequest<{ witness: any }>(`/api/witnesses/${id}`);
+  },
+  create: async (letterId: string | null, name: string) => {
+    return apiRequest<{ witness: any }>('/api/witnesses', {
+      method: 'POST',
+      body: JSON.stringify({ letterId, name }),
+    });
+  },
+  update: async (id: string, updates: { name?: string; status?: string }) => {
+    return apiRequest<{ witness: any }>(`/api/witnesses/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  },
+  confirm: async (id: string) => {
+    return apiRequest(`/api/witnesses/${id}/confirm`, {
+      method: 'POST',
+    });
+  },
+  delete: async (id: string) => {
+    return apiRequest(`/api/witnesses/${id}`, {
+      method: 'DELETE',
+    });
+  },
+  getByLetter: async (letterId: string) => {
+    return apiRequest<{ witnesses: any[] }>(`/api/witnesses/letter/${letterId}`);
+  },
+};
+
 export const tonAPI = {
   createInheritancePlan: async (payload: {
     recipients: { address: string; amount: number }[];

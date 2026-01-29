@@ -342,6 +342,8 @@ const { createGiftsRoutes } = require('./routes/gifts');
 const { createEventsRoutes } = require('./routes/events');
 const { createTournamentsRoutes } = require('./routes/tournaments');
 const { createActivityRoutes, logActivity } = require('./routes/activity');
+const { createSquadsRoutes } = require('./routes/squads');
+const { createWitnessesRoutes } = require('./routes/witnesses');
 const { normalizeLetter } = require('./services/lettersService');
 const { normalizeDuel } = require('./services/duelsService');
 const { normalizeLegacyItem } = require('./services/legacyService');
@@ -363,6 +365,8 @@ app.use('/api/gifts', authMiddleware, createGiftsRoutes(pool));
 app.use('/api/events', authMiddleware, createEventsRoutes(pool));
 app.use('/api/tournaments', authMiddleware, createTournamentsRoutes(pool));
 app.use('/api/activity', authMiddleware, createActivityRoutes(pool));
+app.use('/api/squads', authMiddleware, createSquadsRoutes(pool));
+app.use('/api/witnesses', authMiddleware, createWitnessesRoutes(pool));
 
 // Global search across letters, duels, legacy (with rate limiting and pagination)
 app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {
@@ -754,8 +758,18 @@ app.post('/api/verify', async (req, res) => {
         [sessionId, tgUserId, expiresAt]
       );
 
-      // Handle referral code from start_param
+      // Handle referral code and squad invite from start_param
       const startParam = params.get('start_param');
+      
+      // Handle squad invite (squad_<squadId>)
+      if (startParam && startParam.startsWith('squad_')) {
+        const squadId = startParam.replace('squad_', '');
+        // Store squad invite in session for frontend to handle
+        // Frontend will call POST /api/squads/:id/join when ready
+        logger.debug('Squad invite detected', { squadId, userId: tgUserId });
+      }
+      
+      // Handle referral code (ref_<code>)
       if (startParam && startParam.startsWith('ref_')) {
         const referralCode = startParam.replace('ref_', '');
         try {

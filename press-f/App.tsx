@@ -17,6 +17,7 @@ const Squads = lazy(() => import('./screens/Squads'));
 const Profile = lazy(() => import('./screens/Profile'));
 const Settings = lazy(() => import('./screens/Settings'));
 const SharePost = lazy(() => import('./screens/SharePost'));
+const Notifications = lazy(() => import('./screens/Notifications'));
 import { tg, initTelegramApp } from './utils/telegram';
 import { useTelegramSession } from './hooks/useTelegramSession';
 
@@ -47,7 +48,9 @@ const TelegramHandler = () => {
         navigate('/duels', { replace: true });
         return;
       }
-      else if (startParam === 'squad') {
+      else if (startParam.startsWith('squad_')) {
+        const squadId = startParam.replace('squad_', '');
+        localStorage.setItem('lastmeme_pending_squad_join', squadId);
         navigate('/squads', { replace: true });
         return;
       }
@@ -119,6 +122,7 @@ const App = () => {
                       <Route path="/profile" element={<Profile />} />
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/share" element={<SharePost />} />
+                      <Route path="/notifications" element={<Notifications />} />
                     </Routes>
                   </Layout>
                 } />
