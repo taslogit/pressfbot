@@ -169,9 +169,12 @@ export const profileAPI = {
     });
   },
   checkIn: async () => {
-    return apiRequest<{ timestamp: number }>('/api/profile/check-in', {
+    return apiRequest<{ timestamp: number; streak?: any; xp?: number }>('/api/profile/check-in', {
       method: 'POST',
     });
+  },
+  getStreak: async () => {
+    return apiRequest<{ streak: any }>('/api/profile/streak');
   },
   updateSettings: async (settings: Partial<any>) => {
     return apiRequest('/api/profile/settings', {
@@ -199,6 +202,18 @@ export const notificationsAPI = {
       body: JSON.stringify({ ids })
     });
   }
+};
+
+// Daily Quests API
+export const dailyQuestsAPI = {
+  getAll: async () => {
+    return apiRequest<{ quests: any[] }>('/api/daily-quests');
+  },
+  claim: async (id: string) => {
+    return apiRequest<{ reward: number; xp: number }>(`/api/daily-quests/${id}/claim`, {
+      method: 'POST',
+    });
+  },
 };
 
 export const tonAPI = {

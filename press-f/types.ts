@@ -119,6 +119,32 @@ export interface UserProfile {
     leaksDropped: number;
     daysAlive: number;
   };
+  experience?: number;
+  totalXpEarned?: number;
+}
+
+export interface StreakInfo {
+  current: number;
+  longest: number;
+  lastStreakDate: string | null;
+  freeSkips: number;
+  nextBonus?: {
+    days: number;
+    reward: number;
+  };
+}
+
+export interface DailyQuest {
+  id: string;
+  type: 'create_letter' | 'check_in' | 'create_duel' | 'win_duel' | 'invite_friend' | 'update_profile' | 'create_squad';
+  title: string;
+  description: string;
+  targetCount: number;
+  currentCount: number;
+  reward: number;
+  isCompleted: boolean;
+  isClaimed: boolean;
+  questDate: string;
 }
 
 export interface ShareEvent {

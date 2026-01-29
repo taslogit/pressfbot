@@ -13,6 +13,8 @@ import confetti from 'canvas-confetti';
 import OnboardingGuide from '../components/OnboardingGuide';
 import InfoSection from '../components/InfoSection';
 import QuestLog from '../components/QuestLog';
+import StreakIndicator from '../components/StreakIndicator';
+import DailyQuests from '../components/DailyQuests';
 import { Quest } from '../types';
 
 const Landing = () => {
