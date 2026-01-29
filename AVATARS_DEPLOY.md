@@ -20,16 +20,33 @@ mkdir -p server/static/avatars
 
 ## Шаг 4: Загрузи аватары с локального компьютера
 
-### Вариант 1: Через SCP (рекомендуется)
+### Вариант 1: Через PowerShell скрипт (самый простой)
 
-**С локального компьютера (Windows PowerShell или CMD):**
+**С локального компьютера (PowerShell):**
 
-```bash
+```powershell
 # Перейди в папку с аватарами
 cd H:\pressf\avatars
 
-# Загрузи все файлы на сервер
-scp *.jpg user@server:/path/to/pressf/server/static/avatars/
+# Запусти скрипт (замени на свои данные!)
+.\upload_avatars.ps1 -ServerIP "123.45.67.89" -ServerUser "root"
+```
+
+### Вариант 2: Через SCP вручную
+
+**ВАЖНО: Замени `user@server` на реальные данные!**
+
+```powershell
+# Перейди в папку с аватарами
+cd H:\pressf\avatars
+
+# Замени:
+# - user → твой пользователь (root, ubuntu, и т.д.)
+# - server → IP адрес сервера (123.45.67.89) или домен
+# - /path/to/pressf → реальный путь (обычно ~/pressf)
+
+# Пример правильной команды:
+scp *.jpg root@123.45.67.89:~/pressf/server/static/avatars/
 ```
 
 **Или используй WinSCP / FileZilla:**
