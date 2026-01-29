@@ -34,6 +34,7 @@ const TelegramHandler = () => {
     // 2. Handle Deep Links (Start Params)
     // Format: t.me/bot?start=witness_123 or t.me/bot?start=duel_456
     const startParam = tg.initDataUnsafe?.start_param;
+    const currentPath = location.pathname;
 
     if (startParam) {
       console.log("Deep Link Detected:", startParam);
@@ -43,13 +44,29 @@ const TelegramHandler = () => {
         // In a real app, you might save the inviter ID to storage here
         localStorage.setItem('lastmeme_pending_witness', startParam.replace('witness_', ''));
         navigate('/witness-approval');
+        return;
       } 
       else if (startParam.startsWith('duel_')) {
         navigate('/duels');
+        return;
       }
       else if (startParam === 'squad') {
         navigate('/squads');
+        return;
       }
+    }
+
+    // 3. Ensure we're on home page if no deep link and not already on a valid route
+    // Only redirect if we're on an invalid/empty route (not /, /resurrection, or other valid routes)
+    const validRoutes = ['/', '/resurrection', '/create-letter', '/letters', '/search', '/duels', 
+                         '/funeral-dj', '/witness-approval', '/squads', '/profile', '/settings', '/share'];
+    if (!validRoutes.includes(currentPath) && !startParam) {
+      console.log("Redirecting to home page from invalid route:", currentPath);
+      navigate('/', { replace: true });
+    } else if (currentPath === '' || currentPath === '/#' || currentPath === '#/') {
+      // Handle empty or malformed hash routes
+      console.log("Redirecting to home page from empty route");
+      navigate('/', { replace: true });
     }
   }, []);
 
