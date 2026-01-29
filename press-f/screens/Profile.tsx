@@ -61,12 +61,7 @@ const Profile = () => {
     });
     setShareHistory(storage.getShareHistory());
 
-    // Load available avatars from server
-    avatarsAPI.getAll().then((result) => {
-      if (isMounted && result.ok && result.data?.avatars) {
-        setAvailableAvatars(result.data.avatars);
-      }
-    });
+    // Avatars will be loaded lazily when avatar selector is opened
 
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let idleId: number | null = null;
@@ -143,6 +138,22 @@ const Profile = () => {
     storage.saveUserProfileAsync(updated);
     setProfile(updated);
     setIsEditing(false);
+  };
+
+  // Lazy load avatars when selector opens
+  const handleOpenAvatarSelector = async () => {
+    setShowAvatarSelector(true);
+    // Load avatars only when selector is opened
+    if (availableAvatars.length === 0) {
+      try {
+        const result = await avatarsAPI.getAll();
+        if (result.ok && result.data?.avatars) {
+          setAvailableAvatars(result.data.avatars);
+        }
+      } catch (error) {
+        console.error('Failed to load avatars:', error);
+      }
+    }
   };
 
   const handleAvatarChange = async (avatarId: string) => {
@@ -477,7 +488,7 @@ const Profile = () => {
               <div className="relative mb-4">
                  <motion.button
                    whileTap={{ scale: 0.95 }}
-                   onClick={() => setShowAvatarSelector(true)}
+                   onClick={handleOpenAvatarSelector}
                    className="w-32 h-32 relative z-10 rounded-full overflow-hidden border-2 border-purple-500/30 hover:border-purple-500/60 transition-all"
                  >
                    <img 

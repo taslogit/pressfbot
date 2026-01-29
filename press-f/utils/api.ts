@@ -21,28 +21,50 @@ function getHeaders(): HeadersInit {
   return headers;
 }
 
-// API helper function
+// API helper function with improved error handling
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
-): Promise<{ ok: boolean; data?: T; error?: string }> {
+): Promise<{ ok: boolean; data?: T; error?: string; code?: string; details?: any }> {
   try {
     const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
     const res = await fetch(url, {
       ...options,
+      signal: controller.signal,
       headers: { ...getHeaders(), ...options.headers },
     });
 
+    clearTimeout(timeoutId);
+
     if (!res.ok) {
-      const error = await res.json().catch(() => ({ error: 'Network error' }));
-      return { ok: false, error: error.error || 'Request failed' };
+      let errorData: any = { error: 'Request failed' };
+      try {
+        errorData = await res.json();
+      } catch {
+        // If response is not JSON, use status text
+        errorData = { error: res.statusText || `HTTP ${res.status}` };
+      }
+      
+      return { 
+        ok: false, 
+        error: errorData.error || errorData.message || 'Request failed',
+        code: errorData.code,
+        details: errorData.details
+      };
     }
 
     const data = await res.json();
     return { ok: true, data };
-  } catch (e) {
+  } catch (e: any) {
+    if (e.name === 'AbortError') {
+      console.error(`API request timeout [${endpoint}]`);
+      return { ok: false, error: 'Request timeout', code: 'TIMEOUT' };
+    }
     console.error(`API request error [${endpoint}]:`, e);
-    return { ok: false, error: 'Network error' };
+    return { ok: false, error: e.message || 'Network error', code: 'NETWORK_ERROR' };
   }
 }
 

@@ -95,9 +95,40 @@ const CreateLetter = () => {
     setHasDraft(false);
   };
 
-  const handleSave = async () => {
+  const validateLetter = (): { valid: boolean; error?: string } => {
+    // Check if there's any content
     if (!title && !content && attachments.length === 0) {
-      tg.showPopup({ message: t('save_error') });
+      return { valid: false, error: t('save_error') || 'Please add some content' };
+    }
+
+    // Validate title length
+    if (title && title.length > 500) {
+      return { valid: false, error: t('title_too_long') || 'Title is too long (max 500 characters)' };
+    }
+
+    // Validate content length (10MB limit)
+    if (content && content.length > 10 * 1024 * 1024) {
+      return { valid: false, error: t('content_too_large') || 'Content is too large (max 10MB)' };
+    }
+
+    // Validate recipients count
+    const recipientList = recipients.split(',').map(r => r.trim()).filter(r => r);
+    if (recipientList.length > 50) {
+      return { valid: false, error: t('too_many_recipients') || 'Too many recipients (max 50)' };
+    }
+
+    // Validate attachments count
+    if (attachments.length > 10) {
+      return { valid: false, error: t('too_many_attachments') || 'Too many attachments (max 10)' };
+    }
+
+    return { valid: true };
+  };
+
+  const handleSave = async () => {
+    const validation = validateLetter();
+    if (!validation.valid) {
+      tg.showPopup({ message: validation.error || t('save_error') });
       return;
     }
 

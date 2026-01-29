@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
+const { cache } = require('../utils/cache');
 
 // Path to avatars directory
 const AVATARS_DIR = path.join(__dirname, '..', 'static', 'avatars');
@@ -15,9 +16,17 @@ if (!fs.existsSync(AVATARS_DIR)) {
 }
 
 const createAvatarsRoutes = () => {
-  // GET /api/avatars - Get list of available avatars
+  // GET /api/avatars - Get list of available avatars (with caching)
   router.get('/', async (req, res) => {
     try {
+      // Try to get from cache first
+      const cacheKey = 'avatars:list';
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        logger.debug('Avatars cache hit');
+        return res.json({ ok: true, avatars: cached, _cached: true });
+      }
+
       const avatars = [];
       
       // Read avatars directory
@@ -51,6 +60,9 @@ const createAvatarsRoutes = () => {
         // Sort by name
         avatars.sort((a, b) => a.name.localeCompare(b.name));
       }
+
+      // Cache for 1 hour (avatars don't change often)
+      await cache.set(cacheKey, avatars, 3600);
 
       logger.debug('Avatars list fetched', { count: avatars.length });
       return res.json({ ok: true, avatars });

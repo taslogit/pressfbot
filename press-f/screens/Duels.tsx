@@ -145,11 +145,36 @@ const Duels = () => {
     storage.updateDuelAsync(duel.id, { isFavorite: updated.isFavorite });
   };
 
+  const validateDuel = (): { valid: boolean; error?: string } => {
+    if (!title || !opponent || !stake) {
+      return { valid: false, error: t('save_error') || 'Please fill all required fields' };
+    }
+
+    // Validate title length
+    if (title.length > 500) {
+      return { valid: false, error: t('title_too_long') || 'Title is too long (max 500 characters)' };
+    }
+
+    // Validate opponent format (should start with @ or be valid username)
+    const normalizedOpponent = opponent.startsWith('@') ? opponent.slice(1) : opponent;
+    if (normalizedOpponent.length < 1 || normalizedOpponent.length > 32) {
+      return { valid: false, error: t('invalid_opponent') || 'Invalid opponent username' };
+    }
+
+    // Validate stake length
+    if (stake.length > 500) {
+      return { valid: false, error: t('stake_too_long') || 'Stake description is too long (max 500 characters)' };
+    }
+
+    return { valid: true };
+  };
+
   const handleCreate = () => {
     playSound('click');
-    if (!title || !opponent || !stake) {
+    const validation = validateDuel();
+    if (!validation.valid) {
       playSound('error');
-      tg.showPopup({ message: t('save_error') });
+      tg.showPopup({ message: validation.error || t('save_error') });
       return;
     }
 

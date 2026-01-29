@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { getXPReward } = require('../utils/xpSystem');
+const { cache } = require('../utils/cache');
 
 // Quest types and their configurations
 const QUEST_TYPES = [
@@ -49,6 +50,14 @@ const createDailyQuestsRoutes = (pool) => {
       }
 
       const today = new Date().toISOString().split('T')[0];
+
+      // Try to get from cache first
+      const cacheKey = `daily-quests:${userId}:${today}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        logger.debug('Daily quests cache hit', { userId, date: today });
+        return res.json({ ok: true, quests: cached, _cached: true });
+      }
 
       // Check if quests exist for today
       const existingQuests = await pool.query(
@@ -97,6 +106,9 @@ const createDailyQuestsRoutes = (pool) => {
         isClaimed: q.is_claimed,
         questDate: q.quest_date
       }));
+
+      // Cache for 5 minutes (quests can be updated via progress endpoint)
+      await cache.set(cacheKey, formattedQuests, 300);
 
       return res.json({ ok: true, quests: formattedQuests });
     } catch (error) {
@@ -164,6 +176,11 @@ const createDailyQuestsRoutes = (pool) => {
 
       logger.info('Quest reward claimed', { questId: id, userId, reward: quest.reward, xp: xpReward });
 
+      // Invalidate cache for this user's daily quests
+      const today = new Date().toISOString().split('T')[0];
+      const cacheKey = `daily-quests:${userId}:${today}`;
+      await cache.del(cacheKey);
+
       return res.json({ 
         ok: true, 
         reward: quest.reward,
@@ -212,6 +229,11 @@ const createDailyQuestsRoutes = (pool) => {
 
         logger.debug('Quest progress updated', { questId: quest.id, questType, newCount, isCompleted });
       }
+
+      // Invalidate cache for this user's daily quests
+      const today = new Date().toISOString().split('T')[0];
+      const cacheKey = `daily-quests:${userId}:${today}`;
+      await cache.del(cacheKey);
 
       return res.json({ ok: true });
     } catch (error) {
