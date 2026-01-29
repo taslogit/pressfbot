@@ -84,7 +84,7 @@ const BOT_INFO_TEXT =
   'Нажми НАЧАТЬ и заходи в WebApp.';
 
 const buildStartKeyboard = () => ({
-  reply_markup: {
+    reply_markup: {
     inline_keyboard: [[{ text: 'НАЧАТЬ', web_app: { url: WEB_APP_URL } }]]
   }
 });

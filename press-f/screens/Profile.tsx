@@ -11,7 +11,7 @@ import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
 import { playSound } from '../utils/sound';
 import { AvatarNetRunner, AvatarGlitchSkull, AvatarNeonDemon, AvatarGhostOps } from '../components/Avatars';
-import { calculateLevel, getLevelProgress, getTitleForLevel } from '../utils/levelSystem';
+import { calculateLevel, getLevelProgress, getTitleForLevel, xpForLevel } from '../utils/levelSystem';
 
 const avatarOptions = [
   { id: 'default', Component: AvatarNetRunner, name: 'NetRunner' },
@@ -104,6 +104,9 @@ const Profile = () => {
   const levelProgress = getLevelProgress(currentXP);
   const levelTitle = getTitleForLevel(currentLevel);
 
+  // Find server avatar if profile.avatar matches a server avatar ID
+  const serverAvatar = availableAvatars.find(av => av.id === profile.avatar);
+
 
   const markAllNotificationsRead = async () => {
     await notificationsAPI.markRead();
@@ -128,12 +131,21 @@ const Profile = () => {
     playSound('click');
     setAvatarLoading(true);
     try {
-      const updated = { ...profile, avatar: avatarId };
-      await storage.saveUserProfileAsync(updated);
-      setProfile(updated);
-      setShowAvatarSelector(false);
+      // Update via API
+      const result = await profileAPI.update({ avatar: avatarId });
+      if (result.ok) {
+        const updated = { ...profile, avatar: avatarId };
+        storage.saveUserProfile(updated); // Also save locally
+        setProfile(updated);
+        setShowAvatarSelector(false);
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      } else {
+        throw new Error('Failed to update avatar');
+      }
     } catch (error) {
       console.error('Failed to update avatar:', error);
+      if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+      tg.showPopup({ message: t('avatar_update_failed') || 'Failed to update avatar' });
     } finally {
       setAvatarLoading(false);
     }
@@ -226,6 +238,115 @@ const Profile = () => {
                     </div>
                 </motion.div>
             </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Avatar Selector Modal */}
+      <AnimatePresence>
+        {showAvatarSelector && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
+            onClick={() => setShowAvatarSelector(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.8, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-card border border-purple-500/50 rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-accent-cyan to-accent-pink" />
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-black uppercase tracking-wider text-purple-400">
+                  {t('select_avatar') || 'Select Avatar'}
+                </h3>
+                <button
+                  onClick={() => setShowAvatarSelector(false)}
+                  className="text-muted hover:text-primary transition-colors"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Server Avatars */}
+                {availableAvatars.length > 0 && (
+                  <div>
+                    <h4 className="text-xs uppercase tracking-wider text-muted mb-3">
+                      {t('server_avatars') || 'Server Avatars'}
+                    </h4>
+                    <div className="grid grid-cols-3 gap-3">
+                      {availableAvatars.map((avatar) => (
+                        <motion.button
+                          key={avatar.id}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleAvatarChange(avatar.id)}
+                          disabled={avatarLoading}
+                          className={`aspect-square rounded-xl border-2 overflow-hidden relative transition-all ${
+                            profile.avatar === avatar.id
+                              ? 'border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.6)]'
+                              : 'border-border hover:border-purple-500/50'
+                          } ${avatarLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          <img 
+                            src={avatar.url} 
+                            alt={avatar.name}
+                            className="w-full h-full object-cover"
+                          />
+                          {profile.avatar === avatar.id && (
+                            <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-400">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                            </div>
+                          )}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Default Avatars */}
+                <div>
+                  <h4 className="text-xs uppercase tracking-wider text-muted mb-3">
+                    {t('default_avatars') || 'Default Avatars'}
+                  </h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    {avatarOptions.map((avatar) => {
+                      const AvatarComponent = avatar.Component;
+                      return (
+                        <motion.button
+                          key={avatar.id}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleAvatarChange(avatar.id)}
+                          disabled={avatarLoading}
+                          className={`aspect-square rounded-xl border-2 overflow-hidden relative transition-all flex items-center justify-center ${
+                            profile.avatar === avatar.id && !serverAvatar
+                              ? 'border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.6)]'
+                              : 'border-border hover:border-purple-500/50'
+                          } ${avatarLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          <AvatarComponent className="w-full h-full" />
+                          {profile.avatar === avatar.id && !serverAvatar && (
+                            <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-400">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                            </div>
+                          )}
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -368,10 +489,32 @@ const Profile = () => {
                  </motion.button>
               </div>
 
-              <div className="text-center mb-2 mt-4">
+              <div className="text-center mb-4 mt-4 space-y-2">
                   <span className="bg-purple-500/20 text-purple-400 text-[10px] font-black uppercase px-2 py-0.5 rounded border border-purple-500/50">
-                      LVL {profile.level} • {profile.title}
+                      LVL {currentLevel} • {levelTitle}
                   </span>
+                  
+                  {/* XP Progress Bar */}
+                  <div className="w-full max-w-xs mx-auto">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[9px] text-muted uppercase tracking-wider">XP</span>
+                      <span className="text-[9px] text-muted font-bold">
+                        {currentXP} / {xpForLevel(currentLevel + 1)}
+                      </span>
+                    </div>
+                    <div className="h-2 bg-black/50 rounded-full overflow-hidden relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-purple-400 to-accent-cyan opacity-30"></div>
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${levelProgress.percentage}%` }}
+                        transition={{ duration: 1, delay: 0.3 }}
+                        className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-purple-500 to-accent-cyan h-full shadow-[0_0_10px_rgba(168,85,247,0.8)]"
+                      />
+                    </div>
+                    <div className="text-[8px] text-muted mt-1 text-center">
+                      {levelProgress.next - levelProgress.current} XP до следующего уровня
+                    </div>
+                  </div>
               </div>
 
               <h1 className="text-2xl font-black text-primary mb-1">
