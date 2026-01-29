@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const { z, validateBody } = require('../validation');
 const { normalizeDuel } = require('../services/duelsService');
 const { sendError } = require('../utils/errors');
+const { getXPReward } = require('../utils/xpSystem');
 const VALID_DUEL_STATUSES = ['pending', 'active', 'completed', 'shame'];
 const VALID_DUEL_SORT = ['created_at', 'deadline', 'title', 'status'];
 
@@ -230,7 +231,22 @@ const createDuelsRoutes = (pool, createLimiter) => {
         ]
       );
 
-      return res.json({ ok: true, id: duelId });
+      // Award XP for creating duel
+      const xpReward = getXPReward('create_duel');
+      if (xpReward > 0) {
+        try {
+          await pool.query(
+            `UPDATE profiles 
+             SET experience = experience + $1, total_xp_earned = total_xp_earned + $1, updated_at = now()
+             WHERE user_id = $2`,
+            [xpReward, userId]
+          );
+        } catch (xpError) {
+          console.warn('Failed to award XP for duel creation', xpError);
+        }
+      }
+
+      return res.json({ ok: true, id: duelId, xp: xpReward || 0 });
     } catch (error) {
       console.error('Create duel error:', error);
       return sendError(res, 500, 'DUEL_CREATE_FAILED', 'Failed to create duel');

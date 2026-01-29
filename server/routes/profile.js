@@ -79,6 +79,13 @@ const createProfileRoutes = (pool) => {
 
       if (settingsResult.rowCount > 0) {
         settings = normalizeSettings(settingsResult.rows[0]);
+        // Add streak info to settings
+        settings.streak = {
+          current: settingsResult.rows[0].current_streak || 0,
+          longest: settingsResult.rows[0].longest_streak || 0,
+          lastStreakDate: settingsResult.rows[0].last_streak_date,
+          freeSkips: settingsResult.rows[0].streak_free_skip || 0
+        };
       }
 
       const response = { ok: true, profile, settings };
@@ -238,28 +245,125 @@ const createProfileRoutes = (pool) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      // Update or create settings
-      const checkResult = await pool.query(
-        'SELECT user_id FROM user_settings WHERE user_id = $1',
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+      // Get current settings
+      const settingsResult = await pool.query(
+        'SELECT * FROM user_settings WHERE user_id = $1',
         [userId]
       );
 
-      if (checkResult.rowCount === 0) {
+      let currentStreak = 0;
+      let longestStreak = 0;
+      let lastStreakDate = null;
+      let freeSkips = 0;
+
+      if (settingsResult.rowCount > 0) {
+        currentStreak = settingsResult.rows[0].current_streak || 0;
+        longestStreak = settingsResult.rows[0].longest_streak || 0;
+        lastStreakDate = settingsResult.rows[0].last_streak_date;
+        freeSkips = settingsResult.rows[0].streak_free_skip || 0;
+      }
+
+      // Calculate streak
+      let newStreak = currentStreak;
+      let usedSkip = false;
+      let streakBonus = 0;
+
+      if (lastStreakDate) {
+        const lastDate = new Date(lastStreakDate);
+        const todayDate = new Date(today);
+        const daysDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
+
+        if (daysDiff === 1) {
+          // Continue streak
+          newStreak = currentStreak + 1;
+        } else if (daysDiff > 1) {
+          // Missed day(s)
+          if (freeSkips > 0 && daysDiff === 2) {
+            // Use free skip
+            newStreak = currentStreak + 1;
+            usedSkip = true;
+            freeSkips -= 1;
+          } else {
+            // Reset streak
+            newStreak = 1;
+          }
+        } else if (daysDiff === 0) {
+          // Already checked in today
+          newStreak = currentStreak;
+        }
+      } else {
+        // First check-in
+        newStreak = 1;
+      }
+
+      // Update longest streak
+      if (newStreak > longestStreak) {
+        longestStreak = newStreak;
+      }
+
+      // Calculate streak bonuses
+      if (newStreak === 3) streakBonus = 5;
+      else if (newStreak === 7) streakBonus = 15;
+      else if (newStreak === 14) streakBonus = 30;
+      else if (newStreak === 30) streakBonus = 100;
+      else if (newStreak === 100) streakBonus = 500;
+
+      // Award bonus reputation
+      if (streakBonus > 0) {
         await pool.query(
-          'INSERT INTO user_settings (user_id, last_check_in, checkin_notified_at) VALUES ($1, now(), NULL)',
-          [userId]
+          'UPDATE profiles SET reputation = reputation + $1 WHERE user_id = $2',
+          [streakBonus, userId]
+        );
+      }
+
+      // Award XP for check-in (10 XP)
+      const checkInXP = 10;
+      await pool.query(
+        `UPDATE profiles 
+         SET experience = experience + $1, total_xp_earned = total_xp_earned + $1, updated_at = now()
+         WHERE user_id = $2`,
+        [checkInXP, userId]
+      );
+
+      // Update or create settings
+      if (settingsResult.rowCount === 0) {
+        await pool.query(
+          `INSERT INTO user_settings 
+           (user_id, last_check_in, checkin_notified_at, current_streak, longest_streak, last_streak_date, streak_free_skip) 
+           VALUES ($1, now(), NULL, $2, $3, $4, $5)`,
+          [userId, newStreak, longestStreak, today, freeSkips]
         );
       } else {
         await pool.query(
-          'UPDATE user_settings SET last_check_in = now(), checkin_notified_at = NULL, updated_at = now() WHERE user_id = $1',
-          [userId]
+          `UPDATE user_settings 
+           SET last_check_in = now(), 
+               checkin_notified_at = NULL, 
+               current_streak = $1,
+               longest_streak = $2,
+               last_streak_date = $3,
+               streak_free_skip = $4,
+               updated_at = now() 
+           WHERE user_id = $5`,
+          [newStreak, longestStreak, today, freeSkips, userId]
         );
       }
 
       // Invalidate cache after check-in
       await cache.del(`profile:${userId}`);
 
-      return res.json({ ok: true, timestamp: Date.now() });
+      return res.json({ 
+        ok: true, 
+        timestamp: Date.now(),
+        streak: {
+          current: newStreak,
+          longest: longestStreak,
+          bonus: streakBonus,
+          usedSkip
+        },
+        xp: checkInXP
+      });
     } catch (error) {
       logger.error('Check-in error', error);
       return sendError(res, 500, 'CHECKIN_FAILED', 'Failed to check in');

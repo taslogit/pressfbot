@@ -257,6 +257,7 @@ const { createDuelsRoutes } = require('./routes/duels');
 const { createLegacyRoutes } = require('./routes/legacy');
 const { createNotificationsRoutes } = require('./routes/notifications');
 const { createTonRoutes } = require('./routes/ton');
+const { createDailyQuestsRoutes } = require('./routes/dailyQuests');
 const { normalizeLetter } = require('./services/lettersService');
 const { normalizeDuel } = require('./services/duelsService');
 const { normalizeLegacyItem } = require('./services/legacyService');
@@ -272,6 +273,7 @@ app.use('/api/duels', authMiddleware, createDuelsRoutes(pool, duelCreateLimiter)
 app.use('/api/legacy', authMiddleware, createLegacyRoutes(pool));
 app.use('/api/notifications', authMiddleware, createNotificationsRoutes(pool));
 app.use('/api/ton', authMiddleware, createTonRoutes(pool));
+app.use('/api/daily-quests', authMiddleware, createDailyQuestsRoutes(pool));
 
 // Global search across letters, duels, legacy (with rate limiting and pagination)
 app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {

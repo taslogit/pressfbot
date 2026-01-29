@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const { z, validateBody } = require('../validation');
 const { normalizeLetter } = require('../services/lettersService');
 const { sendError } = require('../utils/errors');
+const { getXPReward } = require('../utils/xpSystem');
 const VALID_LETTER_STATUSES = ['draft', 'scheduled', 'sent'];
 const VALID_LETTER_TYPES = ['generic', 'crypto', 'love', 'roast', 'confession'];
 const VALID_LETTER_SORT = ['created_at', 'unlock_date', 'title'];
@@ -237,7 +238,22 @@ const createLettersRoutes = (pool, createLimiter) => {
         ]
       );
 
-      return res.json({ ok: true, id: letterId });
+      // Award XP for creating letter
+      const xpReward = getXPReward('create_letter');
+      if (xpReward > 0) {
+        try {
+          await pool.query(
+            `UPDATE profiles 
+             SET experience = experience + $1, total_xp_earned = total_xp_earned + $1, updated_at = now()
+             WHERE user_id = $2`,
+            [xpReward, userId]
+          );
+        } catch (xpError) {
+          console.warn('Failed to award XP for letter creation', xpError);
+        }
+      }
+
+      return res.json({ ok: true, id: letterId, xp: xpReward || 0 });
     } catch (error) {
       console.error('Create letter error:', error);
       return sendError(res, 500, 'LETTER_CREATE_FAILED', 'Failed to create letter');

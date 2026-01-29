@@ -124,11 +124,16 @@ const createTables = async (pool) => {
         perks JSONB DEFAULT '[]',
         contracts JSONB DEFAULT '[]',
         ton_address VARCHAR(255),
+        experience INTEGER DEFAULT 0,
+        total_xp_earned INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT now(),
         updated_at TIMESTAMP DEFAULT now()
       )
     `);
     await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS ton_address VARCHAR(255)`);
+    // Gamification: Experience and Levels
+    await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS experience INTEGER DEFAULT 0`);
+    await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS total_xp_earned INTEGER DEFAULT 0`);
 
     // TON inheritance plans
     await pool.query(`
@@ -204,6 +209,11 @@ const createTables = async (pool) => {
     await pool.query(`ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS notifications_enabled BOOLEAN DEFAULT true`);
     await pool.query(`ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS telegram_notifications_enabled BOOLEAN DEFAULT true`);
     await pool.query(`ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS checkin_reminder_interval_minutes INTEGER DEFAULT 60`);
+    // Gamification: Streaks
+    await pool.query(`ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS current_streak INTEGER DEFAULT 0`);
+    await pool.query(`ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS longest_streak INTEGER DEFAULT 0`);
+    await pool.query(`ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS last_streak_date DATE`);
+    await pool.query(`ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS streak_free_skip INTEGER DEFAULT 0`);
 
     // Squads table
     await pool.query(`
@@ -254,6 +264,27 @@ const createTables = async (pool) => {
     `);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_quests_user_id ON quests(user_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_quests_completed ON quests(is_completed)`);
+
+    // Daily Quests table (Gamification)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS daily_quests (
+        id UUID PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        quest_type VARCHAR(50) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        target_count INTEGER DEFAULT 1,
+        current_count INTEGER DEFAULT 0,
+        reward INTEGER DEFAULT 10,
+        quest_date DATE NOT NULL,
+        is_completed BOOLEAN DEFAULT false,
+        is_claimed BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT now(),
+        updated_at TIMESTAMP DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_daily_quests_user_date ON daily_quests(user_id, quest_date)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_daily_quests_date ON daily_quests(quest_date)`);
 
     // Notification events log
     await pool.query(`
