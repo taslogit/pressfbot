@@ -1,5 +1,5 @@
 const normalizeProfile = (row) => ({
-  avatar: row.avatar || 'default',
+  avatar: row.avatar || 'pressf',
   bio: row.bio || 'No bio yet.',
   level: row.level || 1,
   title: row.title || 'Newbie',

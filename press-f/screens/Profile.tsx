@@ -10,16 +10,10 @@ import { UserProfile } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
 import { playSound } from '../utils/sound';
-import { AvatarNetRunner, AvatarGlitchSkull, AvatarNeonDemon, AvatarGhostOps } from '../components/Avatars';
 import { calculateLevel, getLevelProgress, getTitleForLevel, xpForLevel } from '../utils/levelSystem';
 
-const avatarOptions = [
-  { id: 'default', Component: AvatarNetRunner, name: 'NetRunner' },
-  { id: 'cyber', Component: AvatarNetRunner, name: 'NetRunner' }, // Legacy mapping
-  { id: 'punk', Component: AvatarGlitchSkull, name: 'Glitch' },
-  { id: 'demon', Component: AvatarNeonDemon, name: 'Oni' },
-  { id: 'anon', Component: AvatarGhostOps, name: 'Ghost' },
-];
+// Default avatar is pressf.jpg from server
+const DEFAULT_AVATAR_ID = 'pressf';
 
 // Icon Helper
 const getIcon = (name: string, props: any) => {
@@ -170,9 +164,15 @@ const Profile = () => {
     setProfile(updated);
   };
 
-  // Determine current avatar component
-  const CurrentAvatarObj = avatarOptions.find(a => a.id === profile.avatar) || avatarOptions[0];
-  const CurrentAvatar = CurrentAvatarObj.Component;
+  // Get current avatar (server avatar or default pressf.jpg)
+  const currentAvatar = serverAvatar || availableAvatars.find(av => av.id === DEFAULT_AVATAR_ID) || null;
+  
+  // If no avatar selected or avatar not found, use default
+  const displayAvatar = currentAvatar || {
+    id: DEFAULT_AVATAR_ID,
+    url: `/api/static/avatars/${DEFAULT_AVATAR_ID}.jpg`,
+    name: 'PressF'
+  };
 
 
   return (
@@ -212,8 +212,12 @@ const Profile = () => {
                 >
                     <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-accent-lime via-accent-cyan to-accent-pink" />
                     <div className="text-center">
-                        <div className="w-32 h-32 mx-auto mb-4 relative">
-                            <CurrentAvatar className="w-full h-full drop-shadow-[0_0_15px_rgba(0,224,255,0.5)]" />
+                        <div className="w-32 h-32 mx-auto mb-4 relative rounded-full overflow-hidden">
+                            <img 
+                              src={displayAvatar.url} 
+                              alt={displayAvatar.name}
+                              className="w-full h-full object-cover drop-shadow-[0_0_15px_rgba(0,224,255,0.5)]"
+                            />
                         </div>
                         <h2 className="text-2xl font-black text-white">{tg.initDataUnsafe?.user?.first_name}</h2>
                         <p className="text-accent-cyan font-mono tracking-widest text-xs mb-4">LVL {currentLevel} // {levelTitle}</p>
@@ -275,75 +279,53 @@ const Profile = () => {
 
               <div className="space-y-4">
                 {/* Server Avatars */}
-                {availableAvatars.length > 0 && (
+                {availableAvatars.length > 0 ? (
                   <div>
                     <h4 className="text-xs uppercase tracking-wider text-muted mb-3">
-                      {t('server_avatars') || 'Server Avatars'}
+                      {t('select_avatar') || 'Select Avatar'}
                     </h4>
                     <div className="grid grid-cols-3 gap-3">
-                      {availableAvatars.map((avatar) => (
-                        <motion.button
-                          key={avatar.id}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleAvatarChange(avatar.id)}
-                          disabled={avatarLoading}
-                          className={`aspect-square rounded-xl border-2 overflow-hidden relative transition-all ${
-                            profile.avatar === avatar.id
-                              ? 'border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.6)]'
-                              : 'border-border hover:border-purple-500/50'
-                          } ${avatarLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                          <img 
-                            src={avatar.url} 
-                            alt={avatar.name}
-                            className="w-full h-full object-cover"
-                          />
-                          {profile.avatar === avatar.id && (
-                            <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-400">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                              </svg>
-                            </div>
-                          )}
-                        </motion.button>
-                      ))}
+                      {availableAvatars.map((avatar) => {
+                        const isSelected = profile.avatar === avatar.id || (!profile.avatar && avatar.id === DEFAULT_AVATAR_ID);
+                        return (
+                          <motion.button
+                            key={avatar.id}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleAvatarChange(avatar.id)}
+                            disabled={avatarLoading}
+                            className={`aspect-square rounded-xl border-2 overflow-hidden relative transition-all ${
+                              isSelected
+                                ? 'border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.6)]'
+                                : 'border-border hover:border-purple-500/50'
+                            } ${avatarLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            <img 
+                              src={avatar.url} 
+                              alt={avatar.name}
+                              className="w-full h-full object-cover"
+                            />
+                            {isSelected && (
+                              <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-400">
+                                  <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                              </div>
+                            )}
+                            {avatar.id === DEFAULT_AVATAR_ID && (
+                              <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[8px] font-bold px-1 py-0.5 text-center">
+                                DEFAULT
+                              </div>
+                            )}
+                          </motion.button>
+                        );
+                      })}
                     </div>
                   </div>
-                )}
-
-                {/* Default Avatars */}
-                <div>
-                  <h4 className="text-xs uppercase tracking-wider text-muted mb-3">
-                    {t('default_avatars') || 'Default Avatars'}
-                  </h4>
-                  <div className="grid grid-cols-3 gap-3">
-                    {avatarOptions.map((avatar) => {
-                      const AvatarComponent = avatar.Component;
-                      return (
-                        <motion.button
-                          key={avatar.id}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleAvatarChange(avatar.id)}
-                          disabled={avatarLoading}
-                          className={`aspect-square rounded-xl border-2 overflow-hidden relative transition-all flex items-center justify-center ${
-                            profile.avatar === avatar.id && !serverAvatar
-                              ? 'border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.6)]'
-                              : 'border-border hover:border-purple-500/50'
-                          } ${avatarLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                          <AvatarComponent className="w-full h-full" />
-                          {profile.avatar === avatar.id && !serverAvatar && (
-                            <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-400">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                              </svg>
-                            </div>
-                          )}
-                        </motion.button>
-                      );
-                    })}
+                ) : (
+                  <div className="text-center text-muted text-sm py-8">
+                    {t('loading_avatars') || 'Loading avatars...'}
                   </div>
-                </div>
+                )}
               </div>
             </motion.div>
           </motion.div>
@@ -474,15 +456,11 @@ const Profile = () => {
                    onClick={() => setShowAvatarSelector(true)}
                    className="w-32 h-32 relative z-10 rounded-full overflow-hidden border-2 border-purple-500/30 hover:border-purple-500/60 transition-all"
                  >
-                   {serverAvatar ? (
-                     <img 
-                       src={serverAvatar.url} 
-                       alt={serverAvatar.name}
-                       className="w-full h-full object-cover drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]"
-                     />
-                   ) : (
-                     <CurrentAvatar className="w-full h-full drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]" />
-                   )}
+                   <img 
+                     src={displayAvatar.url} 
+                     alt={displayAvatar.name}
+                     className="w-full h-full object-cover drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+                   />
                    <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center">
                      <Edit2 size={16} className="opacity-0 hover:opacity-100 transition-opacity text-white" />
                    </div>

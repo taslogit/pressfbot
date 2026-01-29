@@ -409,7 +409,7 @@ export const storage = {
     if (result.ok && result.data?.profile) {
       const apiProfile = result.data.profile;
       const profile: UserProfile = {
-        avatar: apiProfile.avatar || 'default',
+        avatar: apiProfile.avatar || 'pressf',
         bio: apiProfile.bio || 'No bio yet.',
         level: apiProfile.level || 1,
         title: apiProfile.title || 'Newbie',
