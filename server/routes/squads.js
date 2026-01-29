@@ -151,36 +151,35 @@ const createSquadsRoutes = (pool) => {
 
   // PUT /api/squads/:id - Update squad
   router.put('/:id', async (req, res) => {
+    if (!pool) {
+      return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+    }
+
+    const userId = req.userId;
+    if (!userId) {
+      return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+    }
+
+    const squadId = req.params.id;
+    const { name, sharedPayload, pactHealth } = req.body;
+
+    // Validate squadId format
+    if (!squadId || !squadId.startsWith('squad_')) {
+      return sendError(res, 400, 'INVALID_SQUAD_ID', 'Invalid squad ID format');
+    }
+
+    // Validate sharedPayload size
+    if (sharedPayload !== undefined && sharedPayload !== null) {
+      if (typeof sharedPayload !== 'string') {
+        return sendError(res, 400, 'VALIDATION_ERROR', 'sharedPayload must be a string');
+      }
+      if (sharedPayload.length > MAX_SHARED_PAYLOAD_SIZE) {
+        return sendError(res, 400, 'PAYLOAD_TOO_LARGE', `sharedPayload exceeds ${MAX_SHARED_PAYLOAD_SIZE / 1024}KB limit`);
+      }
+    }
+
+    const client = await pool.connect();
     try {
-      if (!pool) {
-        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
-      }
-
-      const userId = req.userId;
-      if (!userId) {
-        return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
-      }
-
-      const squadId = req.params.id;
-      const { name, sharedPayload, pactHealth } = req.body;
-
-      // Validate squadId format
-      if (!squadId || !squadId.startsWith('squad_')) {
-        return sendError(res, 400, 'INVALID_SQUAD_ID', 'Invalid squad ID format');
-      }
-
-      // Validate sharedPayload size
-      if (sharedPayload !== undefined && sharedPayload !== null) {
-        if (typeof sharedPayload !== 'string') {
-          return sendError(res, 400, 'VALIDATION_ERROR', 'sharedPayload must be a string');
-        }
-        if (sharedPayload.length > MAX_SHARED_PAYLOAD_SIZE) {
-          return sendError(res, 400, 'PAYLOAD_TOO_LARGE', `sharedPayload exceeds ${MAX_SHARED_PAYLOAD_SIZE / 1024}KB limit`);
-        }
-      }
-
-      const client = await pool.connect();
-      try {
         await client.query('BEGIN');
 
         // Check if squad exists and user is creator (with lock)
