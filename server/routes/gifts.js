@@ -184,6 +184,14 @@ const createGiftsRoutes = (pool) => {
         return sendError(res, 400, 'INSUFFICIENT_REPUTATION', 'Not enough reputation (race condition detected)');
       }
 
+      // Security: Validate effect structure before saving
+      if (!giftConfig.effect || typeof giftConfig.effect !== 'object' || !giftConfig.effect.type) {
+        await client.query('ROLLBACK');
+        client.release();
+        logger.error('Invalid gift effect structure', { giftType, effect: giftConfig.effect });
+        return sendError(res, 500, 'INVALID_GIFT_CONFIG', 'Invalid gift effect configuration');
+      }
+
       // Create gift
       const giftId = uuidv4();
       await client.query(
@@ -223,11 +231,19 @@ const createGiftsRoutes = (pool) => {
 
       return res.json({ ok: true, giftId, cost: giftConfig.cost });
     } catch (error) {
-      await client.query('ROLLBACK').catch(() => {}); // Ignore rollback errors
-      logger.error('Send gift error:', { error: error?.message || error });
+      // Security: Ensure transaction is rolled back before releasing client
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        logger.error('Failed to rollback transaction in send gift', { error: rollbackError?.message });
+      }
+      logger.error('Send gift error:', { error: error?.message || error, stack: error?.stack });
       return sendError(res, 500, 'GIFT_SEND_FAILED', 'Failed to send gift');
     } finally {
-      client.release();
+      // Always release client, even if transaction failed
+      if (client) {
+        client.release();
+      }
     }
   });
 
@@ -356,11 +372,19 @@ const createGiftsRoutes = (pool) => {
 
       return res.json({ ok: true, effect: appliedEffect, reward });
     } catch (error) {
-      await client.query('ROLLBACK').catch(() => {}); // Ignore rollback errors
-      logger.error('Claim gift error:', { error: error?.message || error });
+      // Security: Ensure transaction is rolled back before releasing client
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        logger.error('Failed to rollback transaction in claim gift', { error: rollbackError?.message });
+      }
+      logger.error('Claim gift error:', { error: error?.message || error, stack: error?.stack });
       return sendError(res, 500, 'GIFT_CLAIM_FAILED', 'Failed to claim gift');
     } finally {
-      client.release();
+      // Always release client, even if transaction failed
+      if (client) {
+        client.release();
+      }
     }
   });
 

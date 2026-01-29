@@ -197,6 +197,17 @@ const createDuelsRoutes = (pool, createLimiter) => {
       const opponentNameValue = opponentIdValue ? null : (opponent || null);
       const loserIdValue = loser ? Number(loser) : null;
 
+      // Security: Validate opponent exists if opponentId is provided
+      if (opponentIdValue) {
+        const opponentCheck = await pool.query(
+          'SELECT user_id FROM profiles WHERE user_id = $1',
+          [opponentIdValue]
+        );
+        if (opponentCheck.rowCount === 0) {
+          return sendError(res, 404, 'OPPONENT_NOT_FOUND', 'Opponent not found');
+        }
+      }
+
       await pool.query(
         `INSERT INTO duels (
           id, challenger_id, opponent_id, opponent_name, title, stake, deadline,

@@ -17,10 +17,20 @@ const QUEST_TYPES = [
   { type: 'create_squad', title: 'Создай сквад', description: 'Собери команду', target: 1, reward: 15 }
 ];
 
+// Fisher-Yates shuffle algorithm for uniform distribution
+function shuffleArray(array) {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 // Generate 3 random daily quests for a user
 function generateDailyQuests(userId, date) {
-  // Shuffle and pick 3 random quests
-  const shuffled = [...QUEST_TYPES].sort(() => 0.5 - Math.random());
+  // Use Fisher-Yates shuffle for uniform distribution
+  const shuffled = shuffleArray([...QUEST_TYPES]);
   return shuffled.slice(0, 3).map(quest => ({
     id: uuidv4(),
     user_id: userId,
@@ -295,40 +305,58 @@ async function generateDailyQuestsForAllUsers(pool, date) {
     logger.info(`Generating daily quests for ${users.length} users`, { date: today });
 
     let generated = 0;
+    let errors = 0;
+    
+    // Security: Process each user separately to prevent one error from stopping the entire process
     for (const user of users) {
       const userId = user.user_id;
 
-      // Check if quests already exist for this date
-      const existingResult = await pool.query(
-        'SELECT id FROM daily_quests WHERE user_id = $1 AND quest_date = $2',
-        [userId, today]
-      );
+      try {
+        // Check if quests already exist for this date
+        const existingResult = await pool.query(
+          'SELECT id FROM daily_quests WHERE user_id = $1 AND quest_date = $2',
+          [userId, today]
+        );
 
-      if (existingResult.rowCount === 0) {
-        // Generate new quests
-        const newQuests = generateDailyQuests(userId, today);
-        for (const quest of newQuests) {
-          await pool.query(
-            `INSERT INTO daily_quests 
-             (id, user_id, quest_type, title, description, target_count, current_count, reward, quest_date, is_completed, is_claimed)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-            [
-              quest.id,
-              quest.user_id,
-              quest.quest_type,
-              quest.title,
-              quest.description,
-              quest.target_count,
-              quest.current_count,
-              quest.reward,
-              quest.quest_date,
-              quest.is_completed,
-              quest.is_claimed
-            ]
-          );
+        if (existingResult.rowCount === 0) {
+          // Generate new quests
+          const newQuests = generateDailyQuests(userId, today);
+          for (const quest of newQuests) {
+            await pool.query(
+              `INSERT INTO daily_quests 
+               (id, user_id, quest_type, title, description, target_count, current_count, reward, quest_date, is_completed, is_claimed)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+              [
+                quest.id,
+                quest.user_id,
+                quest.quest_type,
+                quest.title,
+                quest.description,
+                quest.target_count,
+                quest.current_count,
+                JSON.stringify(quest.reward),
+                quest.quest_date,
+                quest.is_completed,
+                quest.is_claimed
+              ]
+            );
+          }
+          generated++;
         }
-        generated++;
+      } catch (userError) {
+        // Log error for this user but continue with others
+        errors++;
+        logger.error('Failed to generate daily quests for user', {
+          userId,
+          error: userError?.message || userError,
+          stack: userError?.stack,
+          date: today
+        });
       }
+    }
+    
+    if (errors > 0) {
+      logger.warn('Some users failed to get daily quests', { errors, total: users.length, date: today });
     }
 
     logger.info(`Daily quests generation completed`, { generated, total: users.length });

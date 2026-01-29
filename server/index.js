@@ -205,8 +205,16 @@ if (USE_WEBHOOK) {
   // Error handling middleware for webhook
   app.use((err, req, res, next) => {
     if (req.path === '/bot') {
-      logger.error('Webhook error', { error: err?.message || err, path: req.path });
-      res.status(200).end(); // Telegram expects 200 even on errors
+      // Security: Log full error details but don't expose to client
+      logger.error('Webhook error', {
+        error: err?.message || err,
+        stack: err?.stack,
+        path: req.path,
+        method: req.method,
+        body: req.body ? JSON.stringify(req.body).substring(0, 200) : null
+      });
+      // Telegram expects 200 even on errors, but log the actual error
+      res.status(200).json({ ok: false, error: 'Internal error' });
       return;
     }
     next(err);

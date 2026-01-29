@@ -56,34 +56,91 @@ const createProfileRoutes = (pool) => {
         return res.json({ ok: true, ...cached, _cached: true });
       }
 
-      // Get profile from database
-      const profileResult = await pool.query(
-        'SELECT * FROM profiles WHERE user_id = $1',
-        [userId]
-      );
-
-      // Get settings from database
-      const settingsResult = await pool.query(
-        'SELECT * FROM user_settings WHERE user_id = $1',
+      // Optimization: Use single query with LEFT JOIN instead of two separate queries
+      const result = await pool.query(
+        `SELECT 
+          p.*,
+          us.user_id as settings_user_id,
+          us.dead_man_switch_days,
+          us.funeral_track,
+          us.language,
+          us.theme,
+          us.sound_enabled,
+          us.notifications_enabled,
+          us.telegram_notifications_enabled,
+          us.checkin_reminder_interval_minutes,
+          us.last_check_in,
+          us.checkin_notified_at,
+          us.current_streak,
+          us.longest_streak,
+          us.last_streak_date,
+          us.streak_free_skip,
+          us.created_at as settings_created_at,
+          us.updated_at as settings_updated_at
+         FROM profiles p
+         LEFT JOIN user_settings us ON p.user_id = us.user_id
+         WHERE p.user_id = $1`,
         [userId]
       );
 
       let profile = null;
       let settings = null;
 
-      if (profileResult.rowCount > 0) {
-        profile = normalizeProfile(profileResult.rows[0]);
-      }
+      if (result.rowCount > 0) {
+        const row = result.rows[0];
+        // Extract profile data
+        const profileData = { ...row };
+        // Remove settings fields from profile object
+        delete profileData.settings_user_id;
+        delete profileData.dead_man_switch_days;
+        delete profileData.funeral_track;
+        delete profileData.language;
+        delete profileData.theme;
+        delete profileData.sound_enabled;
+        delete profileData.notifications_enabled;
+        delete profileData.telegram_notifications_enabled;
+        delete profileData.checkin_reminder_interval_minutes;
+        delete profileData.last_check_in;
+        delete profileData.checkin_notified_at;
+        delete profileData.current_streak;
+        delete profileData.longest_streak;
+        delete profileData.last_streak_date;
+        delete profileData.streak_free_skip;
+        delete profileData.settings_created_at;
+        delete profileData.settings_updated_at;
+        
+        profile = normalizeProfile(profileData);
 
-      if (settingsResult.rowCount > 0) {
-        settings = normalizeSettings(settingsResult.rows[0]);
-        // Add streak info to settings
-        settings.streak = {
-          current: settingsResult.rows[0].current_streak || 0,
-          longest: settingsResult.rows[0].longest_streak || 0,
-          lastStreakDate: settingsResult.rows[0].last_streak_date,
-          freeSkips: settingsResult.rows[0].streak_free_skip || 0
-        };
+        // Extract settings data if exists
+        if (row.settings_user_id) {
+          const settingsData = {
+            user_id: row.settings_user_id,
+            dead_man_switch_days: row.dead_man_switch_days,
+            funeral_track: row.funeral_track,
+            language: row.language,
+            theme: row.theme,
+            sound_enabled: row.sound_enabled,
+            notifications_enabled: row.notifications_enabled,
+            telegram_notifications_enabled: row.telegram_notifications_enabled,
+            checkin_reminder_interval_minutes: row.checkin_reminder_interval_minutes,
+            last_check_in: row.last_check_in,
+            checkin_notified_at: row.checkin_notified_at,
+            current_streak: row.current_streak,
+            longest_streak: row.longest_streak,
+            last_streak_date: row.last_streak_date,
+            streak_free_skip: row.streak_free_skip,
+            created_at: row.settings_created_at,
+            updated_at: row.settings_updated_at
+          };
+          settings = normalizeSettings(settingsData);
+          // Add streak info to settings
+          settings.streak = {
+            current: row.current_streak || 0,
+            longest: row.longest_streak || 0,
+            lastStreakDate: row.last_streak_date,
+            freeSkips: row.streak_free_skip || 0
+          };
+        }
       }
 
       const response = { ok: true, profile, settings };

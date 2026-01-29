@@ -188,8 +188,25 @@ const createLettersRoutes = (pool, createLimiter) => {
         isFavorite
       } = req.body;
 
+      // Security: Generate ID on server to prevent conflicts
       const letterId = id || `letter_${Date.now()}_${uuidv4()}`;
-      const unlockDateValue = unlockDate ? new Date(unlockDate) : null;
+      
+      // Security: Validate unlock_date is not in the past
+      let unlockDateValue = unlockDate ? new Date(unlockDate) : null;
+      if (unlockDateValue && unlockDateValue < new Date()) {
+        return sendError(res, 400, 'INVALID_UNLOCK_DATE', 'unlock_date cannot be in the past');
+      }
+      
+      // Security: Check for duplicate letter ID (if ID was provided)
+      if (id) {
+        const existingLetter = await pool.query(
+          'SELECT id FROM letters WHERE id = $1',
+          [letterId]
+        );
+        if (existingLetter.rowCount > 0) {
+          return sendError(res, 409, 'LETTER_ID_EXISTS', 'Letter with this ID already exists');
+        }
+      }
 
       await pool.query(
         `INSERT INTO letters (
