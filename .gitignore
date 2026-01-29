@@ -4,3 +4,4 @@
 node_modules/
 dist/
 .DS_Store
+QA_AUDIT_FULL_REPORT.md
