@@ -13,6 +13,8 @@ import { playSound } from '../utils/sound';
 import { calculateLevel, getLevelProgress, getTitleForLevel, xpForLevel } from '../utils/levelSystem';
 import confetti from 'canvas-confetti';
 import ReferralSection from '../components/ReferralSection';
+import SendGiftModal from '../components/SendGiftModal';
+import { giftsAPI } from '../utils/api';
 
 // Default avatar is pressf.jpg from server
 const DEFAULT_AVATAR_ID = 'pressf';
@@ -44,6 +46,10 @@ const Profile = () => {
   const [availableAvatars, setAvailableAvatars] = useState<Array<{ id: string; name: string; url: string }>>([]);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
+  const [receivedGifts, setReceivedGifts] = useState<any[]>([]);
+  const [sentGifts, setSentGifts] = useState<any[]>([]);
+  const [showSendGiftModal, setShowSendGiftModal] = useState(false);
+  const [giftsLoading, setGiftsLoading] = useState(false);
   
   // Calculate level from experience (needed before state initialization)
   const currentXP = profile.experience || 0;
@@ -63,6 +69,9 @@ const Profile = () => {
     setShareHistory(storage.getShareHistory());
 
     // Avatars will be loaded lazily when avatar selector is opened
+    
+    // Load gifts
+    loadGifts();
 
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let idleId: number | null = null;
@@ -139,6 +148,42 @@ const Profile = () => {
     storage.saveUserProfileAsync(updated);
     setProfile(updated);
     setIsEditing(false);
+  };
+
+  const loadGifts = async () => {
+    try {
+      const result = await giftsAPI.getAll();
+      if (result.ok && result.data) {
+        setReceivedGifts(result.data.received || []);
+        setSentGifts(result.data.sent || []);
+      }
+    } catch (error) {
+      console.error('Failed to load gifts:', error);
+    }
+  };
+
+  const handleClaimGift = async (giftId: string) => {
+    playSound('click');
+    setGiftsLoading(true);
+    try {
+      const result = await giftsAPI.claim(giftId);
+      if (result.ok) {
+        playSound('success');
+        tg.showPopup({ message: t('gift_claimed') || 'Gift claimed!' });
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        await loadGifts();
+        // Refresh profile to get updated reputation
+        const apiProfile = await storage.getUserProfileAsync();
+        setProfile(apiProfile);
+      } else {
+        throw new Error(result.error || 'Failed to claim gift');
+      }
+    } catch (error: any) {
+      playSound('error');
+      tg.showPopup({ message: error.message || t('gift_claim_failed') || 'Failed to claim gift' });
+    } finally {
+      setGiftsLoading(false);
+    }
   };
 
   // Lazy load avatars when selector opens
@@ -704,24 +749,87 @@ const Profile = () => {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
+               {/* Received Gifts */}
                <div>
-                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1 flex items-center gap-2">
-                   <GiftIcon size={14} className="text-accent-pink" />
-                   {t('profile_gifts')}
-                 </h3>
-                 <div className="grid grid-cols-3 gap-3">
-                    {profile.gifts.map(gift => (
-                      <div key={gift.id} className="aspect-square rounded-xl border flex flex-col items-center justify-center gap-2 relative overflow-hidden bg-card border-border">
-                        <span className="text-3xl filter drop-shadow-md">{gift.icon}</span>
-                        <p className="text-[9px] font-bold leading-tight text-center px-1">{gift.name}</p>
-                      </div>
-                    ))}
+                 <div className="flex justify-between items-center mb-3">
+                   <h3 className="text-xs font-bold text-muted uppercase tracking-wider ml-1 flex items-center gap-2">
+                     <GiftIcon size={14} className="text-accent-pink" />
+                     {t('received_gifts') || 'Received Gifts'}
+                   </h3>
+                   <button
+                     onClick={() => setShowSendGiftModal(true)}
+                     className="text-[10px] uppercase tracking-wider text-accent-pink hover:text-accent-cyan transition-colors"
+                   >
+                     {t('send_gift') || 'Send Gift'}
+                   </button>
                  </div>
+                 {receivedGifts.length === 0 ? (
+                   <div className="text-center py-8 text-muted text-xs">
+                     {t('no_gifts') || 'No gifts received yet'}
+                   </div>
+                 ) : (
+                   <div className="grid grid-cols-3 gap-3">
+                     {receivedGifts.map(gift => (
+                       <motion.div
+                         key={gift.id}
+                         whileTap={{ scale: 0.95 }}
+                         onClick={() => !gift.isClaimed && handleClaimGift(gift.id)}
+                         className={`aspect-square rounded-xl border flex flex-col items-center justify-center gap-2 relative overflow-hidden transition-all ${
+                           gift.isClaimed
+                             ? 'bg-card/30 border-border opacity-60'
+                             : 'bg-card border-accent-pink/50 hover:border-accent-pink cursor-pointer'
+                         }`}
+                       >
+                         <span className="text-3xl filter drop-shadow-md">{gift.icon}</span>
+                         <p className="text-[9px] font-bold leading-tight text-center px-1">{gift.name}</p>
+                         {!gift.isClaimed && (
+                           <div className="absolute top-1 right-1 w-2 h-2 bg-accent-pink rounded-full animate-pulse" />
+                         )}
+                         {gift.isClaimed && (
+                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                             <span className="text-[8px] text-muted">✓</span>
+                           </div>
+                         )}
+                       </motion.div>
+                     ))}
+                   </div>
+                 )}
                </div>
+
+               {/* Sent Gifts */}
+               {sentGifts.length > 0 && (
+                 <div>
+                   <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">
+                     {t('sent_gifts') || 'Sent Gifts'}
+                   </h3>
+                   <div className="grid grid-cols-3 gap-3">
+                     {sentGifts.slice(0, 6).map(gift => (
+                       <div key={gift.id} className="aspect-square rounded-xl border flex flex-col items-center justify-center gap-2 relative overflow-hidden bg-card/30 border-border opacity-60">
+                         <span className="text-3xl filter drop-shadow-md">{gift.icon}</span>
+                         <p className="text-[9px] font-bold leading-tight text-center px-1">{gift.name}</p>
+                         {gift.isClaimed && (
+                           <div className="absolute top-1 right-1 w-2 h-2 bg-accent-lime rounded-full" />
+                         )}
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               )}
             </motion.div>
           )}
         </AnimatePresence>
 
+        {/* Send Gift Modal */}
+        <SendGiftModal
+          isOpen={showSendGiftModal}
+          onClose={() => setShowSendGiftModal(false)}
+          recipientId={0} // Will be set when selecting user
+          onGiftSent={async () => {
+            await loadGifts();
+            const apiProfile = await storage.getUserProfileAsync();
+            setProfile(apiProfile);
+          }}
+        />
       </div>
     </div>
   );

@@ -72,10 +72,23 @@ export interface Witness {
 
 export interface Gift {
   id: string;
+  type: string;
   name: string;
   icon: string; // emoji or url
   rarity: 'common' | 'rare' | 'legendary';
-  from: string;
+  from?: number; // sender user_id
+  to?: number; // recipient user_id
+  message?: string;
+  isClaimed?: boolean;
+  claimedAt?: string;
+  createdAt?: string;
+  effect?: {
+    type: string;
+    value?: any;
+    description?: string;
+    duration?: number;
+    bonusXP?: number;
+  };
 }
 
 export interface Achievement {

@@ -270,6 +270,7 @@ const { createNotificationsRoutes } = require('./routes/notifications');
 const { createTonRoutes } = require('./routes/ton');
 const { createDailyQuestsRoutes, generateDailyQuestsForAllUsers } = require('./routes/dailyQuests');
 const { createAvatarsRoutes } = require('./routes/avatars');
+const { createGiftsRoutes } = require('./routes/gifts');
 const { normalizeLetter } = require('./services/lettersService');
 const { normalizeDuel } = require('./services/duelsService');
 const { normalizeLegacyItem } = require('./services/legacyService');
@@ -287,6 +288,7 @@ app.use('/api/notifications', authMiddleware, createNotificationsRoutes(pool));
 app.use('/api/ton', authMiddleware, createTonRoutes(pool));
 app.use('/api/daily-quests', authMiddleware, createDailyQuestsRoutes(pool));
 app.use('/api/avatars', createAvatarsRoutes()); // No auth needed for public avatars list
+app.use('/api/gifts', authMiddleware, createGiftsRoutes(pool));
 
 // Global search across letters, duels, legacy (with rate limiting and pagination)
 app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {

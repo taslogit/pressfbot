@@ -515,7 +515,23 @@ export const translations = {
     next_milestone: "Next Milestone",
     referrals: "referrals",
     reward: "Reward",
-    your_referrals: "Your Referrals"
+    your_referrals: "Your Referrals",
+    
+    // Gifts System
+    send_gift: "Send Gift",
+    select_gift: "Please select a gift",
+    select_gift_type: "Gift Type",
+    gift_sent: "Gift sent!",
+    gift_send_failed: "Failed to send gift",
+    gift_claimed: "Gift claimed!",
+    gift_claim_failed: "Failed to claim gift",
+    received_gifts: "Received Gifts",
+    sent_gifts: "Sent Gifts",
+    no_gifts: "No gifts yet",
+    message_optional: "Message (optional)",
+    gift_message_placeholder: "Add a message...",
+    sending: "Sending...",
+    to: "To"
   },
   ru: {
     app_title: "PRESS F",
@@ -1031,6 +1047,22 @@ export const translations = {
     referrals: "рефералов",
     reward: "Награда",
     your_referrals: "Ваши рефералы",
-    views: "просмотров"
+    views: "просмотров",
+    
+    // Gifts System
+    send_gift: "Отправить подарок",
+    select_gift: "Выберите подарок",
+    select_gift_type: "Тип подарка",
+    gift_sent: "Подарок отправлен!",
+    gift_send_failed: "Не удалось отправить подарок",
+    gift_claimed: "Подарок получен!",
+    gift_claim_failed: "Не удалось получить подарок",
+    received_gifts: "Полученные подарки",
+    sent_gifts: "Отправленные подарки",
+    no_gifts: "Подарков пока нет",
+    message_optional: "Сообщение (необязательно)",
+    gift_message_placeholder: "Добавьте сообщение...",
+    sending: "Отправка...",
+    to: "Кому"
   }
 };

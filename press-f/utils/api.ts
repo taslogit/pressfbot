@@ -271,6 +271,27 @@ export const avatarsAPI = {
   },
 };
 
+// Gifts API
+export const giftsAPI = {
+  getAll: async () => {
+    return apiRequest<{ received: any[]; sent: any[] }>('/api/gifts');
+  },
+  getTypes: async () => {
+    return apiRequest<{ types: any[] }>('/api/gifts/types');
+  },
+  send: async (recipientId: number, giftType: string, message?: string) => {
+    return apiRequest<{ giftId: string; cost: number }>('/api/gifts', {
+      method: 'POST',
+      body: JSON.stringify({ recipientId, giftType, message }),
+    });
+  },
+  claim: async (giftId: string) => {
+    return apiRequest<{ effect: any; reward: number }>(`/api/gifts/${giftId}/claim`, {
+      method: 'POST',
+    });
+  },
+};
+
 export const tonAPI = {
   createInheritancePlan: async (payload: {
     recipients: { address: string; amount: number }[];

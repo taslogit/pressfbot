@@ -325,6 +325,28 @@ const createTables = async (pool) => {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_referral_events_referrer ON referral_events(referrer_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_referral_events_referred ON referral_events(referred_id)`);
 
+    // Gifts table (Gamification)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS gifts (
+        id UUID PRIMARY KEY,
+        sender_id BIGINT NOT NULL,
+        recipient_id BIGINT NOT NULL,
+        gift_type VARCHAR(50) NOT NULL,
+        gift_name VARCHAR(255) NOT NULL,
+        gift_icon VARCHAR(10),
+        rarity VARCHAR(20) DEFAULT 'common',
+        cost INTEGER DEFAULT 0,
+        effect JSONB,
+        message TEXT,
+        is_claimed BOOLEAN DEFAULT false,
+        claimed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_gifts_sender ON gifts(sender_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_gifts_recipient ON gifts(recipient_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_gifts_recipient_claimed ON gifts(recipient_id, is_claimed)`);
+
     console.log('✅ All tables created successfully');
     return true;
   } catch (error) {
