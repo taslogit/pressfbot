@@ -182,11 +182,7 @@ const Landing = () => {
           }
         }
         
-        // Check Quest
-        storage.checkQuestTrigger('check_in');
-        const quests = storage.getQuests();
-        const next = quests.find(q => !q.isCompleted);
-        setActiveQuest(next || null);
+        // Old quests system removed - Daily Quests are handled by DailyQuests component
 
         if (window.navigator && window.navigator.vibrate) {
           window.navigator.vibrate([50, 50, 50]);
@@ -474,32 +470,11 @@ const Landing = () => {
       
       {/* NOTIFICATIONS CONTAINER */}
       <div className="space-y-2 relative z-20">
-         {/* ACTIVE MISSION WIDGET */}
-         <AnimatePresence>
-            {activeQuest && (
-               <motion.div 
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  onClick={() => setShowQuestLog(true)}
-                  className="cursor-pointer"
-               >
-                  <div className="bg-gradient-to-r from-accent-cyan/20 to-blue-600/20 border border-accent-cyan/50 rounded-xl p-3 flex items-center justify-between shadow-[0_0_15px_rgba(0,224,255,0.2)] group">
-                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-accent-cyan text-black rounded-lg">
-                           <Target size={20} className="animate-spin-slow" />
-                        </div>
-                        <div>
-                           <h4 className="font-black text-[10px] text-accent-cyan uppercase tracking-widest mb-0.5">{t('active_mission')}</h4>
-                           <p className="text-xs font-bold text-white">{t(activeQuest.titleKey as any)}</p>
-                        </div>
-                     </div>
-                     <ChevronRight className="text-accent-cyan opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-                  </div>
-               </motion.div>
-            )}
-         </AnimatePresence>
-
+         {/* Daily Quests Widget - handled by DailyQuests component */}
+         <DailyQuests />
+         
+         {/* Streak Indicator */}
+         <StreakIndicator />
       </div>
 
       {/* System Log Widget */}
