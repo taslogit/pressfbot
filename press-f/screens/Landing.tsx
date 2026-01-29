@@ -16,6 +16,7 @@ import QuestLog from '../components/QuestLog';
 import StreakIndicator from '../components/StreakIndicator';
 import DailyQuests from '../components/DailyQuests';
 import XPNotification from '../components/XPNotification';
+import SeasonalEvents from '../components/SeasonalEvents';
 import { Quest } from '../types';
 import { profileAPI } from '../utils/api';
 
@@ -559,6 +560,11 @@ const Landing = () => {
             </motion.div>
 
          </div>
+      </div>
+
+      {/* Seasonal Events */}
+      <div className="relative z-10">
+        <SeasonalEvents />
       </div>
 
       {/* Primary Action - Compact Button Style */}
