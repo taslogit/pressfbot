@@ -319,49 +319,50 @@ async function generateDailyQuestsForAllUsers(pool, date) {
       
       // Security: Process each user separately to prevent one error from stopping the entire process
       for (const user of batch) {
-      const userId = user.user_id;
+        const userId = user.user_id;
 
-      try {
-        // Check if quests already exist for this date
-        const existingResult = await pool.query(
-          'SELECT id FROM daily_quests WHERE user_id = $1 AND quest_date = $2',
-          [userId, today]
-        );
+        try {
+          // Check if quests already exist for this date
+          const existingResult = await pool.query(
+            'SELECT id FROM daily_quests WHERE user_id = $1 AND quest_date = $2',
+            [userId, today]
+          );
 
-        if (existingResult.rowCount === 0) {
-          // Generate new quests
-          const newQuests = generateDailyQuests(userId, today);
-          for (const quest of newQuests) {
-            await pool.query(
-              `INSERT INTO daily_quests 
-               (id, user_id, quest_type, title, description, target_count, current_count, reward, quest_date, is_completed, is_claimed)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-              [
-                quest.id,
-                quest.user_id,
-                quest.quest_type,
-                quest.title,
-                quest.description,
-                quest.target_count,
-                quest.current_count,
-                JSON.stringify(quest.reward),
-                quest.quest_date,
-                quest.is_completed,
-                quest.is_claimed
-              ]
-            );
+          if (existingResult.rowCount === 0) {
+            // Generate new quests
+            const newQuests = generateDailyQuests(userId, today);
+            for (const quest of newQuests) {
+              await pool.query(
+                `INSERT INTO daily_quests 
+                 (id, user_id, quest_type, title, description, target_count, current_count, reward, quest_date, is_completed, is_claimed)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+                [
+                  quest.id,
+                  quest.user_id,
+                  quest.quest_type,
+                  quest.title,
+                  quest.description,
+                  quest.target_count,
+                  quest.current_count,
+                  JSON.stringify(quest.reward),
+                  quest.quest_date,
+                  quest.is_completed,
+                  quest.is_claimed
+                ]
+              );
+            }
+            generated++;
           }
-          generated++;
+        } catch (userError) {
+          // Log error for this user but continue with others
+          errors++;
+          logger.error('Failed to generate daily quests for user', {
+            userId,
+            error: userError?.message || userError,
+            stack: userError?.stack,
+            date: today
+          });
         }
-      } catch (userError) {
-        // Log error for this user but continue with others
-        errors++;
-        logger.error('Failed to generate daily quests for user', {
-          userId,
-          error: userError?.message || userError,
-          stack: userError?.stack,
-          date: today
-        });
       }
     }
     
