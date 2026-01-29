@@ -143,18 +143,72 @@ const createLettersRoutes = (pool, createLimiter) => {
         paramIndex += 1;
       }
 
-      values.push(limit, offset);
-      const orderDir = order.toUpperCase();
-      const result = await pool.query(
-        `SELECT * FROM letters WHERE ${conditions.join(' AND ')}
-         ORDER BY ${sortBy} ${orderDir} NULLS LAST
-         LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
-        values
-      );
+      // Optimization: Support cursor-based pagination for better performance with large offsets
+      const cursor = req.query.cursor; // Optional cursor for cursor-based pagination
+      let result;
+      
+      if (cursor && sortBy === 'created_at') {
+        // Use cursor-based pagination for created_at sorting (most common case)
+        try {
+          const cursorDate = new Date(cursor);
+          if (isNaN(cursorDate.getTime())) {
+            return sendError(res, 400, 'INVALID_CURSOR', 'Invalid cursor format');
+          }
+          
+          conditions.push(`created_at ${order === 'desc' ? '<' : '>'} $${paramIndex++}`);
+          values.push(cursorDate);
+          
+          const orderDir = order.toUpperCase();
+          result = await pool.query(
+            `SELECT * FROM letters WHERE ${conditions.join(' AND ')}
+             ORDER BY ${sortBy} ${orderDir} NULLS LAST
+             LIMIT $${paramIndex}`,
+            [...values, limit]
+          );
+        } catch (cursorError) {
+          // Fallback to offset-based pagination if cursor is invalid
+          logger.warn('Invalid cursor, falling back to offset pagination', { cursor, error: cursorError?.message });
+          values.push(limit, offset);
+          const orderDir = order.toUpperCase();
+          result = await pool.query(
+            `SELECT * FROM letters WHERE ${conditions.join(' AND ')}
+             ORDER BY ${sortBy} ${orderDir} NULLS LAST
+             LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
+            values
+          );
+        }
+      } else {
+        // Use offset-based pagination (for other sort fields or when cursor not provided)
+        values.push(limit, offset);
+        const orderDir = order.toUpperCase();
+        result = await pool.query(
+          `SELECT * FROM letters WHERE ${conditions.join(' AND ')}
+           ORDER BY ${sortBy} ${orderDir} NULLS LAST
+           LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
+          values
+        );
+      }
 
       const letters = result.rows.map(normalizeLetter);
+      
+      // Generate next cursor if using cursor-based pagination
+      const nextCursor = cursor && letters.length === limit && letters.length > 0
+        ? letters[letters.length - 1].createdAt
+        : null;
 
-      return res.json({ ok: true, letters, meta: { limit, offset, sortBy, order, q: query || '' } });
+      return res.json({ 
+        ok: true, 
+        letters, 
+        meta: { 
+          limit, 
+          offset: cursor ? undefined : offset, 
+          cursor: nextCursor,
+          sortBy, 
+          order, 
+          q: query || '',
+          hasMore: letters.length === limit
+        } 
+      });
     } catch (error) {
       logger.error('Get letters error:', error);
       return sendError(res, 500, 'LETTERS_FETCH_FAILED', 'Failed to fetch letters');
@@ -187,6 +241,23 @@ const createLettersRoutes = (pool, createLimiter) => {
         ipfsHash,
         isFavorite
       } = req.body;
+
+      // Security: Validate string lengths on server (in addition to Zod validation)
+      if (title && typeof title === 'string' && title.length > MAX_TITLE_SIZE) {
+        return sendError(res, 400, 'VALIDATION_ERROR', `Title exceeds maximum length of ${MAX_TITLE_SIZE} characters`);
+      }
+      if (content && typeof content === 'string' && content.length > MAX_CONTENT_SIZE) {
+        return sendError(res, 400, 'VALIDATION_ERROR', `Content exceeds maximum size of ${Math.round(MAX_CONTENT_SIZE / 1024 / 1024)}MB`);
+      }
+      if (encryptedContent && typeof encryptedContent === 'string' && encryptedContent.length > MAX_CONTENT_SIZE) {
+        return sendError(res, 400, 'VALIDATION_ERROR', `Encrypted content exceeds maximum size of ${Math.round(MAX_CONTENT_SIZE / 1024 / 1024)}MB`);
+      }
+      if (recipients && Array.isArray(recipients) && recipients.length > MAX_RECIPIENTS) {
+        return sendError(res, 400, 'VALIDATION_ERROR', `Recipients list exceeds maximum of ${MAX_RECIPIENTS} recipients`);
+      }
+      if (attachments && Array.isArray(attachments) && attachments.length > MAX_ATTACHMENTS) {
+        return sendError(res, 400, 'VALIDATION_ERROR', `Attachments list exceeds maximum of ${MAX_ATTACHMENTS} attachments`);
+      }
 
       // Security: Generate ID on server to prevent conflicts
       const letterId = id || `letter_${Date.now()}_${uuidv4()}`;

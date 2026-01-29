@@ -159,7 +159,15 @@ const createActivityRoutes = (pool) => {
 // Utility function to log activity (used by other routes)
 async function logActivity(pool, userId, activityType, activityData, targetId = null, targetType = null, isPublic = true) {
   if (!pool || !userId || !activityType) {
+    logger.debug('Activity logging skipped - missing required parameters', { userId, activityType, hasPool: !!pool });
     return;
+  }
+
+  // Security: Validate activity data size to prevent abuse
+  const activityDataStr = JSON.stringify(activityData || {});
+  if (activityDataStr.length > 10000) { // 10KB limit for activity data
+    logger.warn('Activity data too large, truncating', { userId, activityType, size: activityDataStr.length });
+    activityData = { ...activityData, _truncated: true };
   }
 
   try {
@@ -179,13 +187,23 @@ async function logActivity(pool, userId, activityType, activityData, targetId = 
       ]
     );
 
-    // Invalidate cache
-    await cache.delByPattern('activity:*');
+    // Invalidate cache (non-blocking)
+    cache.delByPattern('activity:*').catch(err => {
+      logger.debug('Failed to invalidate activity cache', { error: err?.message });
+    });
 
     logger.debug('Activity logged', { userId, activityType, activityId });
   } catch (error) {
-    logger.error('Log activity error:', { error: error?.message || error, userId, activityType });
-    // Don't throw - activity logging is non-critical
+    // Security: Log full error details but don't throw - activity logging is non-critical
+    logger.error('Log activity error:', { 
+      error: error?.message || error, 
+      stack: error?.stack,
+      userId, 
+      activityType,
+      targetId,
+      targetType
+    });
+    // Don't throw - activity logging failures should not affect main request
   }
 }
 
