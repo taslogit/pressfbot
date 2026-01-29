@@ -263,8 +263,14 @@ const createDuelsRoutes = (pool, createLimiter) => {
       const userId = req.userId;
       const duelId = req.params.id;
 
+      // Allow viewing public duels even if user is not participant
       const result = await pool.query(
-        `SELECT * FROM duels WHERE id = $1 AND (challenger_id = $2 OR opponent_id = $2)`,
+        `SELECT * FROM duels 
+         WHERE id = $1 AND (
+           challenger_id = $2 OR 
+           opponent_id = $2 OR 
+           (is_public = true AND status != 'shame')
+         )`,
         [duelId, userId]
       );
 
@@ -273,6 +279,43 @@ const createDuelsRoutes = (pool, createLimiter) => {
       }
 
       const duel = normalizeDuel(result.rows[0]);
+
+      // Increment view count for public duels (if not the owner)
+      if (duel.isPublic && duel.challengerId !== userId && duel.opponentId !== userId) {
+        await pool.query(
+          `UPDATE duels 
+           SET views_count = views_count + 1, last_viewed_at = now()
+           WHERE id = $1`,
+          [duelId]
+        );
+
+        // Check for view milestones and award reputation
+        const updatedResult = await pool.query(
+          'SELECT views_count FROM duels WHERE id = $1',
+          [duelId]
+        );
+        const newViewsCount = updatedResult.rows[0]?.views_count || 0;
+        
+        // Milestones: 100, 500, 1000 views
+        const milestones = [100, 500, 1000];
+        const milestone = milestones.find(m => newViewsCount === m);
+        
+        if (milestone) {
+          let reward = 0;
+          if (milestone === 100) reward = 50;
+          else if (milestone === 500) reward = 200;
+          else if (milestone === 1000) reward = 500;
+
+          if (reward > 0) {
+            await pool.query(
+              `UPDATE profiles 
+               SET reputation = reputation + $1, updated_at = now()
+               WHERE user_id = $2`,
+              [reward, duel.challengerId]
+            );
+          }
+        }
+      }
 
       return res.json({ ok: true, duel });
     } catch (error) {
@@ -406,6 +449,100 @@ const createDuelsRoutes = (pool, createLimiter) => {
     } catch (error) {
       console.error('Delete duel error:', error);
       return sendError(res, 500, 'DUEL_DELETE_FAILED', 'Failed to delete duel');
+    }
+  });
+
+  // POST /api/duels/:id/view - Increment view count (for public duels)
+  router.post('/:id/view', async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+
+      const userId = req.userId;
+      const duelId = req.params.id;
+
+      // Get duel info
+      const duelResult = await pool.query(
+        'SELECT * FROM duels WHERE id = $1',
+        [duelId]
+      );
+
+      if (duelResult.rowCount === 0) {
+        return sendError(res, 404, 'DUEL_NOT_FOUND', 'Duel not found');
+      }
+
+      const duel = duelResult.rows[0];
+
+      // Only count views for public duels and not by owner
+      if (duel.is_public && duel.challenger_id !== userId && duel.opponent_id !== userId) {
+        await pool.query(
+          `UPDATE duels 
+           SET views_count = views_count + 1, last_viewed_at = now()
+           WHERE id = $1`,
+          [duelId]
+        );
+
+        // Check for view milestones
+        const updatedResult = await pool.query(
+          'SELECT views_count FROM duels WHERE id = $1',
+          [duelId]
+        );
+        const newViewsCount = updatedResult.rows[0]?.views_count || 0;
+        
+        const milestones = [100, 500, 1000];
+        const milestone = milestones.find(m => newViewsCount === m);
+        
+        if (milestone) {
+          let reward = 0;
+          if (milestone === 100) reward = 50;
+          else if (milestone === 500) reward = 200;
+          else if (milestone === 1000) reward = 500;
+
+          if (reward > 0) {
+            await pool.query(
+              `UPDATE profiles 
+               SET reputation = reputation + $1, updated_at = now()
+               WHERE user_id = $2`,
+              [reward, duel.challenger_id]
+            );
+          }
+        }
+
+        return res.json({ ok: true, viewsCount: newViewsCount, milestone });
+      }
+
+      return res.json({ ok: true });
+    } catch (error) {
+      console.error('View duel error:', error);
+      return sendError(res, 500, 'DUEL_VIEW_FAILED', 'Failed to record view');
+    }
+  });
+
+  // GET /api/duels/hype - Get top public duels by views
+  router.get('/hype', async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+
+      const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+      const status = req.query.status || 'active';
+
+      const result = await pool.query(
+        `SELECT * FROM duels 
+         WHERE is_public = true AND status = $1 AND status != 'shame'
+         ORDER BY views_count DESC, created_at DESC
+         LIMIT $2`,
+        [status, limit]
+      );
+
+      const duels = result.rows.map(row => normalizeDuel(row));
+
+      return res.json({ ok: true, duels });
+    } catch (error) {
+      console.error('Get hype duels error:', error);
+      return sendError(res, 500, 'HYPE_FETCH_FAILED', 'Failed to fetch hype duels');
     }
   });
 

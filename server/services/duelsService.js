@@ -8,8 +8,12 @@ const normalizeDuel = (row) => ({
   isPublic: row.is_public,
   isTeam: row.is_team,
   witnessCount: row.witness_count || 0,
+  viewsCount: row.views_count || 0,
+  lastViewedAt: row.last_viewed_at?.toISOString(),
   loser: row.loser_id ? row.loser_id.toString() : undefined,
-  isFavorite: row.is_favorite || false
+  isFavorite: row.is_favorite || false,
+  challengerId: row.challenger_id,
+  opponentId: row.opponent_id
 });
 
 module.exports = { normalizeDuel };

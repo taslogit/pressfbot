@@ -415,6 +415,7 @@ export const translations = {
     join_hype: "Watch",
     share_profile: "Share",
     level_label: "LVL",
+    views: "views",
     daily_loot: "DAILY CRATE",
     claim_loot: "OPEN",
     loot_claimed: "+50 REP",
@@ -1029,6 +1030,7 @@ export const translations = {
     next_milestone: "Следующий milestone",
     referrals: "рефералов",
     reward: "Награда",
-    your_referrals: "Ваши рефералы"
+    your_referrals: "Ваши рефералы",
+    views: "просмотров"
   }
 };

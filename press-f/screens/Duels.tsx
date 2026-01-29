@@ -15,6 +15,7 @@ import EnvelopeAnimation from '../components/EnvelopeAnimation';
 import { playSound } from '../utils/sound';
 import XPNotification from '../components/XPNotification';
 import { calculateLevel } from '../utils/levelSystem';
+import { duelsAPI } from '../utils/api';
 
 type DuelTab = 'mine' | 'hype' | 'shame';
 
@@ -96,7 +97,31 @@ const Duels = () => {
       setShowSkeleton(false);
       if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current);
       skeletonTimerRef.current = setTimeout(() => setShowSkeleton(true), 300);
-      storage.getDuelsAsync(buildQueryParams()).then((apiDuels) => {
+      
+      // Use hype API for hype tab, regular API for others
+      const loadPromise = activeTab === 'hype'
+        ? duelsAPI.getHype(buildQueryParams()).then(result => {
+            if (result.ok && result.data?.duels) {
+              return result.data.duels.map((d: any) => ({
+                id: d.id,
+                title: d.title,
+                stake: d.stake,
+                opponent: d.opponent || '',
+                status: d.status,
+                deadline: d.deadline,
+                isPublic: d.isPublic,
+                isTeam: d.isTeam,
+                witnessCount: d.witnessCount,
+                viewsCount: d.viewsCount || 0,
+                loser: d.loser,
+                isFavorite: d.isFavorite || false
+              }));
+            }
+            return [];
+          })
+        : storage.getDuelsAsync(buildQueryParams());
+      
+      loadPromise.then((apiDuels) => {
         if (isMounted) {
           setDuels(apiDuels);
           const wins = apiDuels.filter((d) =>
@@ -291,7 +316,7 @@ const Duels = () => {
     const myDuels = duels.filter(d => (!d.isPublic || d.id.length > 5) && d.status !== 'shame'); 
     const hypeDuels = duels
       .filter(d => d.isPublic && d.status !== 'shame')
-      .sort((a, b) => (b.witnessCount || 0) - (a.witnessCount || 0));
+      .sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0)); // Sort by views for hype
     const shameDuels = duels.filter(d => d.status === 'shame');
     return activeTab === 'mine' ? myDuels : activeTab === 'hype' ? hypeDuels : shameDuels;
   }, [duels, activeTab]);
@@ -541,7 +566,23 @@ const Duels = () => {
               <p className="text-muted font-mono text-xs">{t('no_results')}</p>
             </div>
           ) : (
-            displayFiltered.map((duel, index) => (
+            displayFiltered.map((duel, index) => {
+              // Track view for public duels in hype tab (only once per mount)
+              if (activeTab === 'hype' && duel.isPublic) {
+                const userId = tg.initDataUnsafe?.user?.id;
+                const isOwner = duel.challengerId === userId || duel.opponentId === userId;
+                
+                if (!isOwner) {
+                  // Increment view count (debounced - only once per session)
+                  const viewKey = `duel_view_${duel.id}`;
+                  if (!sessionStorage.getItem(viewKey)) {
+                    sessionStorage.setItem(viewKey, 'true');
+                    duelsAPI.view(duel.id).catch(() => {});
+                  }
+                }
+              }
+              
+              return (
             <div 
               key={duel.id} 
               className={`backdrop-blur-md border rounded-xl p-4 transition-colors shadow-lg relative overflow-hidden gpu-accelerated ${
@@ -627,8 +668,15 @@ const Duels = () => {
                   <span>⚠️ {t('stake')}:</span>
                   <span className="font-bold bg-orange-500/5 px-2 py-0.5 rounded">{duel.stake}</span>
                 </div>
-                {activeTab === 'hype' && (
-                  <div className="flex items-center gap-1 text-muted"><Users size={12} /><span className="font-bold">{duel.witnessCount || 0}</span></div>
+                {activeTab === 'hype' && duel.isPublic && (
+                  <div className="flex items-center gap-1 text-red-400">
+                    <Flame size={12} className="fill-current" />
+                    <span className="font-bold">{duel.viewsCount || 0}</span>
+                    <span className="text-muted text-[10px]">{t('views') || 'views'}</span>
+                  </div>
+                )}
+                {activeTab === 'mine' && duel.witnessCount !== undefined && duel.witnessCount > 0 && (
+                  <div className="flex items-center gap-1 text-muted"><Users size={12} /><span className="font-bold">{duel.witnessCount}</span></div>
                 )}
               </div>
             </div>

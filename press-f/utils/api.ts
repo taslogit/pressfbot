@@ -130,6 +130,9 @@ export const duelsAPI = {
   getAll: async (params?: QueryParams) => {
     return apiRequest<{ duels: any[] }>(`/api/duels${toQueryString(params)}`);
   },
+  getHype: async (params?: QueryParams) => {
+    return apiRequest<{ duels: any[] }>(`/api/duels/hype${toQueryString(params)}`);
+  },
   getOne: async (id: string) => {
     return apiRequest<{ duel: any }>(`/api/duels/${id}`);
   },
@@ -148,6 +151,11 @@ export const duelsAPI = {
   delete: async (id: string) => {
     return apiRequest(`/api/duels/${id}`, {
       method: 'DELETE',
+    });
+  },
+  view: async (id: string) => {
+    return apiRequest<{ viewsCount: number; milestone?: number }>(`/api/duels/${id}/view`, {
+      method: 'POST',
     });
   },
 };

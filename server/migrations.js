@@ -57,10 +57,14 @@ const createTables = async (pool) => {
     `);
     await pool.query(`ALTER TABLE duels ADD COLUMN IF NOT EXISTS opponent_name VARCHAR(255)`);
     await pool.query(`ALTER TABLE duels ADD COLUMN IF NOT EXISTS is_favorite BOOLEAN DEFAULT false`);
+    // Gamification: Hype system for public duels
+    await pool.query(`ALTER TABLE duels ADD COLUMN IF NOT EXISTS views_count INTEGER DEFAULT 0`);
+    await pool.query(`ALTER TABLE duels ADD COLUMN IF NOT EXISTS last_viewed_at TIMESTAMP`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_challenger ON duels(challenger_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_opponent ON duels(opponent_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_status ON duels(status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_favorite ON duels(is_favorite)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_public_views ON duels(is_public, views_count DESC) WHERE is_public = true`);
     // Performance: Composite indexes for common query patterns
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_challenger_status ON duels(challenger_id, status, created_at DESC)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_opponent_status ON duels(opponent_id, status, created_at DESC)`);

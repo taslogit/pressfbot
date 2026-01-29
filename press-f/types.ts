@@ -26,8 +26,12 @@ export interface Duel {
   isPublic?: boolean;
   isTeam?: boolean; // Team mode
   witnessCount?: number;
+  viewsCount?: number; // Hype system: view count for public duels
+  lastViewedAt?: string;
   loser?: string; // For shame wall
   isFavorite?: boolean;
+  challengerId?: number;
+  opponentId?: number;
 }
 
 export interface LegacyItem {
