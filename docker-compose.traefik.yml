@@ -32,7 +32,7 @@ services:
       dockerfile: Dockerfile.backend
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.pressf-backend.rule=Host(`${DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/bot`) || PathPrefix(`/static`))"
+      - "traefik.http.routers.pressf-backend.rule=Host(`pressfbot.ru`) && (PathPrefix(`/api`) || PathPrefix(`/bot`) || PathPrefix(`/static`))"
       - "traefik.http.routers.pressf-backend.priority=10"
       - "traefik.http.services.pressf-backend.loadbalancer.server.port=3000"
       - "traefik.http.routers.pressf-backend.entrypoints=websecure"
@@ -57,7 +57,7 @@ services:
       dockerfile: Dockerfile.frontend
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.pressf-frontend.rule=Host(`${DOMAIN}`) && !PathPrefix(`/api`) && !PathPrefix(`/bot`)"
+      - "traefik.http.routers.pressf-frontend.rule=Host(`pressfbot.ru`) && !PathPrefix(`/api`) && !PathPrefix(`/bot`)"
       - "traefik.http.routers.pressf-frontend.entrypoints=websecure"
       - "traefik.http.routers.pressf-frontend.tls=true"
       - "traefik.http.routers.pressf-frontend.tls.certresolver=le"
