@@ -680,7 +680,8 @@ const Duels = () => {
                 )}
               </div>
             </div>
-          ))
+            );
+            })
           )}
         </div>
       </div>
