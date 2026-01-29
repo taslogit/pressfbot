@@ -174,7 +174,21 @@ docker compose exec backend node -e "const Redis=require('ioredis');const r=new 
   - Проверьте webhook/polling (ШАГ 3)
   - Проверьте переменные окружения (ШАГ 2)
 
-- ❌ Webhook показывает ошибки
+- ❌ Webhook показывает ошибки (404 Not Found)
+  - **Проблема:** Traefik не может найти endpoint `/bot`
+  - **Решение:** Проверьте labels контейнера backend:
+    ```bash
+    docker inspect pressf-backend-1 | grep -A 20 Labels
+    ```
+  - Убедитесь, что в `docker-compose.traefik.yml` labels используют хардкод домена:
+    ```yaml
+    - "traefik.http.routers.pressf-backend.rule=Host(`pressfbot.ru`) && (PathPrefix(`/api`) || PathPrefix(`/bot`) || PathPrefix(`/static`))"
+    ```
+  - Пересоздайте контейнеры:
+    ```bash
+    docker compose -f docker-compose.traefik.yml up -d --force-recreate backend
+    docker compose -f docker-compose.traefik.yml restart traefik
+    ```
   - Проверьте доступность endpoint (ШАГ 4)
   - Переустановите webhook (ШАГ 8)
   - Проверьте SSL сертификат (должен быть валидный HTTPS)
