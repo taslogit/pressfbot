@@ -268,7 +268,7 @@ const { createDuelsRoutes } = require('./routes/duels');
 const { createLegacyRoutes } = require('./routes/legacy');
 const { createNotificationsRoutes } = require('./routes/notifications');
 const { createTonRoutes } = require('./routes/ton');
-const { createDailyQuestsRoutes } = require('./routes/dailyQuests');
+const { createDailyQuestsRoutes, generateDailyQuestsForAllUsers } = require('./routes/dailyQuests');
 const { createAvatarsRoutes } = require('./routes/avatars');
 const { normalizeLetter } = require('./services/lettersService');
 const { normalizeDuel } = require('./services/duelsService');
@@ -557,6 +557,47 @@ app.get('/api/health', async (_req, res) => {
       }
       runNotifications();
     }
+
+    // Daily quests generation job - runs at 00:00 UTC every day
+    const scheduleDailyQuestsGeneration = () => {
+      const now = new Date();
+      const utcNow = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
+      const utcMidnight = new Date(utcNow);
+      utcMidnight.setUTCHours(0, 0, 0, 0);
+      
+      // If it's already past midnight today, schedule for tomorrow
+      if (utcNow >= utcMidnight) {
+        utcMidnight.setUTCDate(utcMidnight.getUTCDate() + 1);
+      }
+
+      const msUntilMidnight = utcMidnight.getTime() - utcNow.getTime();
+      
+      logger.info(`Scheduling daily quests generation for ${utcMidnight.toISOString()} (in ${Math.round(msUntilMidnight / 1000 / 60)} minutes)`);
+
+      // Schedule first run
+      setTimeout(async () => {
+        try {
+          await generateDailyQuestsForAllUsers(pool);
+        } catch (error) {
+          logger.error('Failed to generate daily quests', { error: error.message });
+        }
+
+        // Then run every 24 hours
+        const dailyInterval = setInterval(async () => {
+          try {
+            await generateDailyQuestsForAllUsers(pool);
+          } catch (error) {
+            logger.error('Failed to generate daily quests', { error: error.message });
+          }
+        }, 24 * 60 * 60 * 1000); // 24 hours
+
+        if (dailyInterval.unref) {
+          dailyInterval.unref();
+        }
+      }, msUntilMidnight);
+    };
+
+    scheduleDailyQuestsGeneration();
     
     // Run all migrations
     await createTables(pool);

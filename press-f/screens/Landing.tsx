@@ -15,7 +15,9 @@ import InfoSection from '../components/InfoSection';
 import QuestLog from '../components/QuestLog';
 import StreakIndicator from '../components/StreakIndicator';
 import DailyQuests from '../components/DailyQuests';
+import XPNotification from '../components/XPNotification';
 import { Quest } from '../types';
+import { profileAPI } from '../utils/api';
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -27,6 +29,7 @@ const Landing = () => {
   const [showQuestLog, setShowQuestLog] = useState(false);
   const [settings, setSettings] = useState(storage.getSettings());
   const [showSharePulse, setShowSharePulse] = useState(false);
+  const [xpNotification, setXpNotification] = useState<{ xp: number; level?: number; levelUp?: boolean } | null>(null);
 
   // Dashboard Data
   const [activeDuels, setActiveDuels] = useState(0);
@@ -118,52 +121,93 @@ const Landing = () => {
     tg.showPopup({ message: t('timer_updated') });
   };
 
-  const handleCheckIn = () => {
+  const handleCheckIn = async () => {
     playSound('charge');
-    imAlive();
-    setJustCheckedIn(true);
-    setShowSharePulse(true);
     
-    // Check Quest
-    storage.checkQuestTrigger('check_in');
-    const quests = storage.getQuests();
-    const next = quests.find(q => !q.isCompleted);
-    setActiveQuest(next || null);
-
-    if (window.navigator && window.navigator.vibrate) {
-      window.navigator.vibrate([50, 50, 50]);
-    }
-
-    confetti({
-      particleCount: 80,
-      spread: 100,
-      origin: { y: 0.4 },
-      colors: ['#B4FF00', '#ffffff', '#00E0FF']
-    });
-
-    setTimeout(() => setJustCheckedIn(false), 2500);
-    setTimeout(() => setShowSharePulse(false), 8000);
-    setTimeout(() => {
-      if (!tg.showPopup) return;
-      const nextCheckIn = new Date(settings.lastCheckIn + (settings.deadManSwitchDays * 24 * 60 * 60 * 1000)).toLocaleDateString();
-      const text = t('share_pulse_text', { days: Math.max(daysRemaining, 0), next: nextCheckIn });
-      tg.showPopup(
-        {
-          message: t('share_pulse_popup'),
-          buttons: [
-            { id: 'share', type: 'default', text: t('share_pulse') },
-            { id: 'close', type: 'close' }
-          ]
-        },
-        (buttonId: string) => {
-          if (buttonId === 'share') {
-            const username = tg.initDataUnsafe?.user?.username;
-            const url = username ? `https://t.me/${username}` : window.location.href;
-            tg.openLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
+    try {
+      // Call API for check-in
+      const result = await profileAPI.checkIn();
+      
+      if (result.ok && result.data) {
+        const { xp, streak } = result.data;
+        
+        // Update local state
+        imAlive();
+        setJustCheckedIn(true);
+        setShowSharePulse(true);
+        
+        // Show XP notification
+        if (xp) {
+          // Get current profile to check for level up
+          const profile = await storage.getUserProfileAsync();
+          const { calculateLevel } = await import('../utils/levelSystem');
+          const oldLevel = calculateLevel(profile.experience || 0);
+          const newLevel = calculateLevel((profile.experience || 0) + xp);
+          const levelUp = newLevel > oldLevel;
+          
+          setXpNotification({ xp, level: levelUp ? newLevel : undefined, levelUp });
+          
+          if (levelUp) {
+            confetti({
+              particleCount: 100,
+              spread: 120,
+              origin: { y: 0.4 },
+              colors: ['#B4FF00', '#ffffff', '#00E0FF', '#FF00FF']
+            });
+          } else {
+            confetti({
+              particleCount: 50,
+              spread: 80,
+              origin: { y: 0.4 },
+              colors: ['#B4FF00', '#ffffff', '#00E0FF']
+            });
           }
         }
-      );
-    }, 700);
+        
+        // Check Quest
+        storage.checkQuestTrigger('check_in');
+        const quests = storage.getQuests();
+        const next = quests.find(q => !q.isCompleted);
+        setActiveQuest(next || null);
+
+        if (window.navigator && window.navigator.vibrate) {
+          window.navigator.vibrate([50, 50, 50]);
+        }
+
+        setTimeout(() => setJustCheckedIn(false), 2500);
+        setTimeout(() => setShowSharePulse(false), 8000);
+        setTimeout(() => {
+          if (!tg.showPopup) return;
+          const nextCheckIn = new Date(settings.lastCheckIn + (settings.deadManSwitchDays * 24 * 60 * 60 * 1000)).toLocaleDateString();
+          const text = t('share_pulse_text', { days: Math.max(daysRemaining, 0), next: nextCheckIn });
+          tg.showPopup(
+            {
+              message: t('share_pulse_popup'),
+              buttons: [
+                { id: 'share', type: 'default', text: t('share_pulse') },
+                { id: 'close', type: 'close' }
+              ]
+            },
+            (buttonId: string) => {
+              if (buttonId === 'share') {
+                const username = tg.initDataUnsafe?.user?.username;
+                const url = username ? `https://t.me/${username}` : window.location.href;
+                tg.openLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
+              }
+            }
+          );
+        }, 700);
+      } else {
+        // Fallback to local check-in if API fails
+        imAlive();
+        setJustCheckedIn(true);
+      }
+    } catch (error) {
+      console.error('Check-in failed:', error);
+      // Fallback to local check-in
+      imAlive();
+      setJustCheckedIn(true);
+    }
   };
 
   const handleSharePulse = () => {
@@ -184,6 +228,14 @@ const Landing = () => {
     <div className="space-y-4 pt-2 pb-24 relative">
       <OnboardingGuide isVisible={showGuide} onClose={handleCloseGuide} />
       <QuestLog isOpen={showQuestLog} onClose={() => setShowQuestLog(false)} />
+      {xpNotification && (
+        <XPNotification
+          xp={xpNotification.xp}
+          level={xpNotification.level}
+          levelUp={xpNotification.levelUp}
+          onComplete={() => setXpNotification(null)}
+        />
+      )}
 
       {/* Background Animation */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 flex items-center justify-center">

@@ -223,4 +223,68 @@ const createDailyQuestsRoutes = (pool) => {
   return router;
 };
 
-module.exports = { createDailyQuestsRoutes, QUEST_TYPES };
+// Export function to generate daily quests for all users (for scheduled job)
+async function generateDailyQuestsForAllUsers(pool, date) {
+  if (!pool) {
+    logger.warn('Database pool not available for generating daily quests');
+    return;
+  }
+
+  try {
+    // Get all active users (users who have checked in at least once or have profiles)
+    const usersResult = await pool.query(
+      `SELECT DISTINCT user_id FROM user_settings WHERE last_check_in IS NOT NULL
+       UNION
+       SELECT DISTINCT user_id FROM profiles`
+    );
+
+    const users = usersResult.rows;
+    const today = date || new Date().toISOString().split('T')[0];
+    logger.info(`Generating daily quests for ${users.length} users`, { date: today });
+
+    let generated = 0;
+    for (const user of users) {
+      const userId = user.user_id;
+
+      // Check if quests already exist for this date
+      const existingResult = await pool.query(
+        'SELECT id FROM daily_quests WHERE user_id = $1 AND quest_date = $2',
+        [userId, today]
+      );
+
+      if (existingResult.rowCount === 0) {
+        // Generate new quests
+        const newQuests = generateDailyQuests(userId, today);
+        for (const quest of newQuests) {
+          await pool.query(
+            `INSERT INTO daily_quests 
+             (id, user_id, quest_type, title, description, target_count, current_count, reward, quest_date, is_completed, is_claimed)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            [
+              quest.id,
+              quest.user_id,
+              quest.quest_type,
+              quest.title,
+              quest.description,
+              quest.target_count,
+              quest.current_count,
+              quest.reward,
+              quest.quest_date,
+              quest.is_completed,
+              quest.is_claimed
+            ]
+          );
+        }
+        generated++;
+      }
+    }
+
+    logger.info(`Daily quests generation completed`, { generated, total: users.length });
+    return { generated, total: users.length };
+  } catch (error) {
+    logger.error('Failed to generate daily quests for all users', { error: error.message });
+    throw error;
+  }
+}
+
+module.exports = { createDailyQuestsRoutes, generateDailyQuestsForAllUsers, generateDailyQuests, QUEST_TYPES };
