@@ -34,7 +34,6 @@ const TelegramHandler = () => {
     // 2. Handle Deep Links (Start Params)
     // Format: t.me/bot?start=witness_123 or t.me/bot?start=duel_456
     const startParam = tg.initDataUnsafe?.start_param;
-    const currentPath = location.pathname;
 
     if (startParam) {
       console.log("Deep Link Detected:", startParam);
@@ -43,24 +42,34 @@ const TelegramHandler = () => {
         // Example: witness_USERID
         // In a real app, you might save the inviter ID to storage here
         localStorage.setItem('lastmeme_pending_witness', startParam.replace('witness_', ''));
-        navigate('/witness-approval');
+        navigate('/witness-approval', { replace: true });
         return;
       } 
       else if (startParam.startsWith('duel_')) {
-        navigate('/duels');
+        navigate('/duels', { replace: true });
         return;
       }
       else if (startParam === 'squad') {
-        navigate('/squads');
+        navigate('/squads', { replace: true });
         return;
       }
     }
+  }, []);
 
-    // 3. Ensure we're on home page if no deep link and not already on a valid route
-    // Only redirect if we're on an invalid/empty route (not /, /resurrection, or other valid routes)
+  // 3. Ensure we're on home page if no deep link and on invalid route
+  useEffect(() => {
+    const currentPath = location.pathname;
+    const startParam = tg.initDataUnsafe?.start_param;
+    
+    // Valid routes that should not trigger redirect
     const validRoutes = ['/', '/resurrection', '/create-letter', '/letters', '/search', '/duels', 
                          '/funeral-dj', '/witness-approval', '/squads', '/profile', '/settings', '/share'];
-    if (!validRoutes.includes(currentPath) && !startParam) {
+    
+    // Only redirect if:
+    // 1. No start param (not a deep link)
+    // 2. Current path is not a valid route
+    // 3. Not already on home page
+    if (!startParam && !validRoutes.includes(currentPath) && currentPath !== '/') {
       console.log("Redirecting to home page from invalid route:", currentPath);
       navigate('/', { replace: true });
     } else if (currentPath === '' || currentPath === '/#' || currentPath === '#/') {
@@ -68,7 +77,7 @@ const TelegramHandler = () => {
       console.log("Redirecting to home page from empty route");
       navigate('/', { replace: true });
     }
-  }, []);
+  }, [location.pathname, navigate]);
 
   // 3. Handle Back Button
   useEffect(() => {
