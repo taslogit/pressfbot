@@ -3,7 +3,31 @@ const router = express.Router();
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 
-const createNotificationsRoutes = (pool) => {
+// Push notifications via Telegram Bot API
+const sendTelegramNotification = async (bot, userId, message, options = {}) => {
+  if (!bot || !userId || !message) {
+    return false;
+  }
+
+  try {
+    await bot.telegram.sendMessage(userId, message, {
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+      ...options
+    });
+    return true;
+  } catch (error) {
+    // User may have blocked the bot or other errors
+    logger.debug('Failed to send Telegram notification', {
+      userId,
+      error: error?.message || error,
+      code: error?.response?.error_code
+    });
+    return false;
+  }
+};
+
+const createNotificationsRoutes = (pool, bot = null) => {
   // GET /api/notifications - List recent notifications
   router.get('/', async (req, res) => {
     try {

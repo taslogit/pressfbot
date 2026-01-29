@@ -258,6 +258,28 @@ const createLettersRoutes = (pool, createLimiter) => {
       if (attachments && Array.isArray(attachments) && attachments.length > MAX_ATTACHMENTS) {
         return sendError(res, 400, 'VALIDATION_ERROR', `Attachments list exceeds maximum of ${MAX_ATTACHMENTS} attachments`);
       }
+      
+      // Security: Validate attachment sizes (max 10MB per attachment, 50MB total)
+      const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10MB
+      const MAX_TOTAL_ATTACHMENTS_SIZE = 50 * 1024 * 1024; // 50MB total
+      if (attachments && Array.isArray(attachments)) {
+        let totalSize = 0;
+        for (const attachment of attachments) {
+          if (typeof attachment === 'string') {
+            // If attachment is a URL, we can't validate size, but log it
+            logger.debug('Attachment is URL, size validation skipped', { attachment: attachment.substring(0, 50) });
+          } else if (attachment && typeof attachment === 'object') {
+            const size = attachment.size || attachment.length || 0;
+            if (size > MAX_ATTACHMENT_SIZE) {
+              return sendError(res, 400, 'VALIDATION_ERROR', `Attachment exceeds maximum size of ${Math.round(MAX_ATTACHMENT_SIZE / 1024 / 1024)}MB`);
+            }
+            totalSize += size;
+          }
+        }
+        if (totalSize > MAX_TOTAL_ATTACHMENTS_SIZE) {
+          return sendError(res, 400, 'VALIDATION_ERROR', `Total attachments size exceeds maximum of ${Math.round(MAX_TOTAL_ATTACHMENTS_SIZE / 1024 / 1024)}MB`);
+        }
+      }
 
       // Security: Generate ID on server to prevent conflicts
       const letterId = id || `letter_${Date.now()}_${uuidv4()}`;

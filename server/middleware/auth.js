@@ -32,6 +32,14 @@ const createAuthMiddleware = (pool) => {
       );
 
       if (result.rowCount === 0) {
+        // Security: Log failed authentication attempts
+        logger.warn('Security: Failed authentication attempt', {
+          sessionId: sessionId?.substring(0, 8) + '...',
+          ip: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress,
+          userAgent: req.headers['user-agent'],
+          path: req.path,
+          method: req.method
+        });
         return sendError(res, 401, 'AUTH_INVALID', 'Invalid session');
       }
 
@@ -39,6 +47,13 @@ const createAuthMiddleware = (pool) => {
       const lastSeenAt = result.rows[0].last_seen_at;
       if (expiresAt && new Date(expiresAt) <= new Date()) {
         await pool.query('DELETE FROM sessions WHERE id = $1', [sessionId]);
+        // Security: Log expired session attempts
+        logger.warn('Security: Expired session attempt', {
+          sessionId: sessionId?.substring(0, 8) + '...',
+          telegramId: result.rows[0].telegram_id,
+          ip: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress,
+          path: req.path
+        });
         return sendError(res, 401, 'SESSION_EXPIRED', 'Session expired');
       }
 

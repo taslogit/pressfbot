@@ -149,6 +149,37 @@ const cache = {
     }
   },
 
+  // Delete by pattern (alias for delPattern)
+  delByPattern: async (pattern) => {
+    return cache.delPattern(pattern);
+  },
+
+  // Invalidate cache by tags (if using cache tags)
+  invalidateByTags: async (tags) => {
+    if (!redisClient || !Array.isArray(tags)) return false;
+    try {
+      // Delete all keys with these tags
+      for (const tag of tags) {
+        await cache.delPattern(`tag:${tag}:*`);
+      }
+      return true;
+    } catch (error) {
+      logger.warn(`Cache invalidate by tags error`, { error: error.message, tags });
+      return false;
+    }
+  },
+
+  // Ping Redis to check connection
+  ping: async () => {
+    if (!redisClient) return false;
+    try {
+      const result = await redisClient.ping();
+      return result === 'PONG';
+    } catch (error) {
+      return false;
+    }
+  },
+
   // Check if cache is available
   isAvailable: () => redisClient !== null
 };

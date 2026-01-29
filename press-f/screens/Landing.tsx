@@ -21,6 +21,7 @@ import Tournaments from '../components/Tournaments';
 import ActivityFeed from '../components/ActivityFeed';
 // Quest type removed - replaced with DailyQuest
 import { profileAPI } from '../utils/api';
+import { analytics } from '../utils/analytics';
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -153,6 +154,9 @@ const Landing = () => {
         imAlive();
         setJustCheckedIn(true);
         setShowSharePulse(true);
+        
+        // Track analytics
+        analytics.trackCheckIn(streak?.current || undefined);
         
         // Show XP notification
         if (xp) {

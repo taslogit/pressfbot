@@ -21,6 +21,7 @@ const Notifications = lazy(() => import('./screens/Notifications'));
 import { tg, initTelegramApp } from './utils/telegram';
 import { useTelegramSession } from './hooks/useTelegramSession';
 import ErrorBoundary from './components/ErrorBoundary';
+import { analytics } from './utils/analytics';
 
 // Component to handle Telegram Logic inside Router context
 const TelegramHandler = () => {
@@ -105,13 +106,22 @@ const TelegramHandler = () => {
 const App = () => {
   const manifestUrl = `${window.location.origin}/tonconnect-manifest.json`;
   
-  // Log app initialization
+  // Log app initialization and track analytics
   if (typeof window !== 'undefined') {
     console.log('[App] Initializing app...', {
       origin: window.location.origin,
       pathname: window.location.pathname,
       hash: window.location.hash
     });
+    
+    // Set analytics user ID from Telegram
+    const tgUser = tg.initDataUnsafe?.user;
+    if (tgUser?.id) {
+      analytics.setUserId(tgUser.id);
+    }
+    
+    // Track page view
+    analytics.trackPageView(window.location.pathname + window.location.hash);
   }
   
   return (

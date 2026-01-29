@@ -27,10 +27,22 @@ function getHeaders(): HeadersInit {
   return headers;
 }
 
-// API helper function with improved error handling
+// Retry configuration
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000; // Start with 1 second
+const RETRYABLE_STATUS_CODES = [408, 429, 500, 502, 503, 504];
+const RETRYABLE_ERROR_CODES = ['TIMEOUT', 'NETWORK_ERROR'];
+
+// Exponential backoff retry helper
+async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// API helper function with improved error handling and retry logic
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  retryCount = 0
 ): Promise<{ ok: boolean; data?: T; error?: string; code?: string; details?: any }> {
   try {
     const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
@@ -54,6 +66,19 @@ async function apiRequest<T>(
         errorData = { error: res.statusText || `HTTP ${res.status}` };
       }
       
+      // Retry logic for retryable errors
+      const shouldRetry = retryCount < MAX_RETRIES && 
+        (RETRYABLE_STATUS_CODES.includes(res.status) || 
+         errorData.code === 'TIMEOUT' || 
+         errorData.code === 'NETWORK_ERROR');
+      
+      if (shouldRetry) {
+        const delay = RETRY_DELAY_MS * Math.pow(2, retryCount); // Exponential backoff
+        console.warn(`[API] Retrying request [${endpoint}] (attempt ${retryCount + 1}/${MAX_RETRIES}) after ${delay}ms`);
+        await sleep(delay);
+        return apiRequest<T>(endpoint, options, retryCount + 1);
+      }
+      
       return { 
         ok: false, 
         error: errorData.error || errorData.message || 'Request failed',
@@ -66,9 +91,25 @@ async function apiRequest<T>(
     return { ok: true, data };
   } catch (e: any) {
     if (e.name === 'AbortError') {
+      // Retry on timeout
+      if (retryCount < MAX_RETRIES) {
+        const delay = RETRY_DELAY_MS * Math.pow(2, retryCount);
+        console.warn(`[API] Retrying timeout [${endpoint}] (attempt ${retryCount + 1}/${MAX_RETRIES}) after ${delay}ms`);
+        await sleep(delay);
+        return apiRequest<T>(endpoint, options, retryCount + 1);
+      }
       console.error(`API request timeout [${endpoint}]`);
       return { ok: false, error: 'Request timeout', code: 'TIMEOUT' };
     }
+    
+    // Retry on network errors
+    if (retryCount < MAX_RETRIES && RETRYABLE_ERROR_CODES.includes('NETWORK_ERROR')) {
+      const delay = RETRY_DELAY_MS * Math.pow(2, retryCount);
+      console.warn(`[API] Retrying network error [${endpoint}] (attempt ${retryCount + 1}/${MAX_RETRIES}) after ${delay}ms`);
+      await sleep(delay);
+      return apiRequest<T>(endpoint, options, retryCount + 1);
+    }
+    
     console.error(`API request error [${endpoint}]:`, e);
     return { ok: false, error: e.message || 'Network error', code: 'NETWORK_ERROR' };
   }

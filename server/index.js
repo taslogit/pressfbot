@@ -262,6 +262,20 @@ app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  
+  // Security: HSTS (Strict-Transport-Security) - force HTTPS
+  if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
+  
+  next();
+});
+
+// Security: Redirect HTTP to HTTPS (if behind proxy)
+app.use((req, res, next) => {
+  if (req.headers['x-forwarded-proto'] === 'http' && process.env.NODE_ENV === 'production') {
+    return res.redirect(301, `https://${req.headers.host}${req.url}`);
+  }
   next();
 });
 
@@ -705,6 +719,13 @@ app.post('/api/verify', async (req, res) => {
   }
 
   if (!ok) {
+    // Security: Log failed initData verification attempts
+    logger.warn('Security: Failed initData verification', {
+      ip: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress,
+      userAgent: req.headers['user-agent'],
+      hasInitData: !!initData,
+      initDataLength: initData?.length || 0
+    });
     return sendError(res, 401, 'AUTH_INVALID', 'invalid signature');
   }
 
@@ -716,7 +737,24 @@ app.post('/api/verify', async (req, res) => {
       return sendError(res, 401, 'AUTH_DATE_INVALID', 'auth_date is missing or invalid');
     }
     const ageSeconds = Math.floor(Date.now() / 1000) - authDate;
-    if (ageSeconds < 0 || ageSeconds > AUTH_MAX_AGE_SECONDS) {
+    if (ageSeconds < 0) {
+      // Security: Log suspicious future-dated auth_date (possible replay attack)
+      logger.warn('Security: Suspicious future-dated auth_date', {
+        authDate,
+        currentTime: Math.floor(Date.now() / 1000),
+        ageSeconds,
+        ip: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress
+      });
+      return sendError(res, 401, 'AUTH_DATE_INVALID', 'auth_date is in the future');
+    }
+    if (ageSeconds > AUTH_MAX_AGE_SECONDS) {
+      // Security: Log expired auth_date attempts
+      logger.warn('Security: Expired auth_date attempt', {
+        authDate,
+        ageSeconds,
+        maxAge: AUTH_MAX_AGE_SECONDS,
+        ip: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress
+      });
       return sendError(res, 401, 'AUTH_DATE_EXPIRED', 'auth_date is expired');
     }
   }
