@@ -159,7 +159,7 @@ const SeasonalEvents: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-1 text-[10px] text-muted">
                   <Clock size={12} />
-                  {getDaysRemaining(selectedEvent.endDate)} {t('days_left') || 'days left'}
+                  {getDaysRemaining(selectedEvent.endDate)} {t('days_remaining') || 'days left'}
                 </div>
               </div>
             </div>

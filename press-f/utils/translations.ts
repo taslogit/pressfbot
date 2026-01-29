@@ -540,7 +540,7 @@ export const translations = {
     reward_claimed: "Reward claimed!",
     reward_claim_failed: "Failed to claim reward",
     claiming: "Claiming...",
-    days_left: "days left",
+    days_remaining: "days left",
     
     // Tournaments
     tournaments: "TOURNAMENTS",
@@ -1112,7 +1112,7 @@ export const translations = {
     reward_claimed: "Награда получена!",
     reward_claim_failed: "Не удалось получить награду",
     claiming: "Получение...",
-    days_left: "дней осталось",
+    days_remaining: "дней осталось",
     
     // Tournaments
     tournaments: "ТУРНИРЫ",
