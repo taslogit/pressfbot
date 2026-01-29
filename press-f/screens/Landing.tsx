@@ -55,18 +55,29 @@ const Landing = () => {
 
   useEffect(() => {
     let isMounted = true;
+    
+    // Load settings with error handling
     storage.getSettingsAsync().then((nextSettings) => {
       if (isMounted) setSettings(nextSettings);
+    }).catch((error) => {
+      console.error('Error loading settings:', error);
+      // Use default settings on error
+      if (isMounted) setSettings(storage.getSettings());
     });
 
+    // Initialize with localStorage data first (fast)
     setActiveDuels(storage.getDuels().filter(d => d.status === 'active').length);
     setDraftLetters(storage.getLetters().filter(l => l.status === 'draft').length);
     setWitnessCount(storage.getWitnesses().length);
 
+    // Then try to load from API (with fallback)
     storage.getDuelsAsync().then((duels) => {
       if (isMounted) {
         setActiveDuels(duels.filter(d => d.status === 'active').length);
       }
+    }).catch((error) => {
+      console.error('Error loading duels:', error);
+      // Keep localStorage data
     });
 
     storage.getLettersAsync().then((letters) => {
@@ -79,6 +90,9 @@ const Landing = () => {
           .sort((a, b) => a.getTime() - b.getTime())[0];
         setNextUnlockDate(upcoming ? upcoming.toLocaleString() : null);
       }
+    }).catch((error) => {
+      console.error('Error loading letters:', error);
+      // Keep localStorage data
     });
 
     // Auto-show guide if not seen

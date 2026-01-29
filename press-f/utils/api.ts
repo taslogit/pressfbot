@@ -1,4 +1,5 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// Use current origin for API if VITE_API_URL is not set (production mode)
+const API_BASE = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
 
 // Get session ID from storage
 function getSessionId(): string | null {
