@@ -13,6 +13,7 @@ import { encryptPayload, splitKey } from '../utils/security';
 import { uploadToIPFS } from '../services/cloud';
 import XPNotification from '../components/XPNotification';
 import { calculateLevel } from '../utils/levelSystem';
+import { analytics } from '../utils/analytics';
 
 type Attachment = {
   id: string;
@@ -184,6 +185,10 @@ const CreateLetter = () => {
     // Use async API to get XP reward
     try {
       const result = await storage.saveLetterAsync(letter);
+      
+      // Track analytics
+      analytics.trackLetterCreated(letter.id, letter.type);
+      
       // Check if we got XP from API response
       if (result && result.xp) {
         // Update quest progress
@@ -202,11 +207,16 @@ const CreateLetter = () => {
         const newLevel = calculateLevel((profile.experience || 0) + result.xp);
         const levelUp = newLevel > oldLevel;
         
+        if (levelUp) {
+          analytics.trackLevelUp(newLevel);
+        }
+        
         setXpNotification({ xp: result.xp, level: levelUp ? newLevel : undefined, levelUp });
       }
     } catch (error) {
       // Fallback to local save
       storage.saveLetter(letter);
+      analytics.trackError('letter_save_failed', letter.id);
     }
 
     storage.clearDraft();
