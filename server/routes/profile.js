@@ -619,6 +619,9 @@ const createProfileRoutes = (pool) => {
         }
       }
 
+      // Invalidate cache after settings update (settings are part of profile response)
+      await cache.del(`profile:${userId}`);
+
       return res.json({ ok: true });
     } catch (error) {
       logger.error('Update settings error:', error);
