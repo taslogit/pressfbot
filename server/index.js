@@ -132,7 +132,9 @@ app.use(express.json({ limit: '200kb' }));
 
 // Serve static files (for bot images, etc.)
 const path = require('path');
-app.use('/static', express.static(path.join(__dirname, 'static')));
+const staticPath = path.join(__dirname, 'static');
+app.use('/api/static', express.static(staticPath));
+console.log('Static files served from:', staticPath);
 
 // Telegram webhook callback (MUST be first, before any other middleware)
 if (USE_WEBHOOK) {
