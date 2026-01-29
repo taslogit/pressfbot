@@ -4,6 +4,8 @@ COPY server/package*.json ./
 # Use npm install when package-lock.json is missing to support builds without lockfile
 RUN npm install --production --no-audit --no-fund
 COPY server/ .
+# Create static directory for images
+RUN mkdir -p static
 ENV PORT=3000
 EXPOSE 3000
 CMD ["node", "index.js"]

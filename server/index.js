@@ -130,6 +130,10 @@ bot.command('info', (ctx) => ctx.reply(BOT_INFO_TEXT));
 const app = express();
 app.use(express.json({ limit: '200kb' }));
 
+// Serve static files (for bot images, etc.)
+const path = require('path');
+app.use('/static', express.static(path.join(__dirname, 'static')));
+
 // Telegram webhook callback (MUST be first, before any other middleware)
 if (USE_WEBHOOK) {
   // Add a simple handler for HEAD/GET requests to /bot for debugging (BEFORE webhookCallback)
