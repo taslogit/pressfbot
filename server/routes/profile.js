@@ -489,6 +489,20 @@ const createProfileRoutes = (pool) => {
         logger.debug('Failed to log activity for check-in', { error: activityError?.message });
       }
 
+      // Send push notification for milestone streaks (outside transaction)
+      if (newStreak > 0 && (newStreak === 3 || newStreak === 7 || newStreak === 14 || newStreak === 30 || newStreak === 100)) {
+        try {
+          const { sendTelegramNotification } = require('./notifications');
+          const bot = require('../index').bot; // Get bot instance
+          if (bot) {
+            const message = `🔥 <b>Streak Milestone!</b>\n\nYour streak: <b>${newStreak} days</b>${streakBonus > 0 ? `\n\n+${streakBonus} REP bonus!` : ''}`;
+            await sendTelegramNotification(bot, userId, message);
+          }
+        } catch (notifError) {
+          logger.debug('Failed to send streak notification', { error: notifError?.message });
+        }
+      }
+
       return res.json({ 
         ok: true, 
         timestamp: Date.now(),

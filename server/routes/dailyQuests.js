@@ -207,6 +207,20 @@ const createDailyQuestsRoutes = (pool) => {
       const cacheKey = `daily-quests:${userId}:${today}`;
       await cache.del(cacheKey);
 
+      // Send push notification for quest completion (outside transaction)
+      try {
+        const { sendTelegramNotification } = require('./notifications');
+        // Get bot instance from parent module
+        const botModule = require('../index');
+        const bot = botModule.bot || (botModule.default && botModule.default.bot);
+        if (bot) {
+          const message = `✅ <b>Quest Completed!</b>\n\n${quest.title}\n\n+${quest.reward} REP${xpReward > 0 ? `\n+${xpReward} XP` : ''}`;
+          await sendTelegramNotification(bot, userId, message);
+        }
+      } catch (notifError) {
+        logger.debug('Failed to send quest completion notification', { error: notifError?.message });
+      }
+
       return res.json({ 
         ok: true, 
         reward: quest.reward,

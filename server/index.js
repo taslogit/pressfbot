@@ -194,7 +194,7 @@ app.use('/api/static', express.static(staticPath, {
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
   }
 }));
-console.log('Static files served from:', staticPath);
+logger.info('Static files served from:', { path: staticPath });
 
 // Telegram webhook callback (MUST be first, before any other middleware)
 if (USE_WEBHOOK) {
@@ -371,7 +371,7 @@ app.use('/api/letters', authMiddleware, createLettersRoutes(pool, letterCreateLi
 app.use('/api/profile', authMiddleware, createProfileRoutes(pool));
 app.use('/api/duels', authMiddleware, createDuelsRoutes(pool, duelCreateLimiter));
 app.use('/api/legacy', authMiddleware, createLegacyRoutes(pool));
-app.use('/api/notifications', authMiddleware, createNotificationsRoutes(pool));
+app.use('/api/notifications', authMiddleware, createNotificationsRoutes(pool, bot));
 app.use('/api/ton', authMiddleware, createTonRoutes(pool));
 app.use('/api/daily-quests', authMiddleware, createDailyQuestsRoutes(pool));
 app.use('/api/avatars', createAvatarsRoutes()); // No auth needed for public avatars list
@@ -1043,7 +1043,7 @@ function verifyInitData(initData, botToken) {
 
     return hmac === hash.toLowerCase();
   } catch (e) {
-    console.error('verifyInitData error', e);
+    logger.error('verifyInitData error', e);
     return false;
   }
 }

@@ -95,4 +95,4 @@ const createNotificationsRoutes = (pool, bot = null) => {
   return router;
 };
 
-module.exports = { createNotificationsRoutes };
+module.exports = { createNotificationsRoutes, sendTelegramNotification };
