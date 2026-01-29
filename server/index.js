@@ -764,9 +764,15 @@ app.post('/api/verify', async (req, res) => {
       // Handle squad invite (squad_<squadId>)
       if (startParam && startParam.startsWith('squad_')) {
         const squadId = startParam.replace('squad_', '');
-        // Store squad invite in session for frontend to handle
-        // Frontend will call POST /api/squads/:id/join when ready
+        // Frontend will handle joining via POST /api/squads/:id/join
         logger.debug('Squad invite detected', { squadId, userId: tgUserId });
+      }
+      
+      // Handle witness invite (witness_<witnessId>)
+      if (startParam && startParam.startsWith('witness_')) {
+        const witnessId = startParam.replace('witness_', '');
+        // Frontend will handle confirmation via POST /api/witnesses/:id/confirm
+        logger.debug('Witness invite detected', { witnessId, userId: tgUserId });
       }
       
       // Handle referral code (ref_<code>)
