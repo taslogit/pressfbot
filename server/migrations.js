@@ -144,6 +144,63 @@ const createTables = async (pool) => {
     await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS referrals_count INTEGER DEFAULT 0`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_profiles_referral_code ON profiles(referral_code)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_profiles_referred_by ON profiles(referred_by)`);
+    
+    // Add CHECK constraints for data integrity
+    await pool.query(`
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'check_profiles_reputation_non_negative'
+        ) THEN
+          ALTER TABLE profiles ADD CONSTRAINT check_profiles_reputation_non_negative 
+            CHECK (reputation >= 0);
+        END IF;
+      END $$;
+    `);
+    await pool.query(`
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'check_profiles_experience_non_negative'
+        ) THEN
+          ALTER TABLE profiles ADD CONSTRAINT check_profiles_experience_non_negative 
+            CHECK (experience >= 0);
+        END IF;
+      END $$;
+    `);
+    await pool.query(`
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'check_profiles_total_xp_non_negative'
+        ) THEN
+          ALTER TABLE profiles ADD CONSTRAINT check_profiles_total_xp_non_negative 
+            CHECK (total_xp_earned >= 0);
+        END IF;
+      END $$;
+    `);
+    await pool.query(`
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'check_profiles_karma_range'
+        ) THEN
+          ALTER TABLE profiles ADD CONSTRAINT check_profiles_karma_range 
+            CHECK (karma >= 0 AND karma <= 100);
+        END IF;
+      END $$;
+    `);
+    await pool.query(`
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'check_profiles_level_positive'
+        ) THEN
+          ALTER TABLE profiles ADD CONSTRAINT check_profiles_level_positive 
+            CHECK (level > 0);
+        END IF;
+      END $$;
+    `);
 
     // TON inheritance plans
     await pool.query(`

@@ -510,7 +510,7 @@ export const translations = {
     // Referral System
     referral_system: "INVITE FRIENDS",
     your_referral_link: "Your Referral Link",
-    link_copied: "Link copied!",
+    referral_link_copied: "Link copied!",
     referral_share_text: "Join Press F and get rewards!",
     next_milestone: "Next Milestone",
     referrals: "referrals",
@@ -1041,7 +1041,7 @@ export const translations = {
     // Referral System
     referral_system: "ПРИГЛАСИ ДРУЗЕЙ",
     your_referral_link: "Ваша реферальная ссылка",
-    link_copied: "Ссылка скопирована!",
+    referral_link_copied: "Ссылка скопирована!",
     referral_share_text: "Присоединяйся к Press F и получай награды!",
     next_milestone: "Следующий milestone",
     referrals: "рефералов",

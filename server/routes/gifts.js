@@ -102,60 +102,91 @@ const createGiftsRoutes = (pool) => {
 
   // POST /api/gifts - Send a gift
   router.post('/', async (req, res) => {
+    const client = await pool?.connect();
+    if (!client) {
+      return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+    }
+
     try {
-      if (!pool) {
-        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
-      }
-
       const userId = req.userId;
-      const { recipientId, giftType, message } = req.body;
+      const { recipientId: recipientIdRaw, giftType, message } = req.body;
 
-      if (!userId || !recipientId || !giftType) {
+      // Validation: Check required fields
+      if (!userId || !recipientIdRaw || !giftType) {
         return sendError(res, 400, 'VALIDATION_ERROR', 'Missing required fields');
       }
 
+      // Validation: Validate recipientId type and value
+      const recipientId = Number(recipientIdRaw);
+      if (!Number.isInteger(recipientId) || recipientId <= 0) {
+        return sendError(res, 400, 'INVALID_RECIPIENT_ID', 'Invalid recipient ID');
+      }
+
+      // Validation: Check if user is trying to gift themselves
+      if (userId === recipientId) {
+        return sendError(res, 400, 'CANNOT_GIFT_SELF', 'Cannot send gift to yourself');
+      }
+
+      // Validation: Validate gift type
       if (!GIFT_TYPES[giftType]) {
         return sendError(res, 400, 'INVALID_GIFT_TYPE', 'Invalid gift type');
       }
 
+      // Validation: Validate message length
+      if (message && (typeof message !== 'string' || message.length > 500)) {
+        return sendError(res, 400, 'MESSAGE_TOO_LONG', 'Message exceeds 500 characters');
+      }
+
       const giftConfig = GIFT_TYPES[giftType];
 
-      // Check if user has enough reputation
-      const profileResult = await pool.query(
-        'SELECT reputation FROM profiles WHERE user_id = $1',
+      // Start transaction
+      await client.query('BEGIN');
+
+      // Check if user has enough reputation (with lock for race condition prevention)
+      const profileResult = await client.query(
+        'SELECT reputation FROM profiles WHERE user_id = $1 FOR UPDATE',
         [userId]
       );
 
       if (profileResult.rowCount === 0) {
+        await client.query('ROLLBACK');
         return sendError(res, 404, 'PROFILE_NOT_FOUND', 'Profile not found');
       }
 
       const currentRep = profileResult.rows[0].reputation || 0;
       if (currentRep < giftConfig.cost) {
+        await client.query('ROLLBACK');
         return sendError(res, 400, 'INSUFFICIENT_REPUTATION', `Not enough reputation. Need ${giftConfig.cost}, have ${currentRep}`);
       }
 
       // Check if recipient exists
-      const recipientResult = await pool.query(
+      const recipientResult = await client.query(
         'SELECT user_id FROM profiles WHERE user_id = $1',
         [recipientId]
       );
 
       if (recipientResult.rowCount === 0) {
+        await client.query('ROLLBACK');
         return sendError(res, 404, 'RECIPIENT_NOT_FOUND', 'Recipient not found');
       }
 
-      // Deduct reputation from sender
-      await pool.query(
+      // Deduct reputation from sender (atomic with check)
+      const deductResult = await client.query(
         `UPDATE profiles 
          SET reputation = reputation - $1, updated_at = now()
-         WHERE user_id = $2`,
+         WHERE user_id = $2 AND reputation >= $1
+         RETURNING reputation`,
         [giftConfig.cost, userId]
       );
 
+      if (deductResult.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return sendError(res, 400, 'INSUFFICIENT_REPUTATION', 'Not enough reputation (race condition detected)');
+      }
+
       // Create gift
       const giftId = uuidv4();
-      await pool.query(
+      await client.query(
         `INSERT INTO gifts 
          (id, sender_id, recipient_id, gift_type, gift_name, gift_icon, rarity, cost, effect, message, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())`,
@@ -173,22 +204,29 @@ const createGiftsRoutes = (pool) => {
         ]
       );
 
+      // Commit transaction
+      await client.query('COMMIT');
+
       logger.info('Gift sent', { giftId, senderId: userId, recipientId, giftType, cost: giftConfig.cost });
 
       return res.json({ ok: true, giftId, cost: giftConfig.cost });
     } catch (error) {
+      await client.query('ROLLBACK').catch(() => {}); // Ignore rollback errors
       logger.error('Send gift error:', { error: error?.message || error });
       return sendError(res, 500, 'GIFT_SEND_FAILED', 'Failed to send gift');
+    } finally {
+      client.release();
     }
   });
 
   // POST /api/gifts/:id/claim - Claim a gift
   router.post('/:id/claim', async (req, res) => {
-    try {
-      if (!pool) {
-        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
-      }
+    const client = await pool?.connect();
+    if (!client) {
+      return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+    }
 
+    try {
       const userId = req.userId;
       const giftId = req.params.id;
 
@@ -196,29 +234,52 @@ const createGiftsRoutes = (pool) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      // Get gift
-      const giftResult = await pool.query(
-        'SELECT * FROM gifts WHERE id = $1 AND recipient_id = $2',
+      // Validation: Validate UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(giftId)) {
+        return sendError(res, 400, 'INVALID_GIFT_ID', 'Invalid gift ID format');
+      }
+
+      // Start transaction
+      await client.query('BEGIN');
+
+      // Get gift (with lock to prevent double claiming)
+      const giftResult = await client.query(
+        'SELECT * FROM gifts WHERE id = $1 AND recipient_id = $2 FOR UPDATE',
         [giftId, userId]
       );
 
       if (giftResult.rowCount === 0) {
+        await client.query('ROLLBACK');
         return sendError(res, 404, 'GIFT_NOT_FOUND', 'Gift not found');
       }
 
       const gift = giftResult.rows[0];
 
       if (gift.is_claimed) {
+        await client.query('ROLLBACK');
         return sendError(res, 400, 'GIFT_ALREADY_CLAIMED', 'Gift already claimed');
       }
 
-      // Apply gift effect
-      const effect = typeof gift.effect === 'string' ? JSON.parse(gift.effect) : gift.effect;
+      // Parse and validate effect
+      let effect;
+      try {
+        effect = typeof gift.effect === 'string' ? JSON.parse(gift.effect) : gift.effect;
+        if (!effect || typeof effect !== 'object' || !effect.type) {
+          throw new Error('Invalid effect structure');
+        }
+      } catch (parseError) {
+        await client.query('ROLLBACK');
+        logger.error('Invalid gift effect format', { giftId, error: parseError });
+        return sendError(res, 500, 'INVALID_GIFT_EFFECT', 'Invalid gift effect format');
+      }
+
       let appliedEffect = null;
 
+      // Apply gift effect (all in transaction)
       if (effect.type === 'streak_boost') {
         // Add +1 day to streak
-        await pool.query(
+        await client.query(
           `UPDATE user_settings 
            SET current_streak = current_streak + $1, updated_at = now()
            WHERE user_id = $2`,
@@ -227,7 +288,7 @@ const createGiftsRoutes = (pool) => {
         appliedEffect = { type: 'streak_boost', value: effect.value };
       } else if (effect.type === 'streak_skip') {
         // Add free skip
-        await pool.query(
+        await client.query(
           `UPDATE user_settings 
            SET streak_free_skip = streak_free_skip + $1, updated_at = now()
            WHERE user_id = $2`,
@@ -235,10 +296,9 @@ const createGiftsRoutes = (pool) => {
         );
         appliedEffect = { type: 'streak_skip', value: effect.value };
       } else if (effect.type === 'xp_boost') {
-        // Store XP boost in user settings (could be a JSONB field for active boosts)
-        // For now, just award bonus XP immediately
+        // Award bonus XP immediately
         const bonusXP = Math.floor(50 * (effect.value - 1)); // 50% of 50 = 25 bonus XP
-        await pool.query(
+        await client.query(
           `UPDATE profiles 
            SET experience = experience + $1, total_xp_earned = total_xp_earned + $1, updated_at = now()
            WHERE user_id = $2`,
@@ -246,19 +306,23 @@ const createGiftsRoutes = (pool) => {
         );
         appliedEffect = { type: 'xp_boost', bonusXP };
       } else if (effect.type === 'title') {
-        // Update title temporarily (could store in user_settings with expiration)
-        await pool.query(
+        // Update title temporarily
+        await client.query(
           `UPDATE profiles 
            SET title = $1, updated_at = now()
            WHERE user_id = $2`,
           [effect.value, userId]
         );
         appliedEffect = { type: 'title', value: effect.value };
+      } else {
+        await client.query('ROLLBACK');
+        logger.warn('Unknown gift effect type', { giftId, effectType: effect.type });
+        return sendError(res, 400, 'UNKNOWN_EFFECT_TYPE', 'Unknown gift effect type');
       }
 
       // Award reputation to recipient (10% of gift cost)
       const reward = Math.floor(gift.cost * 0.1);
-      await pool.query(
+      await client.query(
         `UPDATE profiles 
          SET reputation = reputation + $1, updated_at = now()
          WHERE user_id = $2`,
@@ -266,19 +330,25 @@ const createGiftsRoutes = (pool) => {
       );
 
       // Mark gift as claimed
-      await pool.query(
+      await client.query(
         `UPDATE gifts 
          SET is_claimed = true, claimed_at = now()
          WHERE id = $1`,
         [giftId]
       );
 
+      // Commit transaction
+      await client.query('COMMIT');
+
       logger.info('Gift claimed', { giftId, userId, effect: appliedEffect, reward });
 
       return res.json({ ok: true, effect: appliedEffect, reward });
     } catch (error) {
+      await client.query('ROLLBACK').catch(() => {}); // Ignore rollback errors
       logger.error('Claim gift error:', { error: error?.message || error });
       return sendError(res, 500, 'GIFT_CLAIM_FAILED', 'Failed to claim gift');
+    } finally {
+      client.release();
     }
   });
 

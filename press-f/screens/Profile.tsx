@@ -32,14 +32,14 @@ const getIcon = (name: string, props: any) => {
 const Profile = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<UserProfile>(storage.getUserProfile());
+  const [profile, setProfile] = useState(() => storage.getUserProfile());
   const [isEditing, setIsEditing] = useState(false);
-  const [tempBio, setTempBio] = useState(profile.bio);
+  const [tempBio, setTempBio] = useState(() => storage.getUserProfile().bio);
   const [activeTab, setActiveTab] = useState<'stats' | 'trophies' | 'system'>('stats');
   const [scanning, setScanning] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const [notificationEvents, setNotificationEvents] = useState<any[]>([]);
-  const [shareHistory, setShareHistory] = useState(storage.getShareHistory());
+  const [shareHistory, setShareHistory] = useState(() => storage.getShareHistory());
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const unreadCount = notificationEvents.filter((e) => !e.is_read).length;
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
