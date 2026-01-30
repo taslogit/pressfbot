@@ -629,7 +629,15 @@ const createSquadsRoutes = (pool) => {
         trend: 'same' // TODO: calculate trend
       }));
 
-      return res.json({ ok: true, leaderboard });
+      return res.json({ 
+        ok: true, 
+        leaderboard,
+        meta: {
+          limit,
+          offset,
+          hasMore: result.rows.length === limit
+        }
+      });
     } catch (error) {
       logger.error('Get leaderboard error:', error);
       return sendError(res, 500, 'LEADERBOARD_FETCH_FAILED', 'Failed to fetch leaderboard');

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { translations, Language } from '../utils/translations';
+import { tg } from '../utils/telegram';
 
 interface LanguageContextType {
   language: Language;

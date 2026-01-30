@@ -37,7 +37,7 @@ const GIFT_TYPES = {
 };
 
 const createGiftsRoutes = (pool) => {
-  // GET /api/gifts - Get user's gifts (sent and received)
+  // GET /api/gifts - Get user's gifts (sent and received) with pagination
   router.get('/', async (req, res) => {
     try {
       if (!pool) {
@@ -49,23 +49,70 @@ const createGiftsRoutes = (pool) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      // Get received gifts
-      const receivedResult = await pool.query(
-        `SELECT * FROM gifts 
-         WHERE recipient_id = $1 
-         ORDER BY created_at DESC 
-         LIMIT 50`,
-        [userId]
-      );
+      // Pagination parameters
+      const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Max 100
+      const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+      const type = req.query.type; // 'received' | 'sent' | undefined (both)
 
-      // Get sent gifts
-      const sentResult = await pool.query(
-        `SELECT * FROM gifts 
-         WHERE sender_id = $1 
-         ORDER BY created_at DESC 
-         LIMIT 50`,
-        [userId]
-      );
+      let receivedResult, sentResult;
+      let received = [], sent = [];
+
+      if (!type || type === 'received') {
+        // Get received gifts with pagination
+        receivedResult = await pool.query(
+          `SELECT * FROM gifts 
+           WHERE recipient_id = $1 
+           ORDER BY created_at DESC 
+           LIMIT $2 OFFSET $3`,
+          [userId, limit, offset]
+        );
+        received = receivedResult.rows.map(row => ({
+          id: row.id,
+          type: row.gift_type,
+          name: row.gift_name,
+          icon: row.gift_icon,
+          rarity: row.rarity,
+          from: row.sender_id,
+          message: row.message,
+          isClaimed: row.is_claimed,
+          claimedAt: row.claimed_at?.toISOString(),
+          createdAt: row.created_at?.toISOString(),
+          effect: row.effect
+        }));
+      }
+
+      if (!type || type === 'sent') {
+        // Get sent gifts with pagination
+        sentResult = await pool.query(
+          `SELECT * FROM gifts 
+           WHERE sender_id = $1 
+           ORDER BY created_at DESC 
+           LIMIT $2 OFFSET $3`,
+          [userId, limit, offset]
+        );
+        sent = sentResult.rows.map(row => ({
+          id: row.id,
+          type: row.gift_type,
+          name: row.gift_name,
+          icon: row.gift_icon,
+          rarity: row.rarity,
+          to: row.recipient_id,
+          message: row.message,
+          isClaimed: row.is_claimed,
+          createdAt: row.created_at?.toISOString()
+        }));
+      }
+
+      return res.json({ 
+        ok: true, 
+        received, 
+        sent,
+        meta: {
+          limit,
+          offset,
+          hasMore: (receivedResult?.rows.length === limit || sentResult?.rows.length === limit)
+        }
+      });
 
       const received = receivedResult.rows.map(row => ({
         id: row.id,

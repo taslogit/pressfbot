@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Skull, Send, Swords, Gift, ChevronRight, Zap, Shield, Terminal, X } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
+import { analytics } from '../utils/analytics';
 
 interface Props {
   isVisible: boolean;
@@ -69,14 +70,18 @@ const OnboardingGuide: React.FC<Props> = ({ isVisible, onClose }) => {
   const handleNext = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (step < steps.length - 1) {
-      setStep(prev => prev + 1);
+      const nextStep = step + 1;
+      setStep(nextStep);
+      analytics.track('onboarding_step', { step: nextStep, stepId: steps[nextStep].id });
     } else {
+      analytics.track('onboarding_completed', { totalSteps: steps.length });
       onClose();
     }
   };
 
   const handleSkip = (e: React.MouseEvent) => {
     e.stopPropagation();
+    analytics.track('onboarding_skipped', { currentStep: step, totalSteps: steps.length });
     onClose();
   };
 

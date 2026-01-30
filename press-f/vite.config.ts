@@ -18,8 +18,17 @@ export default defineConfig(({ mode }) => {
               react: ['react', 'react-dom', 'react-router-dom'],
               animation: ['framer-motion', 'canvas-confetti'],
               ui: ['lucide-react'],
-              qr: ['qrcode.react']
+              qr: ['qrcode.react'],
+              ton: ['@tonconnect/ui-react']
             }
+          }
+        },
+        // Optimize bundle size
+        minify: 'terser',
+        terserOptions: {
+          compress: {
+            drop_console: true, // Remove console.log in production
+            drop_debugger: true
           }
         }
       },

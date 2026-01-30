@@ -134,13 +134,30 @@ const createLettersRoutes = (pool, createLimiter) => {
         values.push(isFavorite);
       }
       if (query) {
-        conditions.push(`(
-          title ILIKE $${paramIndex}
-          OR content ILIKE $${paramIndex}
-          OR array_to_string(recipients, ' ') ILIKE $${paramIndex}
-        )`);
-        values.push(`%${query}%`);
-        paramIndex += 1;
+        // Use full-text search if available, fallback to ILIKE
+        const searchTerm = query.trim();
+        if (searchTerm.length > 0) {
+          // Try full-text search first (faster with GIN indexes)
+          try {
+            conditions.push(`(
+              to_tsvector('russian', title) @@ plainto_tsquery('russian', $${paramIndex})
+              OR to_tsvector('russian', COALESCE(content, '')) @@ plainto_tsquery('russian', $${paramIndex})
+              OR array_to_string(recipients, ' ') ILIKE $${paramIndex + 1}
+            )`);
+            values.push(searchTerm, `%${searchTerm}%`);
+            paramIndex += 2;
+          } catch (ftsError) {
+            // Fallback to ILIKE if full-text search fails
+            logger.debug('Full-text search failed, using ILIKE', { error: ftsError?.message });
+            conditions.push(`(
+              title ILIKE $${paramIndex}
+              OR content ILIKE $${paramIndex}
+              OR array_to_string(recipients, ' ') ILIKE $${paramIndex}
+            )`);
+            values.push(`%${searchTerm}%`);
+            paramIndex += 1;
+          }
+        }
       }
 
       // Optimization: Support cursor-based pagination for better performance with large offsets

@@ -35,6 +35,10 @@ const createTables = async (pool) => {
     // Performance: Composite indexes for common query patterns
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_letters_user_status_created ON letters(user_id, status, created_at DESC)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_letters_user_favorite ON letters(user_id, is_favorite) WHERE is_favorite = true`);
+    
+    // Full-text search indexes (GIN for text search)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_letters_title_gin ON letters USING gin(to_tsvector('russian', title))`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_letters_content_gin ON letters USING gin(to_tsvector('russian', COALESCE(content, '')))`);
 
     // Duels table
     await pool.query(`
@@ -69,6 +73,9 @@ const createTables = async (pool) => {
     // Performance: Composite indexes for common query patterns
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_challenger_status ON duels(challenger_id, status, created_at DESC)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_opponent_status ON duels(opponent_id, status, created_at DESC)`);
+    
+    // Full-text search indexes for duels
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_title_gin ON duels USING gin(to_tsvector('russian', title))`);
 
     // Legacy items table
     await pool.query(`

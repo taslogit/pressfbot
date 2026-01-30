@@ -175,13 +175,34 @@ app.use(express.json({ limit: '1mb' }));
 const path = require('path');
 const staticPath = path.join(__dirname, 'static');
 // Serve avatars from subdirectory
-app.use('/api/static/avatars', express.static(path.join(staticPath, 'avatars'), {
+// Image optimization middleware - serve WebP when available
+app.use('/api/static/avatars', (req, res, next) => {
+  // Check if client supports WebP
+  const acceptsWebP = req.headers.accept && req.headers.accept.includes('image/webp');
+  const originalPath = req.path;
+  
+  // If WebP is supported and file is not already WebP, try to serve WebP version
+  if (acceptsWebP && !originalPath.endsWith('.webp')) {
+    const webpPath = originalPath.replace(/\.(jpg|jpeg|png)$/i, '.webp');
+    const fs = require('fs');
+    const webpFullPath = path.join(staticPath, 'avatars', webpPath);
+    
+    // Check if WebP version exists
+    if (fs.existsSync(webpFullPath)) {
+      req.url = webpPath;
+    }
+  }
+  
+  next();
+}, express.static(path.join(staticPath, 'avatars'), {
   maxAge: '1y',
   etag: true,
   lastModified: true,
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.jpg') || filePath.endsWith('.png') || filePath.endsWith('.gif') || filePath.endsWith('.webp')) {
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      // Add Vary header for content negotiation
+      res.setHeader('Vary', 'Accept');
     }
   }
 }));
