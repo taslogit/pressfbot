@@ -49,6 +49,8 @@ const NOTIFY_UNLOCK_AHEAD_SECONDS = Number(process.env.NOTIFY_UNLOCK_AHEAD_SECON
 // Rate Limiting Constants
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX_REQUESTS = 300;
+const RATE_LIMIT_GET_WINDOW_MS = 15 * 60 * 1000; // 15 minutes for GET requests
+const RATE_LIMIT_POST_WINDOW_MS = 15 * 60 * 1000; // 15 minutes for POST requests
 const RATE_LIMIT_VERIFY_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 const RATE_LIMIT_VERIFY_MAX = 30;
 const RATE_LIMIT_LETTER_CREATE_MAX = 20; // per 15 minutes
