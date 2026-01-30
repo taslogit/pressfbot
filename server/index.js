@@ -259,6 +259,10 @@ if (USE_WEBHOOK) {
 const performanceMonitor = require('./middleware/performanceMonitor');
 app.use(performanceMonitor);
 
+// Security: Add security logging middleware
+const { securityLoggerMiddleware } = require('./middleware/securityLogger');
+app.use(securityLoggerMiddleware);
+
 // Security: Configure Helmet with proper CSP for Telegram Mini App
 app.use(helmet({
   contentSecurityPolicy: {

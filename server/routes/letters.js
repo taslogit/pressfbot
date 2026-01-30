@@ -643,6 +643,35 @@ const createLettersRoutes = (pool, createLimiter) => {
         updateValues.push(type);
       }
       if (attachments !== undefined && allowedFields.attachments) {
+        // Security: Validate attachments if provided
+        if (Array.isArray(attachments)) {
+          if (attachments.length > MAX_ATTACHMENTS_COUNT) {
+            return sendError(res, 400, 'VALIDATION_ERROR', `Maximum ${MAX_ATTACHMENTS_COUNT} attachments allowed`);
+          }
+          
+          let totalAttachmentsSize = 0;
+          for (const attachment of attachments) {
+            if (attachment && typeof attachment === 'object') {
+              if (attachment.size && attachment.size > MAX_ATTACHMENT_SIZE) {
+                return sendError(res, 400, 'VALIDATION_ERROR', `Attachment size exceeds ${MAX_ATTACHMENT_SIZE / 1024 / 1024}MB limit`);
+              }
+              if (attachment.data) {
+                const estimatedSize = attachment.data.length * 0.75;
+                if (estimatedSize > MAX_ATTACHMENT_SIZE) {
+                  return sendError(res, 400, 'VALIDATION_ERROR', `Attachment size exceeds ${MAX_ATTACHMENT_SIZE / 1024 / 1024}MB limit`);
+                }
+                totalAttachmentsSize += estimatedSize;
+              } else if (attachment.url) {
+                totalAttachmentsSize += 1024 * 1024;
+              }
+            }
+          }
+          
+          if (totalAttachmentsSize > MAX_TOTAL_ATTACHMENTS_SIZE) {
+            return sendError(res, 400, 'VALIDATION_ERROR', `Total attachments size exceeds ${MAX_TOTAL_ATTACHMENTS_SIZE / 1024 / 1024}MB limit`);
+          }
+        }
+        
         updateFields.push(`attachments = $${paramIndex++}`);
         updateValues.push(attachments);
       }
