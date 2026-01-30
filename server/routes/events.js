@@ -49,29 +49,37 @@ const createEventsRoutes = (pool) => {
         icon: row.icon
       }));
 
-      // Get user progress for each event
-      const eventsWithProgress = await Promise.all(
-        events.map(async (event) => {
-          const progressResult = await pool.query(
-            'SELECT * FROM user_event_progress WHERE user_id = $1 AND event_id = $2',
-            [userId, event.id]
-          );
-
-          let progress = {};
-          let rewardsClaimed = [];
-
-          if (progressResult.rowCount > 0) {
-            progress = progressResult.rows[0].progress || {};
-            rewardsClaimed = progressResult.rows[0].rewards_claimed || [];
-          }
-
+      // Optimization: Get all user progress in single query instead of N+1
+      const eventIds = events.map(e => e.id);
+      let eventsWithProgress = events.map(e => ({ ...e, progress: {}, rewardsClaimed: [] }));
+      
+      if (eventIds.length > 0) {
+        const progressResult = await pool.query(
+          `SELECT event_id, progress, rewards_claimed 
+           FROM user_event_progress 
+           WHERE user_id = $1 AND event_id = ANY($2::uuid[])`,
+          [userId, eventIds]
+        );
+        
+        // Create map for quick lookup
+        const progressMap = new Map();
+        progressResult.rows.forEach(row => {
+          progressMap.set(row.event_id, {
+            progress: row.progress || {},
+            rewardsClaimed: row.rewards_claimed || []
+          });
+        });
+        
+        // Merge progress into events
+        eventsWithProgress = events.map(event => {
+          const userProgress = progressMap.get(event.id);
           return {
             ...event,
-            progress,
-            rewardsClaimed
+            progress: userProgress?.progress || {},
+            rewardsClaimed: userProgress?.rewardsClaimed || []
           };
-        })
-      );
+        });
+      }
 
       const response = { ok: true, events: eventsWithProgress };
 

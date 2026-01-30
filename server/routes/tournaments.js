@@ -52,61 +52,70 @@ const createTournamentsRoutes = (pool) => {
         params = [];
       }
 
-      const tournamentsResult = await pool.query(query, params);
-
-      const tournaments = await Promise.all(
-        tournamentsResult.rows.map(async (row) => {
-          // Get participant count
-          const participantsResult = await pool.query(
-            'SELECT COUNT(*) as count FROM tournament_participants WHERE tournament_id = $1',
-            [row.id]
-          );
-          const participantCount = parseInt(participantsResult.rows[0]?.count || 0);
-
-          // Check if user is registered
-          let isRegistered = false;
-          let userParticipant = null;
-          if (userId) {
-            const userParticipantResult = await pool.query(
-              'SELECT * FROM tournament_participants WHERE tournament_id = $1 AND user_id = $2',
-              [row.id, userId]
-            );
-            if (userParticipantResult.rowCount > 0) {
-              isRegistered = true;
-              userParticipant = {
-                seed: userParticipantResult.rows[0].seed,
-                score: userParticipantResult.rows[0].score,
-                wins: userParticipantResult.rows[0].wins,
-                losses: userParticipantResult.rows[0].losses,
-                status: userParticipantResult.rows[0].status
-              };
-            }
-          }
-
-          return {
-            id: row.id,
-            name: row.name,
-            description: row.description,
-            startDate: row.start_date?.toISOString(),
-            endDate: row.end_date?.toISOString(),
-            registrationStart: row.registration_start?.toISOString(),
-            registrationEnd: row.registration_end?.toISOString(),
-            maxParticipants: row.max_participants,
-            minParticipants: row.min_participants,
-            status: row.status,
-            format: row.format,
-            prizePool: row.prize_pool || {},
-            rules: row.rules || {},
-            bannerUrl: row.banner_url,
-            icon: row.icon,
-            participantCount,
-            isRegistered,
-            userParticipant
-          };
-        })
+      // Optimization: Use JOIN to get participant counts and user registration in single query
+      const optimizedQuery = query.replace(
+        'SELECT * FROM tournaments',
+        `SELECT 
+          t.*,
+          COUNT(DISTINCT tp.id) as participant_count,
+          MAX(CASE WHEN tp.user_id = $${params.length + 1} THEN 1 ELSE 0 END) as is_registered,
+          MAX(CASE WHEN tp.user_id = $${params.length + 1} THEN tp.seed ELSE NULL END) as user_seed,
+          MAX(CASE WHEN tp.user_id = $${params.length + 1} THEN tp.score ELSE NULL END) as user_score,
+          MAX(CASE WHEN tp.user_id = $${params.length + 1} THEN tp.wins ELSE NULL END) as user_wins,
+          MAX(CASE WHEN tp.user_id = $${params.length + 1} THEN tp.losses ELSE NULL END) as user_losses,
+          MAX(CASE WHEN tp.user_id = $${params.length + 1} THEN tp.status ELSE NULL END) as user_status
+        FROM tournaments t
+        LEFT JOIN tournament_participants tp ON t.id = tp.tournament_id`
+      ).replace(
+        'GROUP BY',
+        'GROUP BY t.id, t.name, t.description, t.start_date, t.end_date, t.registration_start, t.registration_end, t.max_participants, t.min_participants, t.status, t.format, t.prize_pool, t.rules, t.banner_url, t.icon, t.created_at, t.updated_at'
       );
 
-      return res.json({ ok: true, tournaments });
+      const finalParams = userId ? [...params, userId] : params;
+      const tournamentsResult = await pool.query(
+        optimizedQuery + (optimizedQuery.includes('GROUP BY') ? '' : ' GROUP BY t.id, t.name, t.description, t.start_date, t.end_date, t.registration_start, t.registration_end, t.max_participants, t.min_participants, t.status, t.format, t.prize_pool, t.rules, t.banner_url, t.icon, t.created_at, t.updated_at'),
+        finalParams
+      );
+
+      const tournaments = tournamentsResult.rows.map((row) => {
+        const participantCount = parseInt(row.participant_count || 0);
+        const isRegistered = userId ? Boolean(row.is_registered) : false;
+        const userParticipant = (isRegistered && userId) ? {
+          seed: row.user_seed,
+          score: row.user_score,
+          wins: row.user_wins,
+          losses: row.user_losses,
+          status: row.user_status
+        } : null;
+
+        return {
+          id: row.id,
+          name: row.name,
+          description: row.description,
+          startDate: row.start_date?.toISOString(),
+          endDate: row.end_date?.toISOString(),
+          registrationStart: row.registration_start?.toISOString(),
+          registrationEnd: row.registration_end?.toISOString(),
+          maxParticipants: row.max_participants,
+          minParticipants: row.min_participants,
+          status: row.status,
+          format: row.format,
+          prizePool: row.prize_pool || {},
+          rules: row.rules || {},
+          bannerUrl: row.banner_url,
+          icon: row.icon,
+          participantCount,
+          isRegistered,
+          userParticipant
+        };
+      });
+
+      const response = { ok: true, tournaments };
+      
+      // Cache for 5 minutes (tournaments don't change often)
+      await cache.set(cacheKey, response, 300);
+      
+      return res.json(response);
     } catch (error) {
       logger.error('Get tournaments error:', { error: error?.message || error });
       return sendError(res, 500, 'TOURNAMENTS_FETCH_FAILED', 'Failed to fetch tournaments');

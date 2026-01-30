@@ -137,13 +137,30 @@ const createDuelsRoutes = (pool, createLimiter) => {
         values.push(isFavorite);
       }
       if (query) {
-        conditions.push(`(
-          title ILIKE $${paramIndex}
-          OR opponent_name ILIKE $${paramIndex}
-          OR stake ILIKE $${paramIndex}
-        )`);
-        values.push(`%${query}%`);
-        paramIndex += 1;
+        // Use full-text search if available, fallback to ILIKE
+        const searchTerm = query.trim();
+        if (searchTerm.length > 0) {
+          // Try full-text search first (faster with GIN indexes)
+          try {
+            conditions.push(`(
+              to_tsvector('russian', title) @@ plainto_tsquery('russian', $${paramIndex})
+              OR opponent_name ILIKE $${paramIndex + 1}
+              OR stake ILIKE $${paramIndex + 1}
+            )`);
+            values.push(searchTerm, `%${searchTerm}%`);
+            paramIndex += 2;
+          } catch (ftsError) {
+            // Fallback to ILIKE if full-text search fails
+            logger.debug('Full-text search failed, using ILIKE', { error: ftsError?.message });
+            conditions.push(`(
+              title ILIKE $${paramIndex}
+              OR opponent_name ILIKE $${paramIndex}
+              OR stake ILIKE $${paramIndex}
+            )`);
+            values.push(`%${searchTerm}%`);
+            paramIndex += 1;
+          }
+        }
       }
 
       values.push(limit, offset);

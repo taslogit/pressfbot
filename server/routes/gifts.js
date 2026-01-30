@@ -113,34 +113,6 @@ const createGiftsRoutes = (pool) => {
           hasMore: (receivedResult?.rows.length === limit || sentResult?.rows.length === limit)
         }
       });
-
-      const received = receivedResult.rows.map(row => ({
-        id: row.id,
-        type: row.gift_type,
-        name: row.gift_name,
-        icon: row.gift_icon,
-        rarity: row.rarity,
-        from: row.sender_id,
-        message: row.message,
-        isClaimed: row.is_claimed,
-        claimedAt: row.claimed_at?.toISOString(),
-        createdAt: row.created_at?.toISOString(),
-        effect: row.effect
-      }));
-
-      const sent = sentResult.rows.map(row => ({
-        id: row.id,
-        type: row.gift_type,
-        name: row.gift_name,
-        icon: row.gift_icon,
-        rarity: row.rarity,
-        to: row.recipient_id,
-        message: row.message,
-        isClaimed: row.is_claimed,
-        createdAt: row.created_at?.toISOString()
-      }));
-
-      return res.json({ ok: true, received, sent });
     } catch (error) {
       logger.error('Get gifts error:', { error: error?.message || error });
       return sendError(res, 500, 'GIFTS_FETCH_FAILED', 'Failed to fetch gifts');
