@@ -217,6 +217,11 @@ app.use('/api/static', express.static(staticPath, {
 }));
 logger.info('Static files served from:', { path: staticPath });
 
+// Register bot commands BEFORE webhook setup
+bot.start(sendStartMessage);
+bot.command('start', sendStartMessage);
+bot.command('help', sendStartMessage);
+
 // Telegram webhook callback (MUST be first, before any other middleware)
 if (USE_WEBHOOK) {
   // Add a simple handler for HEAD/GET requests to /bot for debugging (BEFORE webhookCallback)
@@ -259,13 +264,25 @@ if (USE_WEBHOOK) {
 const performanceMonitor = require('./middleware/performanceMonitor');
 app.use(performanceMonitor);
 
-// Security: Add security logging middleware
+// Security: Add security logging middleware (skip for /bot webhook)
 const { securityLoggerMiddleware } = require('./middleware/securityLogger');
-app.use(securityLoggerMiddleware);
+app.use((req, res, next) => {
+  // Skip security logging for webhook endpoint to avoid interference
+  if (req.path === '/bot') {
+    return next();
+  }
+  return securityLoggerMiddleware(req, res, next);
+});
 
-// Monitoring: Add basic monitoring middleware
+// Monitoring: Add basic monitoring middleware (skip for /bot webhook)
 const { monitoringMiddleware, getMetrics, updateHealthStatus } = require('./middleware/monitoring');
-app.use(monitoringMiddleware);
+app.use((req, res, next) => {
+  // Skip monitoring for webhook endpoint to avoid interference
+  if (req.path === '/bot') {
+    return next();
+  }
+  return monitoringMiddleware(req, res, next);
+});
 
 // Security: Configure Helmet with proper CSP for Telegram Mini App
 app.use(helmet({
