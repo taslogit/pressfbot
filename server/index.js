@@ -559,8 +559,22 @@ app.get('/api/health', async (_req, res) => {
     health.redis = 'disabled';
   }
 
+  // Update health status in monitoring
+  updateHealthStatus(health.ok ? 'healthy' : (health.db === 'error' ? 'unhealthy' : 'degraded'));
+  
   const statusCode = health.ok ? 200 : 503;
   return res.status(statusCode).json(health);
+});
+
+// Metrics endpoint (no auth, but rate limited)
+app.get('/api/metrics', globalLimiter, (req, res) => {
+  try {
+    const metrics = getMetrics();
+    return res.json({ ok: true, metrics });
+  } catch (error) {
+    logger.error('Get metrics error:', error);
+    return sendError(res, 500, 'METRICS_FETCH_FAILED', 'Failed to fetch metrics');
+  }
 });
 
 // Create all tables (sessions + migrations)
