@@ -29,10 +29,7 @@ const Landing = () => {
   const { t } = useTranslation();
   const { theme, toggleTheme } = useTheme();
   
-  // Log component mount
-  React.useEffect(() => {
-    console.log('[Landing] Component mounted');
-  }, []);
+  // Component mount tracking (removed console.log for production)
   const [justCheckedIn, setJustCheckedIn] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   // showQuestLog removed - use Daily Quests component instead
@@ -107,7 +104,9 @@ const Landing = () => {
     }
 
     const interval = setInterval(() => {
-        setCurrentLog(prev => (prev + 1) % logs.length);
+        if (isMounted) {
+          setCurrentLog(prev => (prev + 1) % logs.length);
+        }
     }, 4000);
 
     // Old quests system removed - Daily Quests are loaded via DailyQuests component

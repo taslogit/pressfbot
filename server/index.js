@@ -341,6 +341,23 @@ const duelCreateLimiter = rateLimit({
   message: 'Too many duels created, please try again later'
 });
 
+// Rate limiters for general GET and POST requests
+const getLimiter = rateLimit({
+  windowMs: RATE_LIMIT_GET_WINDOW_MS,
+  max: RATE_LIMIT_GET_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many requests, please try again later'
+});
+
+const postLimiter = rateLimit({
+  windowMs: RATE_LIMIT_POST_WINDOW_MS,
+  max: RATE_LIMIT_POST_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many requests, please try again later'
+});
+
 // CORS middleware - Security: Whitelist only allowed origins
 const allowedOrigins = [
   process.env.WEB_APP_URL,
@@ -388,20 +405,21 @@ const authMiddleware = createAuthMiddleware(pool);
 
 // Register API routes with rate limiting
 // Note: Rate limiters for POST requests are applied inside route handlers
-app.use('/api/letters', authMiddleware, createLettersRoutes(pool, letterCreateLimiter));
-app.use('/api/profile', authMiddleware, createProfileRoutes(pool, bot));
-app.use('/api/duels', authMiddleware, createDuelsRoutes(pool, duelCreateLimiter));
-app.use('/api/legacy', authMiddleware, createLegacyRoutes(pool));
-app.use('/api/notifications', authMiddleware, createNotificationsRoutes(pool, bot));
-app.use('/api/ton', authMiddleware, createTonRoutes(pool));
-app.use('/api/daily-quests', authMiddleware, createDailyQuestsRoutes(pool, bot));
-app.use('/api/avatars', createAvatarsRoutes()); // No auth needed for public avatars list
-app.use('/api/gifts', authMiddleware, createGiftsRoutes(pool));
-app.use('/api/events', authMiddleware, createEventsRoutes(pool));
-app.use('/api/tournaments', authMiddleware, createTournamentsRoutes(pool));
-app.use('/api/activity', authMiddleware, createActivityRoutes(pool));
-app.use('/api/squads', authMiddleware, createSquadsRoutes(pool));
-app.use('/api/witnesses', authMiddleware, createWitnessesRoutes(pool));
+// Apply GET limiter to all GET endpoints, POST limiter to all POST endpoints
+app.use('/api/letters', authMiddleware, getLimiter, createLettersRoutes(pool, letterCreateLimiter));
+app.use('/api/profile', authMiddleware, getLimiter, createProfileRoutes(pool, bot));
+app.use('/api/duels', authMiddleware, getLimiter, createDuelsRoutes(pool, duelCreateLimiter));
+app.use('/api/legacy', authMiddleware, getLimiter, createLegacyRoutes(pool));
+app.use('/api/notifications', authMiddleware, getLimiter, createNotificationsRoutes(pool, bot));
+app.use('/api/ton', authMiddleware, getLimiter, createTonRoutes(pool));
+app.use('/api/daily-quests', authMiddleware, getLimiter, createDailyQuestsRoutes(pool, bot));
+app.use('/api/avatars', getLimiter, createAvatarsRoutes()); // No auth needed for public avatars list
+app.use('/api/gifts', authMiddleware, getLimiter, createGiftsRoutes(pool));
+app.use('/api/events', authMiddleware, getLimiter, createEventsRoutes(pool));
+app.use('/api/tournaments', authMiddleware, getLimiter, createTournamentsRoutes(pool));
+app.use('/api/activity', authMiddleware, getLimiter, createActivityRoutes(pool));
+app.use('/api/squads', authMiddleware, getLimiter, createSquadsRoutes(pool));
+app.use('/api/witnesses', authMiddleware, getLimiter, createWitnessesRoutes(pool));
 
 // Global search across letters, duels, legacy (with rate limiting and pagination)
 app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {
@@ -486,7 +504,7 @@ app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Search error:', error);
+    logger.error('Search error:', { error: error?.message || error, query: req.query.q });
     return sendError(res, 500, 'SEARCH_FAILED', 'Failed to search');
   }
 });
@@ -544,7 +562,7 @@ app.get('/api/health', async (_req, res) => {
 // Create all tables (sessions + migrations)
 (async () => {
   if (!pool) {
-    console.warn('⚠️  No database connection - running in local storage mode');
+    logger.warn('No database connection - running in local storage mode');
     return;
   }
   try {
@@ -968,7 +986,7 @@ app.post('/api/enqueue-test', async (req, res) => {
     const job = await jobsQueue.add(jobData);
     return res.json({ ok: true, jobId: job.id });
   } catch (e) {
-    console.error('Failed to enqueue job', e);
+    logger.error('Failed to enqueue job', { error: e?.message || e, jobType: jobData?.type });
     return res.status(500).json({ ok: false });
   }
 });

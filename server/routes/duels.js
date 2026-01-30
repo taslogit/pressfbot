@@ -383,7 +383,7 @@ const createDuelsRoutes = (pool, createLimiter) => {
 
       return res.json({ ok: true, duel });
     } catch (error) {
-      console.error('Get duel error:', error);
+      logger.error('Get duel error:', { error: error?.message || error, userId: req.userId, duelId: req.params.id });
       return sendError(res, 500, 'DUEL_FETCH_FAILED', 'Failed to fetch duel');
     }
   });
@@ -608,7 +608,7 @@ const createDuelsRoutes = (pool, createLimiter) => {
 
       return res.json({ ok: true });
     } catch (error) {
-      console.error('View duel error:', error);
+      logger.error('View duel error:', { error: error?.message || error, userId: req.userId, duelId: req.params.id });
       return sendError(res, 500, 'DUEL_VIEW_FAILED', 'Failed to record view');
     }
   });
@@ -635,7 +635,7 @@ const createDuelsRoutes = (pool, createLimiter) => {
 
       return res.json({ ok: true, duels });
     } catch (error) {
-      console.error('Get hype duels error:', error);
+      logger.error('Get hype duels error:', { error: error?.message || error, userId: req.userId });
       return sendError(res, 500, 'HYPE_FETCH_FAILED', 'Failed to fetch hype duels');
     }
   });

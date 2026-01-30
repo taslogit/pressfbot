@@ -37,17 +37,24 @@ const DecryptedText = ({ text }: { text: string }) => {
 
     useEffect(() => {
         let iteration = 0;
-        const interval = setInterval(() => {
+        let intervalId: ReturnType<typeof setInterval> | null = null;
+        
+        intervalId = setInterval(() => {
             setDisplay(text.split('').map((char, index) => {
                 if (index < iteration) return char;
                 return chars[Math.floor(Math.random() * chars.length)];
             }).join(''));
 
-            if (iteration >= text.length) clearInterval(interval);
-            iteration += 1; // Speed
+            if (iteration >= text.length && intervalId) {
+              clearInterval(intervalId);
+              intervalId = null;
+            }
+            iteration += 1;
         }, 5); 
 
-        return () => clearInterval(interval);
+        return () => {
+          if (intervalId) clearInterval(intervalId);
+        };
     }, [text]);
 
     return <span>{display}</span>;

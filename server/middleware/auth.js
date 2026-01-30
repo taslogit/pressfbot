@@ -4,6 +4,7 @@
 const { Pool } = require('pg');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
+const { logSecurityEvent, SECURITY_EVENTS } = require('./securityLogger');
 const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 7 * 24 * 60 * 60);
 const SESSION_TTL_REFRESH_MINUTES = Number(process.env.SESSION_TTL_REFRESH_MINUTES || 10);
 const SESSION_TTL_REFRESH_SECONDS = Number.isFinite(SESSION_TTL_REFRESH_MINUTES)
@@ -33,9 +34,10 @@ const createAuthMiddleware = (pool) => {
 
       if (result.rowCount === 0) {
         // Security: Log failed authentication attempts
-        logger.warn('Security: Failed authentication attempt', {
+        const ip = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
+        logSecurityEvent(SECURITY_EVENTS.FAILED_AUTH, {
           sessionId: sessionId?.substring(0, 8) + '...',
-          ip: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress,
+          ip,
           userAgent: req.headers['user-agent'],
           path: req.path,
           method: req.method
@@ -48,10 +50,11 @@ const createAuthMiddleware = (pool) => {
       if (expiresAt && new Date(expiresAt) <= new Date()) {
         await pool.query('DELETE FROM sessions WHERE id = $1', [sessionId]);
         // Security: Log expired session attempts
-        logger.warn('Security: Expired session attempt', {
+        const ip = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
+        logSecurityEvent(SECURITY_EVENTS.EXPIRED_SESSION, {
           sessionId: sessionId?.substring(0, 8) + '...',
           telegramId: result.rows[0].telegram_id,
-          ip: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress,
+          ip,
           path: req.path
         });
         return sendError(res, 401, 'SESSION_EXPIRED', 'Session expired');

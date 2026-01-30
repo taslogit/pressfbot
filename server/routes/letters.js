@@ -699,7 +699,7 @@ const createLettersRoutes = (pool, createLimiter) => {
 
       return res.json({ ok: true, id: letterId });
     } catch (error) {
-      console.error('Update letter error:', error);
+      logger.error('Update letter error:', { error: error?.message || error, userId: req.userId, letterId: req.params.id });
       return sendError(res, 500, 'LETTER_UPDATE_FAILED', 'Failed to update letter');
     }
   });
@@ -725,7 +725,7 @@ const createLettersRoutes = (pool, createLimiter) => {
 
       return res.json({ ok: true });
     } catch (error) {
-      console.error('Delete letter error:', error);
+      logger.error('Delete letter error:', { error: error?.message || error, userId: req.userId, letterId: req.params.id });
       return sendError(res, 500, 'LETTER_DELETE_FAILED', 'Failed to delete letter');
     }
   });

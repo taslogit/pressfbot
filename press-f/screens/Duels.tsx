@@ -151,12 +151,24 @@ const Duels = () => {
             }
           }
         }
+      }).catch((error) => {
+        console.error('Error loading duels:', error);
+        if (isMounted) {
+          setDuels([]);
+          setLoading(false);
+          setShowSkeleton(false);
+        }
       }).finally(() => {
         if (isMounted) setLoading(false);
         if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current);
         if (isMounted) setShowSkeleton(false);
       });
     }, 300);
+    
+    return () => {
+      isMounted = false;
+      if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current);
+    };
     return () => {
       isMounted = false;
       clearTimeout(timer);

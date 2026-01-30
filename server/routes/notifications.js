@@ -40,16 +40,32 @@ const createNotificationsRoutes = (pool, bot = null) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
+      // Pagination support
+      const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+      const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+      
+      if (!Number.isInteger(limit) || limit < 1 || !Number.isInteger(offset) || offset < 0) {
+        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid pagination parameters');
+      }
+
       const result = await pool.query(
         `SELECT id, event_type, title, message, is_read, created_at
          FROM notification_events
          WHERE user_id = $1
          ORDER BY created_at DESC
-         LIMIT 50`,
-        [userId]
+         LIMIT $2 OFFSET $3`,
+        [userId, limit, offset]
       );
 
-      return res.json({ ok: true, events: result.rows });
+      return res.json({ 
+        ok: true, 
+        events: result.rows,
+        meta: {
+          limit,
+          offset,
+          hasMore: result.rows.length === limit
+        }
+      });
     } catch (error) {
       logger.error('Get notifications error:', error);
       return sendError(res, 500, 'NOTIFICATIONS_FETCH_FAILED', 'Failed to fetch notifications');
