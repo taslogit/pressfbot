@@ -779,24 +779,29 @@ app.post('/api/verify', async (req, res) => {
     if (!authDateRaw || !Number.isFinite(authDate)) {
       return sendError(res, 401, 'AUTH_DATE_INVALID', 'auth_date is missing or invalid');
     }
+    const { logSecurityEvent, SECURITY_EVENTS } = require('./middleware/securityLogger');
+    const ip = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
     const ageSeconds = Math.floor(Date.now() / 1000) - authDate;
+    
     if (ageSeconds < 0) {
       // Security: Log suspicious future-dated auth_date (possible replay attack)
-      logger.warn('Security: Suspicious future-dated auth_date', {
+      logSecurityEvent(SECURITY_EVENTS.SUSPICIOUS_ACTIVITY, {
+        reason: 'future_dated_auth_date',
         authDate,
         currentTime: Math.floor(Date.now() / 1000),
         ageSeconds,
-        ip: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress
+        ip
       });
       return sendError(res, 401, 'AUTH_DATE_INVALID', 'auth_date is in the future');
     }
     if (ageSeconds > AUTH_MAX_AGE_SECONDS) {
       // Security: Log expired auth_date attempts
-      logger.warn('Security: Expired auth_date attempt', {
+      logSecurityEvent(SECURITY_EVENTS.FAILED_AUTH, {
+        reason: 'expired_auth_date',
         authDate,
         ageSeconds,
         maxAge: AUTH_MAX_AGE_SECONDS,
-        ip: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress
+        ip
       });
       return sendError(res, 401, 'AUTH_DATE_EXPIRED', 'auth_date is expired');
     }
