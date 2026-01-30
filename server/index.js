@@ -263,6 +263,10 @@ app.use(performanceMonitor);
 const { securityLoggerMiddleware } = require('./middleware/securityLogger');
 app.use(securityLoggerMiddleware);
 
+// Monitoring: Add basic monitoring middleware
+const { monitoringMiddleware, getMetrics, updateHealthStatus } = require('./middleware/monitoring');
+app.use(monitoringMiddleware);
+
 // Security: Configure Helmet with proper CSP for Telegram Mini App
 app.use(helmet({
   contentSecurityPolicy: {
