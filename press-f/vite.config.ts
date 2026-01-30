@@ -23,13 +23,11 @@ export default defineConfig(({ mode }) => {
             }
           }
         },
-        // Optimize bundle size
-        minify: 'terser',
-        terserOptions: {
-          compress: {
-            drop_console: true, // Remove console.log in production
-            drop_debugger: true
-          }
+        // Use esbuild minification (default, faster and doesn't require terser)
+        minify: 'esbuild',
+        // Remove console.log in production using esbuild
+        esbuild: {
+          drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : []
         }
       },
       define: {
