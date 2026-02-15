@@ -113,7 +113,7 @@ const SendGiftModal: React.FC<Props> = ({ isOpen, onClose, recipientId, recipien
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-2">
               <Gift size={20} className="text-accent-pink" />
-              <h3 className="text-lg font-black uppercase tracking-wider text-purple-400">
+              <h3 className="font-heading text-lg font-black uppercase tracking-wider text-purple-400">
                 {t('send_gift') || 'Send Gift'}
               </h3>
             </div>

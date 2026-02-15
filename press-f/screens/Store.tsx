@@ -167,7 +167,7 @@ const Store = () => {
       </div>
       <div className="relative z-10">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-lime drop-shadow-[0_0_10px_rgba(180,255,0,0.8)]">
+        <h2 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-lime drop-shadow-[0_0_10px_rgba(180,255,0,0.8)]">
           <ShoppingBag size={28} className="text-accent-lime" />
           {t('nav_store')}
         </h2>
@@ -304,7 +304,7 @@ const Store = () => {
               <div className="text-center py-8 text-muted text-sm">{t('store_no_items') || 'No items available'}</div>
             ) : sortedCategoryEntries.map(([category, items]) => (
               <div key={category}>
-                <h4 className="text-xs font-black uppercase tracking-widest text-accent-pink mb-2">
+                <h4 className="font-heading text-xs font-black uppercase tracking-widest text-accent-pink mb-2">
                   {t(CATEGORY_LABELS[category] as any) || category}
                 </h4>
                 <div className="grid gap-2">

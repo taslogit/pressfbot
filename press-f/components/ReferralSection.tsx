@@ -71,7 +71,7 @@ const ReferralSection: React.FC<Props> = ({ className = '' }) => {
     >
       <div className="flex items-center gap-2 mb-3">
         <Users size={18} className="text-accent-cyan" />
-        <h3 className="text-sm font-black uppercase text-white">
+        <h3 className="font-heading text-sm font-black uppercase text-white">
           {t('referral_system') || 'ПРИГЛАСИ ДРУЗЕЙ'}
         </h3>
         <span className="text-xs text-muted ml-auto">

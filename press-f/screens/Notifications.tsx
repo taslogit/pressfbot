@@ -103,7 +103,7 @@ const Notifications = () => {
 
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-cyan drop-shadow-[0_0_10px_rgba(0,224,255,0.8)]">
+          <h2 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-cyan drop-shadow-[0_0_10px_rgba(0,224,255,0.8)]">
             <Bell size={28} className="text-accent-cyan" />
             {t('notifications_title') || 'Notifications'}
             {unreadCount > 0 && (

@@ -124,7 +124,7 @@ const SharePost = () => {
     <div className="pt-4 pb-24 relative min-h-[80vh]">
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-gold drop-shadow-[0_0_10px_rgba(255,215,0,0.8)]">
+          <h2 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-gold drop-shadow-[0_0_10px_rgba(255,215,0,0.8)]">
             {isDuel ? <Trophy size={28} className="text-accent-gold" /> : <Mail size={28} className="text-accent-gold" />}
             {t('share_post_title')}
           </h2>
@@ -135,7 +135,7 @@ const SharePost = () => {
 
         <div className="bg-card/70 border border-border rounded-2xl p-5 shadow-xl">
           <div className="text-xs uppercase tracking-widest text-muted mb-2">{headline}</div>
-          <div className="text-lg font-black text-primary mb-2">{subtitle}</div>
+          <div className="font-heading text-lg font-black text-primary mb-2">{subtitle}</div>
           <div className="text-xs text-muted mb-4">{caption}</div>
 
           <div className="mb-3 text-xs uppercase tracking-widest text-muted">{t('share_template_title')}</div>

@@ -298,6 +298,7 @@ const Letters = () => {
       type: letter.type,
       options: letter.options
     });
+    setSelectedLetterId(null); // Close detail before leaving
     storage.deleteLetterAsync(letter.id).finally(() => {
       const updated = letters.filter(l => l.id !== letter.id);
       setLetters(updated);
@@ -351,6 +352,13 @@ const Letters = () => {
 
   const selectedUnlock = useMemo(() => {
     return selectedLetter?.unlockDate || 'MANUAL_TRIGGER';
+  }, [selectedLetter]);
+
+  /** Normalize attachments to string[] (API may return { url }[] or string[]) */
+  const selectedAttachmentUrls = useMemo(() => {
+    const raw = selectedLetter?.attachments;
+    if (!Array.isArray(raw)) return [];
+    return raw.map((a): string => (typeof a === 'string' ? a : (a && typeof a === 'object' && 'url' in a ? (a as { url: string }).url : ''))).filter(Boolean);
   }, [selectedLetter]);
 
   const isSelectedUnlocked = useMemo(() => {
@@ -419,7 +427,7 @@ const Letters = () => {
 
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-lime drop-shadow-[0_0_10px_rgba(180,255,0,0.8)]">
+          <h2 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-lime drop-shadow-[0_0_10px_rgba(180,255,0,0.8)]">
             <Send className="text-accent-lime" size={28} />
             <span className="drop-shadow-sm">{t('your_letters')}</span>
           </h2>
@@ -563,7 +571,7 @@ const Letters = () => {
                         {getTypeIcon(selectedLetter.type)}
                         <span className="text-xs font-mono text-accent-lime uppercase">DECRYPTED_LOG</span>
                       </div>
-                      <h2 className="text-xl font-black text-primary leading-tight">
+                      <h2 className="font-heading text-xl font-black text-primary leading-tight">
                         <DecryptedText text={selectedLetter.title} />
                       </h2>
                   </div>
@@ -608,17 +616,17 @@ const Letters = () => {
                 {/* Content */}
                 <div className="bg-black/40 p-4 rounded-xl border border-accent-lime/20 mb-6 relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-1 bg-accent-lime/50" />
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed opacity-90 font-mono text-green-100/80">
+                  <p className="font-body whitespace-pre-wrap text-sm leading-relaxed opacity-90 text-green-100/80">
                     <DecryptedLetterContent content={selectedLetter.content} letterId={selectedLetter.id} />
                   </p>
                 </div>
 
                 {/* Attachments */}
-                {selectedLetter.attachments.length > 0 && (
+                {selectedAttachmentUrls.length > 0 && (
                   <div className="mb-6">
                      <span className="text-xs text-muted uppercase font-bold block mb-2">{t('letter_attachments')}</span>
                      <div className="flex flex-col gap-3">
-                       {selectedLetter.attachments.map((url, i) => {
+                       {selectedAttachmentUrls.map((url, i) => {
                          const fullUrl = url.startsWith('http') ? url : getStaticUrl(url);
                          const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
                          const isVid = /\.(mp4|mov)$/i.test(url);
@@ -719,7 +727,7 @@ const Letters = () => {
                   >
                     <div className="p-6">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-black text-accent-cyan uppercase">History</h3>
+                        <h3 className="font-heading text-lg font-black text-accent-cyan uppercase">History</h3>
                         <button onClick={() => setHistoryOpen(false)} className="p-2 bg-white/5 rounded-full text-muted hover:text-white">
                           <X size={18} />
                         </button>

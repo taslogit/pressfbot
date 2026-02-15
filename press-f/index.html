@@ -12,6 +12,9 @@
     <meta property="og:image" content="/api/static/bot-start.png" />
     <title>PRESS F</title>
     <link rel="icon" href="data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" type="image/gif">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
       :root {
@@ -28,9 +31,9 @@
         background-color: var(--color-bg);
         color: var(--color-text-primary);
         overflow-x: hidden;
-        /* Prevent elastic scrolling on iOS */
         overscroll-behavior-y: none;
         -webkit-tap-highlight-color: transparent;
+        font-family: 'DM Sans', system-ui, sans-serif;
       }
       
       /* Hide scrollbar for clean mobile look */
@@ -69,7 +72,7 @@
     <div id="root">
       <div style="padding: 20px; color: white; background: #0f0d16; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
         <div style="text-align: center;">
-          <div style="font-size: 24px; margin-bottom: 10px;">PRESS F</div>
+          <div style="font-family: 'Cinzel', serif; font-size: 24px; margin-bottom: 10px;">PRESS F</div>
           <div style="color: #9ca3af;">Loading...</div>
         </div>
       </div>

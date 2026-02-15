@@ -37,7 +37,7 @@ const Wiki = () => {
             <BookOpen size={22} className="text-accent-cyan" />
           </div>
           <div>
-            <h2 className="text-xl font-black uppercase tracking-widest text-accent-cyan">
+            <h2 className="font-heading text-xl font-black uppercase tracking-widest text-accent-cyan">
               {t('wiki_title')}
             </h2>
             <p className="text-xs text-muted">{t('wiki_intro')}</p>

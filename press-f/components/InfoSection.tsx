@@ -67,7 +67,7 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
       const content = (
         <div className="flex items-center gap-2 mt-4 mb-2 pb-1 border-b border-accent-cyan/20">
           <Terminal size={14} className="text-accent-cyan" />
-          <h3 className="text-sm font-black italic uppercase tracking-wider text-white">
+          <h3 className="font-heading text-sm font-black italic uppercase tracking-wider text-white">
             {trimmed.replace('#', '').trim()}
           </h3>
         </div>
@@ -233,7 +233,7 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
                     </div>
                     <div>
                         <div className="text-xs font-mono text-muted uppercase tracking-widest leading-none mb-1">DATA_FILE</div>
-                        <h3 className="font-black text-sm uppercase tracking-wider text-white leading-none">
+                        <h3 className="font-heading font-black text-sm uppercase tracking-wider text-white leading-none">
                           {title}
                         </h3>
                     </div>

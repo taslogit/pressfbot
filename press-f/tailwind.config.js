@@ -7,6 +7,12 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        display: ['Cinzel', 'serif'],
+        heading: ['Cinzel', 'serif'],
+        body: ['Crimson Pro', 'serif'],
+        sans: ['DM Sans', 'system-ui', 'sans-serif'],
+      },
       spacing: {
         'content-bottom': 'var(--spacing-content-bottom, 5rem)',
       },

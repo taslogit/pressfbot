@@ -157,13 +157,13 @@ const OnboardingGuide: React.FC<Props> = ({ isVisible, onClose }) => {
               </div>
 
               {/* Text Content */}
-              <h2 className={`text-4xl font-black italic uppercase tracking-tighter text-center mb-4 ${currentStep.color.split(' ')[1]}`}>
+              <h2 className={`font-display text-4xl font-black italic uppercase tracking-tighter text-center mb-4 ${currentStep.color.split(' ')[1]}`}>
                 {t(currentStep.title as any)}
               </h2>
               
               <div className="bg-white/5 border border-white/10 p-5 rounded-xl backdrop-blur-sm relative overflow-hidden">
                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${currentStep.color.split(' ')[1].replace('text-', 'bg-')}`} />
-                 <p className="text-sm font-mono text-gray-300 leading-relaxed">
+                 <p className="font-body text-sm text-gray-300 leading-relaxed">
                    {t(currentStep.desc as any)}
                  </p>
               </div>

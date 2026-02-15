@@ -173,7 +173,7 @@ const Settings = () => {
     <div className="pt-4 pb-24 relative min-h-[80vh]">
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-cyan drop-shadow-[0_0_10px_rgba(0,224,255,0.8)]">
+          <h2 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-cyan drop-shadow-[0_0_10px_rgba(0,224,255,0.8)]">
             <SettingsIcon className="text-accent-cyan" size={28} />
             <span className="drop-shadow-sm">{t('settings_title')}</span>
           </h2>

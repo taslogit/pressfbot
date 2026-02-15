@@ -46,7 +46,16 @@ html, body, #root {
   margin: 0;
   padding: 0;
 }
-body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+/* Gothic display for main branding and numbers */
+.font-display { font-family: 'Cinzel', serif; }
+.font-heading { font-family: 'Cinzel', serif; }
+.font-body { font-family: 'Crimson Pro', serif; }
 
 /* Reduced motion: только бесконечные/долгие анимации делаем мгновенными */
 @media (prefers-reduced-motion: reduce) {
