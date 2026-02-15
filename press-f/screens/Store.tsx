@@ -1,42 +1,103 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X } from 'lucide-react';
+import { useTonAddress } from '@tonconnect/ui-react';
 import { useTranslation } from '../contexts/LanguageContext';
-import { starsAPI, storeAPI } from '../utils/api';
+import { starsAPI, storeAPI, profileAPI } from '../utils/api';
 import InfoSection from '../components/InfoSection';
 import { playSound } from '../utils/sound';
+import { tg } from '../utils/telegram';
+
+type TabId = 'stars' | 'xp' | 'ton';
+
+const CATEGORY_LABELS: Record<string, string> = {
+  boost: 'store_cat_boost',
+  profile: 'store_cat_profile',
+  template: 'store_cat_template',
+  badge: 'store_cat_badge',
+  social: 'store_cat_social',
+  duel: 'store_cat_duel',
+  other: 'store_cat_other'
+};
+
+const TON_ITEMS = [
+  { id: 'storage_eternal', priceTon: '0.5', settingsAnchor: 'ton_storage' },
+  { id: 'inheritance', priceTon: '0.1', settingsAnchor: 'ton_inheritance' },
+  { id: 'duel_escrow', priceTon: '—', settingsAnchor: 'ton_escrow' }
+];
 
 const Store = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const address = useTonAddress();
+  const walletConnected = !!address;
+
+  const [tab, setTab] = useState<TabId>('stars');
   const [starsCatalog, setStarsCatalog] = useState<any[]>([]);
   const [xpCatalog, setXpCatalog] = useState<any[]>([]);
   const [premiumStatus, setPremiumStatus] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [itemType, setItemType] = useState<'stars' | 'xp' | 'ton' | null>(null);
 
   useEffect(() => {
     let isMounted = true;
     Promise.all([
       starsAPI.getCatalog(),
       storeAPI.getCatalog(),
-      starsAPI.getPremiumStatus()
-    ]).then(([starsRes, xpRes, premRes]) => {
+      starsAPI.getPremiumStatus(),
+      profileAPI.get()
+    ]).then(([starsRes, xpRes, premRes, profileRes]) => {
       if (!isMounted) return;
       if (starsRes.ok && starsRes.data?.catalog) setStarsCatalog(starsRes.data.catalog);
       if (xpRes.ok && xpRes.data?.catalog) setXpCatalog(xpRes.data.catalog);
       if (premRes.ok && premRes.data) setPremiumStatus(premRes.data);
+      if (profileRes.ok && profileRes.data?.profile) setProfile(profileRes.data.profile);
       setLoading(false);
     }).catch(() => setLoading(false));
     return () => { isMounted = false; };
   }, []);
 
-  const tonItems = [
-    { id: 'storage_eternal', title: t('store_ton_storage'), desc: t('store_ton_storage_desc'), icon: Lock, path: '/settings', tag: 'TON' },
-    { id: 'inheritance', title: t('store_ton_inheritance'), desc: t('store_ton_inheritance_desc'), icon: Gift, path: '/settings', tag: 'TON' },
-    { id: 'duel_escrow', title: t('store_ton_escrow'), desc: t('store_ton_escrow_desc'), icon: Zap, path: '/settings', tag: 'TON' },
-  ];
+  const userXP = profile?.spendableXp ?? profile?.experience ?? 0;
+  const starsBalance = premiumStatus?.starsBalance ?? 0;
+
+  const handleTonAction = (_itemId: string, _settingsAnchor: string) => {
+    playSound('click');
+    if (!walletConnected) {
+      tg.showPopup?.({
+        message: t('store_connect_wallet_hint'),
+        buttons: [
+          { id: 'settings', type: 'default', text: t('store_go_settings') },
+          { id: 'close', type: 'close' }
+        ]
+      }, (btnId) => {
+        if (btnId === 'settings') navigate('/settings');
+      });
+      return;
+    }
+    navigate('/settings');
+  };
+
+  const openItemModal = (item: any, type: 'stars' | 'xp' | 'ton') => {
+    playSound('click');
+    setSelectedItem(item);
+    setItemType(type);
+  };
+
+  const closeItemModal = () => {
+    setSelectedItem(null);
+    setItemType(null);
+  };
+
+  const xpByCategory = xpCatalog.reduce((acc: Record<string, any[]>, item) => {
+    const cat = item.category || 'other';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(item);
+    return acc;
+  }, {});
 
   if (loading) {
     return (
@@ -45,6 +106,12 @@ const Store = () => {
       </div>
     );
   }
+
+  const tabs: { id: TabId; label: string; icon: typeof Star }[] = [
+    { id: 'stars', label: t('store_tab_stars'), icon: Star },
+    { id: 'xp', label: t('store_tab_xp'), icon: Zap },
+    { id: 'ton', label: t('store_tab_ton'), icon: Wallet }
+  ];
 
   return (
     <div className="pb-6">
@@ -56,115 +123,237 @@ const Store = () => {
         <InfoSection title={t('nav_store')} description={t('store_help')} id="store_help" autoOpen />
       </div>
 
-      {/* Info */}
-      <div className="bg-card/60 border border-accent-lime/30 rounded-xl p-4 mb-4">
-        <div className="flex items-start gap-3">
-          <Sparkles size={24} className="text-accent-lime flex-shrink-0 mt-0.5" />
-          <div className="text-sm">
-            <p className="text-primary font-medium mb-1">{t('store_info_title')}</p>
-            <p className="text-muted text-xs leading-relaxed">{t('store_info_desc')}</p>
-          </div>
+      {/* Balances header */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="bg-black/40 border border-accent-lime/30 rounded-lg p-3 text-center">
+          <Star size={16} className="text-accent-lime mx-auto mb-1" />
+          <span className="text-accent-lime font-bold text-sm block">{starsBalance} ⭐</span>
+          <span className="text-[10px] text-muted">Stars</span>
+        </div>
+        <div className="bg-black/40 border border-accent-pink/30 rounded-lg p-3 text-center">
+          <Zap size={16} className="text-accent-pink mx-auto mb-1" />
+          <span className="text-accent-pink font-bold text-sm block">{userXP}</span>
+          <span className="text-[10px] text-muted">XP</span>
+        </div>
+        <div className="bg-black/40 border border-accent-cyan/30 rounded-lg p-3 text-center">
+          <Wallet size={16} className={walletConnected ? 'text-accent-cyan' : 'text-muted'} />
+          <span className={`font-bold text-sm block ${walletConnected ? 'text-accent-cyan' : 'text-muted'}`}>
+            {walletConnected ? '✓' : '—'}
+          </span>
+          <span className="text-[10px] text-muted">{t('store_wallet')}</span>
         </div>
       </div>
 
-      {/* Premium status */}
-      {premiumStatus && (
-        <div className="bg-black/30 border border-border rounded-xl p-3 mb-4">
-          <div className="text-xs flex items-center gap-2">
-            <Star size={14} className={premiumStatus.isPremium ? 'text-accent-lime' : 'text-muted'} />
-            {premiumStatus.isPremium
-              ? <span className="text-accent-lime">{t('settings_premium_active')}</span>
-              : <span className="text-muted">{t('settings_premium_inactive')}</span>}
-            {premiumStatus.starsBalance != null && (
-              <span className="text-muted ml-auto">{premiumStatus.starsBalance} ⭐</span>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Tabs */}
+      <div className="flex gap-1 mb-4 p-1 bg-black/40 rounded-xl border border-border">
+        {tabs.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => { playSound('click'); setTab(id); }}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold uppercase transition-all ${
+              tab === id
+                ? 'bg-accent-lime text-black shadow-[0_0_10px_rgba(180,255,0,0.4)]'
+                : 'text-muted hover:text-primary'
+            }`}
+          >
+            <Icon size={14} />
+            {label}
+          </button>
+        ))}
+      </div>
 
-      {/* TON section — вечное хранилище и др. */}
-      <div className="mb-6">
-        <h3 className="text-sm font-black uppercase tracking-widest text-accent-cyan mb-3 flex items-center gap-2">
-          <Zap size={18} /> {t('store_ton_section')}
-        </h3>
-        <div className="space-y-2">
-          {tonItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <motion.button
-                key={item.id}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => { playSound('click'); navigate(item.path); }}
-                className="w-full flex items-start gap-3 p-4 rounded-xl border border-border bg-black/40 hover:border-accent-cyan/50 hover:bg-accent-cyan/5 transition-all text-left"
-              >
-                <div className="w-10 h-10 rounded-lg bg-accent-cyan/20 flex items-center justify-center flex-shrink-0">
-                  <Icon size={20} className="text-accent-cyan" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-primary">{item.title}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent-cyan/20 text-accent-cyan">{item.tag}</span>
+      {/* Tab content */}
+      <AnimatePresence mode="wait">
+        {tab === 'stars' && (
+          <motion.div
+            key="stars"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="space-y-4"
+          >
+            <div className="text-xs text-muted mb-2">{t('store_stars_hint')}</div>
+            <div className="grid gap-2">
+              {starsCatalog.map((item: any) => (
+                <motion.button
+                  key={item.id}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => openItemModal(item, 'stars')}
+                  className="w-full flex items-center gap-3 p-4 rounded-xl border border-border bg-black/40 hover:border-accent-lime/50 text-left"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-accent-lime/20 flex items-center justify-center flex-shrink-0">
+                    <Gift size={22} className="text-accent-lime" />
                   </div>
-                  <p className="text-xs text-muted mt-1">{item.desc}</p>
-                </div>
-                <span className="text-accent-cyan text-xs">→</span>
-              </motion.button>
-            );
-          })}
-        </div>
-      </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-bold text-primary block">{item.title}</span>
+                    <span className="text-xs text-muted line-clamp-2">{item.description}</span>
+                  </div>
+                  <span className="text-accent-lime font-bold flex-shrink-0">{item.stars} ⭐</span>
+                </motion.button>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
-      {/* Stars catalog */}
-      {starsCatalog.length > 0 && (
-        <div className="mb-6">
-          <h3 className="text-sm font-black uppercase tracking-widest text-accent-lime mb-3 flex items-center gap-2">
-            <Star size={18} /> {t('store_stars_section')}
-          </h3>
-          <div className="grid gap-2">
-            {starsCatalog.slice(0, 8).map((item: any) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-3 p-3 rounded-xl border border-border bg-black/40"
-              >
-                <div className="w-10 h-10 rounded-lg bg-accent-lime/20 flex items-center justify-center flex-shrink-0">
-                  <Gift size={18} className="text-accent-lime" />
+        {tab === 'xp' && (
+          <motion.div
+            key="xp"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="space-y-6"
+          >
+            <div className="text-xs text-muted mb-2">{t('store_xp_hint')}</div>
+            {Object.entries(xpByCategory).map(([category, items]) => (
+              <div key={category}>
+                <h4 className="text-xs font-black uppercase tracking-widest text-accent-pink mb-2">
+                  {t(CATEGORY_LABELS[category] as any) || category}
+                </h4>
+                <div className="grid gap-2">
+                  {items.map((item: any) => {
+                    const cost = item.cost_xp || item.cost_rep;
+                    const costStr = item.cost_rep ? `${cost} REP` : `${cost} XP`;
+                    return (
+                      <motion.button
+                        key={item.id}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => openItemModal(item, 'xp')}
+                        className="w-full flex items-center gap-3 p-4 rounded-xl border border-border bg-black/40 hover:border-accent-pink/50 text-left"
+                      >
+                        <div className="w-12 h-12 rounded-xl bg-accent-pink/20 flex items-center justify-center flex-shrink-0">
+                          <Sparkles size={22} className="text-accent-pink" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-bold text-primary block">{item.name}</span>
+                          <span className="text-xs text-muted line-clamp-2">{item.description}</span>
+                        </div>
+                        <span className="text-accent-pink font-bold flex-shrink-0 text-sm">{costStr}</span>
+                      </motion.button>
+                    );
+                  })}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <span className="font-bold text-primary text-sm block">{item.title}</span>
-                  <span className="text-xs text-muted line-clamp-1">{item.description}</span>
-                </div>
-                <span className="text-accent-lime text-sm font-bold flex-shrink-0">{item.stars} ⭐</span>
               </div>
             ))}
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
 
-      {/* XP Store */}
-      {xpCatalog.length > 0 && (
-        <div>
-          <h3 className="text-sm font-black uppercase tracking-widest text-accent-pink mb-3 flex items-center gap-2">
-            <Zap size={18} /> {t('settings_xp_store')}
-          </h3>
-          <div className="grid gap-2">
-            {xpCatalog.slice(0, 6).map((item: any) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-3 p-3 rounded-xl border border-border bg-black/40"
-              >
-                <div className="w-10 h-10 rounded-lg bg-accent-pink/20 flex items-center justify-center flex-shrink-0">
-                  <Sparkles size={18} className="text-accent-pink" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="font-bold text-primary text-sm block">{item.name}</span>
-                  <span className="text-xs text-muted line-clamp-1">{item.description}</span>
-                </div>
-                <span className="text-accent-pink text-sm font-bold flex-shrink-0">{item.cost_xp || 0} XP</span>
+        {tab === 'ton' && (
+          <motion.div
+            key="ton"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="space-y-4"
+          >
+            <div className="text-xs text-muted mb-2">{t('store_ton_hint')}</div>
+            {TON_ITEMS.map((item) => {
+              const titleKey = `store_ton_${item.id === 'storage_eternal' ? 'storage' : item.id === 'inheritance' ? 'inheritance' : 'escrow'}`;
+              const descKey = `${titleKey}_desc`;
+              const Icon = item.id === 'storage_eternal' ? Lock : item.id === 'inheritance' ? Gift : Zap;
+              return (
+                <motion.div
+                  key={item.id}
+                  className="flex items-start gap-3 p-4 rounded-xl border border-border bg-black/40"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-accent-cyan/20 flex items-center justify-center flex-shrink-0">
+                    <Icon size={22} className="text-accent-cyan" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-bold text-primary block">{t(titleKey)}</span>
+                    <p className="text-xs text-muted mt-1">{t(descKey)}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-accent-cyan/20 text-accent-cyan">TON</span>
+                      <span className="text-xs text-muted">от {item.priceTon} TON</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleTonAction(item.id, item.settingsAnchor)}
+                    className="px-4 py-2 rounded-lg bg-accent-cyan/20 text-accent-cyan hover:bg-accent-cyan/30 text-xs font-bold uppercase"
+                  >
+                    {walletConnected ? t('store_configure') : t('store_connect_first')}
+                  </button>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Item detail modal */}
+      <AnimatePresence>
+        {selectedItem && itemType && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
+            onClick={closeItemModal}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-bold text-primary">
+                  {itemType === 'xp' ? selectedItem.name : selectedItem.title}
+                </h3>
+                <button onClick={closeItemModal} className="p-1 text-muted hover:text-primary">
+                  <X size={24} />
+                </button>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+              <p className="text-sm text-muted mb-4">
+                {itemType === 'xp' ? selectedItem.description : selectedItem.description}
+              </p>
+              <div className="flex items-center justify-between">
+                {itemType === 'stars' && (
+                  <span className="text-accent-lime font-bold">{selectedItem.stars} ⭐</span>
+                )}
+                {itemType === 'xp' && (
+                  <>
+                    <span className="text-accent-pink font-bold">
+                      {selectedItem.cost_rep ? `${selectedItem.cost_rep} REP` : `${selectedItem.cost_xp || 0} XP`}
+                    </span>
+                    {(selectedItem.cost_xp > 0 && userXP < (selectedItem.cost_xp || 0)) && (
+                      <span className="text-red-400 text-xs">{t('store_insufficient_xp')}</span>
+                    )}
+                  </>
+                )}
+                <button
+                  onClick={async () => {
+                    playSound('click');
+                    if (itemType === 'stars') {
+                      const res = await starsAPI.createInvoice(selectedItem.id);
+                      if (res.ok && res.data?.invoiceLink) {
+                        tg.openLink?.(res.data.invoiceLink);
+                        closeItemModal();
+                      } else {
+                        tg.showPopup?.({ message: res.error || t('store_buy_failed') });
+                      }
+                    } else if (itemType === 'xp') {
+                      const res = await storeAPI.buyItem(selectedItem.id);
+                      if (res.ok && res.data) {
+                        tg.showPopup?.({ message: t('store_buy_success') });
+                        if (res.data.remainingXp != null) {
+                          setProfile((p: any) => p ? { ...p, spendableXp: res.data.remainingXp } : p);
+                        }
+                        closeItemModal();
+                      } else {
+                        tg.showPopup?.({ message: res.error || t('store_buy_failed') });
+                      }
+                    }
+                  }}
+                  className="px-6 py-2 rounded-xl bg-accent-lime text-black font-bold uppercase text-sm"
+                >
+                  {t('store_buy')}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

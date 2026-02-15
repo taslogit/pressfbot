@@ -12,7 +12,8 @@ const normalizeProfile = (row) => ({
   stats: row.stats || { beefsWon: 0, leaksDropped: 0, daysAlive: 1 },
   tonAddress: row.ton_address || null,
   experience: row.experience || 0,
-  totalXpEarned: row.total_xp_earned || 0
+  totalXpEarned: row.total_xp_earned || 0,
+  spendableXp: row.spendable_xp ?? row.experience ?? 0
 });
 
 const normalizeSettings = (row) => ({
