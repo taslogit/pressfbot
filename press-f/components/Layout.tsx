@@ -39,11 +39,11 @@ const Layout: React.FC<Props> = ({ children }) => {
   return (
     <div className={`min-h-screen pb-content-bottom text-primary font-sans selection:bg-accent-pink selection:text-white transition-colors duration-300 ${theme === 'light' ? 'light-theme-bg' : 'bg-bg'}`}>
       <OfflineIndicator />
-      <main className="p-4 max-w-md mx-auto relative z-10" id="main-content">
+      <main className="content-scan p-4 max-w-md mx-auto relative z-10" id="main-content">
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-xl border-t border-border z-40 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.3)]" aria-label={t('nav_aria_label')}>
+      <nav className="fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-xl border-t border-border z-40 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.3)] font-mono" aria-label={t('nav_aria_label')}>
         <div className="flex justify-around items-center h-20 max-w-md mx-auto">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;

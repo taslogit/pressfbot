@@ -208,17 +208,17 @@ const Store = () => {
 
       {/* Balances header */}
       <div className="grid grid-cols-3 gap-2 mb-4">
-        <div className="bg-black/40 border border-accent-lime/30 rounded-lg p-3 text-center">
+        <div className="card-terminal bg-black/40 border border-accent-lime/30 rounded-lg p-3 text-center">
           <Star size={16} className="text-accent-lime mx-auto mb-1" />
           <span className="text-accent-lime font-bold text-sm block">{starsBalance} ⭐</span>
           <span className="text-xs text-muted">Stars</span>
         </div>
-        <div className="bg-black/40 border border-accent-pink/30 rounded-lg p-3 text-center">
+        <div className="card-terminal bg-black/40 border border-accent-pink/30 rounded-lg p-3 text-center">
           <Zap size={16} className="text-accent-pink mx-auto mb-1" />
           <span className="text-accent-pink font-bold text-sm block">{userXP}</span>
           <span className="text-xs text-muted">XP</span>
         </div>
-        <div className="bg-black/40 border border-accent-cyan/30 rounded-lg p-3 text-center">
+        <div className="card-terminal bg-black/40 border border-accent-cyan/30 rounded-lg p-3 text-center">
           <Wallet size={16} className={walletConnected ? 'text-accent-cyan' : 'text-muted'} />
           <span className={`font-bold text-sm block ${walletConnected ? 'text-accent-cyan' : 'text-muted'}`}>
             {walletConnected ? '✓' : '—'}

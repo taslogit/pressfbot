@@ -90,7 +90,7 @@ const LetterCard = React.memo(
   }) => (
     <div 
       onClick={() => onSelect(letter.id)}
-      className="group bg-black/60 backdrop-blur-md border border-border rounded-lg p-0 cursor-pointer hover:border-accent-lime/50 transition-colors shadow-lg active:scale-[0.99] relative overflow-hidden gpu-accelerated"
+      className="card-terminal group bg-black/60 backdrop-blur-md border border-border rounded-lg p-0 cursor-pointer hover:border-accent-lime/50 transition-all shadow-lg active:scale-[0.99] relative overflow-hidden gpu-accelerated"
     >
       {/* Decorative Left Border */}
       <div className={`absolute left-0 top-0 bottom-0 w-1 ${

@@ -9,7 +9,11 @@ export default {
     extend: {
       fontFamily: {
         mono: ['"Share Tech Mono"', 'ui-monospace', 'monospace'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['"JetBrains Mono"', '"Share Tech Mono"', 'ui-monospace', 'monospace'],
+      },
+      boxShadow: {
+        'terminal': '0 0 0 1px rgba(0, 224, 255, 0.3), 0 0 12px rgba(0, 224, 255, 0.08)',
+        'terminal-lime': '0 0 0 1px rgba(180, 255, 0, 0.3), 0 0 12px rgba(180, 255, 0, 0.08)',
       },
       spacing: {
         'content-bottom': 'var(--spacing-content-bottom, 5rem)',

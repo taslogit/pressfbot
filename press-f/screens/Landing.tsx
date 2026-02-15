@@ -381,8 +381,8 @@ const Landing = () => {
       </motion.header>
 
       {/* Quick value + actions */}
-      <div className="bg-card/60 border border-border rounded-xl p-4 text-xs text-muted overflow-hidden">
-        <div className="font-mono text-xs uppercase tracking-widest mb-2 text-muted truncate">{t('home_value_title')}</div>
+      <div className="card-terminal bg-card/60 border border-border rounded-xl p-4 text-xs text-muted overflow-hidden">
+        <div className="label-terminal font-mono text-xs uppercase tracking-widest mb-2 text-muted truncate">{t('home_value_title')}</div>
         <div className="space-y-1 break-words min-w-0 overflow-hidden">
           <div>• {t('home_value_line1')}</div>
           <div>• {t('home_value_line2')}</div>
@@ -413,9 +413,9 @@ const Landing = () => {
       </div>
 
       {/* Streak share */}
-      <div className="bg-card/60 border border-border rounded-xl p-4 text-xs text-muted overflow-hidden">
+      <div className="card-terminal bg-card/60 border border-border rounded-xl p-4 text-xs text-muted overflow-hidden">
         <div className="flex items-center justify-between gap-2 mb-2 min-w-0">
-          <div className="font-mono text-xs uppercase tracking-widest text-muted truncate">{t('home_streak_title')}</div>
+          <div className="label-terminal font-mono text-xs uppercase tracking-widest text-muted truncate">{t('home_streak_title')}</div>
           <span className={`text-xs uppercase tracking-widest shrink-0 ${isOverdue ? 'text-red-400' : 'text-accent-lime'}`}>
             {t('home_streak_days', { days: Math.max(daysRemaining, 0) })}
           </span>
@@ -511,7 +511,7 @@ const Landing = () => {
 
         {/* Timer Interval Selector */}
         <div className="mt-6 w-full max-w-[280px]">
-           <div className="flex items-center justify-between bg-card/40 border border-white/5 rounded-2xl p-1 backdrop-blur-md relative">
+           <div className="card-terminal flex items-center justify-between bg-card/40 border border-white/5 rounded-2xl p-1 backdrop-blur-md relative">
               {[1, 7, 30].map(days => (
                  <button
                    key={days}
@@ -539,12 +539,12 @@ const Landing = () => {
 
         {/* Info Grid */}
         <div className="grid grid-cols-2 gap-4 w-full mt-4 border-t border-border/30 pt-4">
-             <div className="bg-card/30 p-2 rounded-lg text-center">
-                 <p className="text-xs text-muted uppercase font-bold mb-1">{t('last_scan')}</p>
+             <div className="card-terminal bg-card/30 p-2 rounded-lg text-center">
+                 <p className="label-terminal text-xs text-muted font-bold mb-1">{t('last_scan')}</p>
                  <p className="text-xs font-mono font-bold text-white">{lastScanDate}</p>
              </div>
-             <div className="bg-card/30 p-2 rounded-lg text-center">
-                 <p className="text-xs text-muted uppercase font-bold mb-1">{t('next_trigger')}</p>
+             <div className="card-terminal bg-card/30 p-2 rounded-lg text-center">
+                 <p className="label-terminal text-xs text-muted font-bold mb-1">{t('next_trigger')}</p>
                  <p className="text-xs font-mono font-bold text-red-400">{triggerDate.split('.')[0] + '.' + triggerDate.split('.')[1]}</p>
              </div>
         </div>
@@ -658,7 +658,7 @@ const Landing = () => {
            </h3>
            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
          </div>
-         <div className="bg-black/40 border border-border font-mono text-xs p-3 rounded-xl h-12 flex items-center overflow-hidden relative">
+         <div className="card-terminal bg-black/40 border border-border font-mono text-xs p-3 rounded-xl h-12 flex items-center overflow-hidden relative">
             <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-500/50" />
             <AnimatePresence mode="wait">
               <motion.span 

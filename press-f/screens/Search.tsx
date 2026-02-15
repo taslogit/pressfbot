@@ -56,7 +56,7 @@ const SearchScreen = () => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('search_placeholder_global')}
-            className="w-full bg-black/60 border border-border rounded-xl py-3 pl-10 pr-4 outline-none focus:border-accent-cyan transition-all text-sm backdrop-blur-sm font-mono"
+            className="input-terminal w-full bg-black/60 border border-border rounded-lg rounded-l-none py-3 pl-10 pr-4 outline-none transition-all text-sm backdrop-blur-sm font-mono"
           />
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-accent-cyan" />
         </div>

@@ -60,7 +60,50 @@ html, body, #root {
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: "JetBrains Mono", "Share Tech Mono", ui-monospace, monospace;
+}
+
+/* ─── Hacker / Terminal UI ───────────────────────────────────────────── */
+/* Терминальные поля ввода: моноширинный шрифт, левая полоска-акцент, лёгкое свечение */
+.input-terminal {
+  font-family: "JetBrains Mono", "Share Tech Mono", monospace;
+  border-left: 3px solid rgba(0, 224, 255, 0.6);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 0 10px rgba(0, 224, 255, 0.05);
+}
+.input-terminal:focus {
+  border-left-color: #00E0FF;
+  box-shadow: 0 0 0 1px rgba(0, 224, 255, 0.2), 0 0 16px rgba(0, 224, 255, 0.12);
+}
+/* Карточки в стиле терминала: тонкая рамка + лёгкое свечение */
+.card-terminal {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 224, 255, 0.03);
+}
+/* Метки в хакерском стиле: верхний регистр, разреженный трекинг */
+.label-terminal {
+  font-family: "Share Tech Mono", "JetBrains Mono", monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Лёгкий сканлайн-эффект на контенте (опционально) */
+.content-scan::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.04) 2px,
+    rgba(0, 0, 0, 0.04) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content-scan::before { display: none; }
 }
 
 /* Reduced motion: только бесконечные/долгие анимации делаем мгновенными */

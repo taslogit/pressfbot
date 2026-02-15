@@ -514,23 +514,23 @@ const CreateLetter = () => {
       <div className="space-y-4">
         {/* Title Input */}
         <div className="min-w-0">
-          <label className="text-xs text-muted uppercase font-bold tracking-wider ml-1">{t('title_label')}</label>
+          <label className="label-terminal text-xs text-muted font-bold tracking-wider ml-1 block mb-1">{t('title_label')}</label>
           <input
             value={title}
             onChange={e => setTitle(e.target.value)}
-            className="w-full max-w-full bg-card border border-border rounded-xl p-4 text-primary outline-none transition-colors placeholder:text-muted/50 font-bold focus:border-accent-cyan focus:ring-2 focus:ring-accent-cyan/30 focus:ring-offset-2 focus:ring-offset-bg box-border"
+            className="input-terminal w-full max-w-full bg-card border border-border rounded-lg rounded-l-none p-4 text-primary outline-none transition-all placeholder:text-muted/50 font-medium box-border"
             placeholder={t('placeholder_title')}
           />
         </div>
 
         {/* Recipients Input (Clean, no fake suggestions) */}
         <div className="relative min-w-0">
-          <label className="text-xs text-muted uppercase font-bold tracking-wider ml-1">{t('recipients_label')}</label>
+          <label className="label-terminal text-xs text-muted font-bold tracking-wider ml-1 block mb-1">{t('recipients_label')}</label>
           <div className="relative min-w-0">
              <input
               value={recipients}
               onChange={(e) => setRecipients(e.target.value)}
-              className="w-full max-w-full bg-card border border-border rounded-xl p-4 text-primary outline-none transition-colors placeholder:text-muted/50 focus:border-accent-cyan focus:ring-2 focus:ring-accent-cyan/30 focus:ring-offset-2 focus:ring-offset-bg box-border"
+              className="input-terminal w-full max-w-full bg-card border border-border rounded-lg rounded-l-none p-4 text-primary outline-none transition-all placeholder:text-muted/50 box-border"
               placeholder={t('placeholder_recipients')}
             />
             <div className={`absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted/30`}>
@@ -541,24 +541,24 @@ const CreateLetter = () => {
 
         {/* Content Textarea */}
         <div className="min-w-0">
-          <label className="text-xs text-muted uppercase font-bold tracking-wider ml-1">{t('content_label')}</label>
+          <label className="label-terminal text-xs text-muted font-bold tracking-wider ml-1 block mb-1">{t('content_label')}</label>
           <textarea
             value={content}
             onChange={e => setContent(e.target.value)}
-            className="w-full max-w-full h-32 bg-card border border-border rounded-xl p-4 text-primary outline-none transition-colors resize-none placeholder:text-muted/50 font-mono text-sm focus:border-accent-cyan focus:ring-2 focus:ring-accent-cyan/30 focus:ring-offset-2 focus:ring-offset-bg box-border"
+            className="input-terminal w-full max-w-full h-32 bg-card border border-border rounded-lg rounded-l-none p-4 text-primary outline-none transition-all resize-none placeholder:text-muted/50 text-sm box-border"
             placeholder={t('placeholder_content')}
           />
         </div>
 
         {/* Unlock Date Input */}
         <div>
-          <label className="text-xs text-muted uppercase font-bold tracking-wider ml-1">{t('unlock_date_label')}</label>
+          <label className="label-terminal text-xs text-muted font-bold tracking-wider ml-1 block mb-1">{t('unlock_date_label')}</label>
           <div className="relative">
             <input
               type="date"
               value={unlockDate}
               onChange={e => setUnlockDate(e.target.value)}
-              className="w-full bg-card border border-border rounded-xl p-4 text-primary outline-none transition-colors placeholder:text-muted/50 [color-scheme:dark] focus:border-accent-cyan focus:ring-2 focus:ring-accent-cyan/30 focus:ring-offset-2 focus:ring-offset-bg"
+              className="input-terminal w-full bg-card border border-border rounded-lg rounded-l-none p-4 text-primary outline-none transition-all placeholder:text-muted/50 [color-scheme:dark]"
             />
             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted/30">
               <Calendar size={18} />
@@ -567,8 +567,8 @@ const CreateLetter = () => {
         </div>
 
         {/* Settings / Options */}
-        <div className="bg-black/20 border border-white/5 rounded-xl p-4">
-           <h4 className="text-xs font-bold uppercase text-muted mb-3 flex items-center gap-2">
+        <div className="card-terminal bg-black/20 border border-white/5 rounded-xl p-4">
+           <h4 className="label-terminal text-xs font-bold text-muted mb-3 flex items-center gap-2">
              <Shield size={14} /> {t('leak_options')}
            </h4>
            <div className="flex items-center justify-between">
