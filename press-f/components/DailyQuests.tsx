@@ -125,16 +125,16 @@ const DailyQuests: React.FC<Props> = ({ className = '' }) => {
                 </div>
                 <div className="flex-1">
                   <div className="text-xs font-bold text-white">{quest.title}</div>
-                  <div className="text-caption text-muted">{quest.description}</div>
+                  <div className="text-xs text-muted">{quest.description}</div>
                 </div>
-                <div className="text-caption font-black text-accent-gold">
+                <div className="text-xs font-black text-accent-gold">
                   +{quest.reward} REP
                 </div>
               </div>
 
               {!quest.isCompleted && (
                 <div className="ml-6 space-y-1">
-                  <div className="flex items-center justify-between text-caption text-muted">
+                  <div className="flex items-center justify-between text-xs text-muted">
                     <span>{quest.currentCount}/{quest.targetCount}</span>
                     <span>{progress}%</span>
                   </div>
@@ -152,14 +152,14 @@ const DailyQuests: React.FC<Props> = ({ className = '' }) => {
               {quest.isCompleted && !quest.isClaimed && (
                 <button
                   onClick={() => handleClaim(quest)}
-                  className="ml-6 mt-1.5 bg-accent-cyan text-black text-caption font-black uppercase px-3 py-1 rounded-lg hover:scale-105 transition-transform"
+                  className="ml-6 mt-1.5 bg-accent-cyan text-black text-xs font-black uppercase px-3 py-1 rounded-lg hover:scale-105 transition-transform"
                 >
                   {t('claim_reward') || 'ЗАБРАТЬ'}
                 </button>
               )}
 
               {quest.isClaimed && (
-                <div className="ml-6 mt-1.5 text-caption text-muted font-bold uppercase">
+                <div className="ml-6 mt-1.5 text-xs text-muted font-bold uppercase">
                   {t('claimed') || 'ЗАБРАНО'}
                 </div>
               )}

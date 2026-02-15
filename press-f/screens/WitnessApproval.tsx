@@ -217,12 +217,12 @@ const WitnessApproval = () => {
                   <div>
                     <span className="font-bold text-sm">{w.name}</span>
                     {w.letterId && (
-                      <p className="text-caption text-muted">{t('for_letter') || 'For letter'}: {w.letterId.slice(0, 8)}...</p>
+                      <p className="text-xs text-muted">{t('for_letter') || 'For letter'}: {w.letterId.slice(0, 8)}...</p>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-caption font-bold px-2 py-1 rounded border ${w.status === 'confirmed' ? 'border-accent-lime text-accent-lime bg-accent-lime/10 drop-shadow-[0_0_5px_rgba(180,255,0,0.3)]' : 'border-gray-500 text-muted'}`}>
+                  <span className={`text-xs font-bold px-2 py-1 rounded border ${w.status === 'confirmed' ? 'border-accent-lime text-accent-lime bg-accent-lime/10 drop-shadow-[0_0_5px_rgba(180,255,0,0.3)]' : 'border-gray-500 text-muted'}`}>
                     {w.status.toUpperCase()}
                   </span>
                   {w.status === 'pending' && (

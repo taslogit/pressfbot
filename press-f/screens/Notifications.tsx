@@ -222,7 +222,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({ notification, onMar
               <p className={`text-xs ${isUnread ? 'text-primary/80' : 'text-muted'}`}>
                 {notification.message}
               </p>
-              <p className="text-caption text-muted mt-2">{timeAgo}</p>
+              <p className="text-xs text-muted mt-2">{timeAgo}</p>
             </div>
             {isUnread && (
               <button

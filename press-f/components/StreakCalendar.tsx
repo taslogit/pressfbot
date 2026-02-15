@@ -69,13 +69,13 @@ const StreakCalendar: React.FC<Props> = ({ className = '' }) => {
         <span className="text-xs font-bold uppercase tracking-wider text-muted">
           {t('streak_calendar_title') || 'Check-in calendar'}
         </span>
-        <span className="text-caption text-orange-400 ml-auto">
+        <span className="text-xs text-orange-400 ml-auto">
           {streak.current} {t('days')}
         </span>
       </div>
       <div className="grid grid-cols-7 gap-0.5 text-center">
         {weekDays.map((w, i) => (
-          <div key={i} className="text-caption text-muted font-bold py-0.5">
+          <div key={i} className="text-xs text-muted font-bold py-0.5">
             {w}
           </div>
         ))}
@@ -87,7 +87,7 @@ const StreakCalendar: React.FC<Props> = ({ className = '' }) => {
           return (
             <div
               key={d}
-              className={`aspect-square flex items-center justify-center rounded text-caption font-bold ${
+              className={`aspect-square flex items-center justify-center rounded text-xs font-bold ${
                 isStreak
                   ? 'bg-orange-500/40 text-orange-200 border border-orange-500/50'
                   : isToday

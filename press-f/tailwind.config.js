@@ -7,13 +7,6 @@ export default {
   ],
   theme: {
     extend: {
-      fontSize: {
-        caption: ['0.6875rem', { lineHeight: '1.25' }],
-        body: ['0.875rem', { lineHeight: '1.4' }],
-        subtitle: ['1rem', { lineHeight: '1.35' }],
-        title: ['1.125rem', { lineHeight: '1.3' }],
-        display: ['1.75rem', { lineHeight: '1.2' }],
-      },
       spacing: {
         'content-bottom': 'var(--spacing-content-bottom, 5rem)',
       },

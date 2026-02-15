@@ -15,13 +15,6 @@
   --animate-spin-slow: spin 20s linear infinite;
   --animate-float: float 6s ease-in-out infinite;
   --animate-scan: scan 4s linear infinite;
-  /* Typography scale (min 11px for readable UI) */
-  --font-size-caption: 0.6875rem;
-  --font-size-body: 0.875rem;
-  --font-size-subtitle: 1rem;
-  --font-size-title: 1.125rem;
-  --font-size-display: 1.75rem;
-  /* Layout */
   --spacing-content-bottom: 5rem;
 }
 

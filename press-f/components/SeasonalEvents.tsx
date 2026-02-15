@@ -157,7 +157,7 @@ const SeasonalEvents: React.FC = () => {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-1 text-caption text-muted">
+                <div className="flex items-center gap-1 text-xs text-muted">
                   <Clock size={12} />
                   {getDaysRemaining(selectedEvent.endDate)} {t('days_remaining') || 'days left'}
                 </div>
@@ -192,7 +192,7 @@ const SeasonalEvents: React.FC = () => {
                           </div>
                           {completed && <CheckCircle size={14} className="text-accent-lime" />}
                         </div>
-                        <div className="text-caption text-muted mb-1">{quest.description}</div>
+                        <div className="text-xs text-muted mb-1">{quest.description}</div>
                         <div className="flex items-center gap-2">
                           <div className="flex-1 h-1.5 bg-black/30 rounded-full overflow-hidden">
                             <motion.div
@@ -203,7 +203,7 @@ const SeasonalEvents: React.FC = () => {
                               }`}
                             />
                           </div>
-                          <span className="text-caption font-bold text-muted">
+                          <span className="text-xs font-bold text-muted">
                             {progress}/{quest.target}
                           </span>
                         </div>
@@ -248,8 +248,8 @@ const SeasonalEvents: React.FC = () => {
                           {reward.icon && <span>{reward.icon}</span>}
                           <span className="text-xs font-bold text-white">{reward.name}</span>
                         </div>
-                        <div className="text-caption text-muted mb-2">{reward.description}</div>
-                        <div className="flex items-center gap-2 text-caption">
+                        <div className="text-xs text-muted mb-2">{reward.description}</div>
+                        <div className="flex items-center gap-2 text-xs">
                           {reward.reputation && (
                             <span className="text-accent-gold font-bold">
                               +{reward.reputation} REP
@@ -260,12 +260,12 @@ const SeasonalEvents: React.FC = () => {
                           )}
                         </div>
                         {canClaim && !claimed && (
-                          <div className="mt-2 text-caption text-accent-lime font-bold uppercase">
+                          <div className="mt-2 text-xs text-accent-lime font-bold uppercase">
                             {claiming === reward.id ? t('claiming') || 'Claiming...' : t('claim') || 'CLAIM'}
                           </div>
                         )}
                         {claimed && (
-                          <div className="mt-2 text-caption text-muted font-bold uppercase">
+                          <div className="mt-2 text-xs text-muted font-bold uppercase">
                             {t('claimed') || 'CLAIMED'}
                           </div>
                         )}

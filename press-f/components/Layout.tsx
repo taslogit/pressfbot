@@ -62,7 +62,7 @@ const Layout: React.FC<Props> = ({ children }) => {
                   />
                 </div>
                 
-                <span className={`text-caption mt-1 font-bold tracking-wide transition-all duration-300 ${
+                <span className={`text-xs mt-1 font-bold tracking-wide transition-all duration-300 ${
                   isActive ? `text-primary opacity-100` : 'text-muted opacity-70'
                 }`}>
                   {item.label}

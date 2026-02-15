@@ -134,17 +134,17 @@ const SharePost = () => {
         </div>
 
         <div className="bg-card/70 border border-border rounded-2xl p-5 shadow-xl">
-          <div className="text-caption uppercase tracking-widest text-muted mb-2">{headline}</div>
+          <div className="text-xs uppercase tracking-widest text-muted mb-2">{headline}</div>
           <div className="text-lg font-black text-primary mb-2">{subtitle}</div>
           <div className="text-xs text-muted mb-4">{caption}</div>
 
-          <div className="mb-3 text-caption uppercase tracking-widest text-muted">{t('share_template_title')}</div>
+          <div className="mb-3 text-xs uppercase tracking-widest text-muted">{t('share_template_title')}</div>
           <div className="flex flex-wrap gap-2 mb-4">
             {templates.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setTemplateId(item.id)}
-                className={`px-3 py-1 rounded-full text-caption uppercase tracking-widest border transition-all ${item.chipClass} ${
+                className={`px-3 py-1 rounded-full text-xs uppercase tracking-widest border transition-all ${item.chipClass} ${
                   templateId === item.id ? 'text-primary' : 'text-muted'
                 }`}
               >
@@ -153,13 +153,13 @@ const SharePost = () => {
             ))}
           </div>
 
-          <div className="mb-3 text-caption uppercase tracking-widest text-muted">{t('share_message_title')}</div>
+          <div className="mb-3 text-xs uppercase tracking-widest text-muted">{t('share_message_title')}</div>
           <div className="flex flex-wrap gap-2 mb-4">
             {messageVariants.map((text, index) => (
               <button
                 key={`${index}-${text.slice(0, 12)}`}
                 onClick={() => setMessageId(index)}
-                className={`px-3 py-1 rounded-full text-caption uppercase tracking-widest border transition-all border-border ${
+                className={`px-3 py-1 rounded-full text-xs uppercase tracking-widest border transition-all border-border ${
                   messageId === index ? 'text-primary' : 'text-muted'
                 }`}
               >
@@ -171,7 +171,7 @@ const SharePost = () => {
           <div ref={previewRef} className={`relative overflow-hidden border rounded-xl p-4 font-mono text-xs ${template.cardClass}`}>
             <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_55%)]" />
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-3 text-caption uppercase tracking-widest">
+              <div className="flex items-center justify-between mb-3 text-xs uppercase tracking-widest">
                 <span className={`px-2 py-1 rounded-full border ${template.chipClass} ${template.accentClass}`}>
                   {isDuel ? t('share_badge_win') : t('share_badge_unlock')}
                 </span>
@@ -186,26 +186,26 @@ const SharePost = () => {
               <div className="text-primary">{title || t('share_post_fallback')}</div>
             )}
             <div className="mt-3 pt-3 border-t border-border/60">
-              <div className="text-caption uppercase tracking-widest text-muted mb-2">{t('share_timeline_title')}</div>
+              <div className="text-xs uppercase tracking-widest text-muted mb-2">{t('share_timeline_title')}</div>
               <div className="space-y-2">
                 <div className="flex items-start gap-2">
                   <span className={`mt-1 h-2 w-2 rounded-full ${template.accentClass}`} />
                   <div>
-                    <div className="text-caption text-muted">{nowStamp}</div>
+                    <div className="text-xs text-muted">{nowStamp}</div>
                     <div className="text-xs text-primary">{t('share_timeline_action')}</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="mt-1 h-2 w-2 rounded-full bg-white/40" />
                   <div>
-                    <div className="text-caption text-muted">{t('share_timeline_actor')}</div>
+                    <div className="text-xs text-muted">{t('share_timeline_actor')}</div>
                     <div className="text-xs text-primary">{t('share_timeline_you')}</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="mt-1 h-2 w-2 rounded-full bg-white/40" />
                   <div>
-                    <div className="text-caption text-muted">{t('share_timeline_object')}</div>
+                    <div className="text-xs text-muted">{t('share_timeline_object')}</div>
                     <div className="text-xs text-primary">
                       {isDuel ? t('share_timeline_beef', { title: title || t('share_post_fallback') }) : t('share_timeline_letter', { title: title || t('share_post_fallback') })}
                     </div>
@@ -213,7 +213,7 @@ const SharePost = () => {
                 </div>
               </div>
             </div>
-            <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between text-caption uppercase tracking-widest text-muted">
+            <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between text-xs uppercase tracking-widest text-muted">
               <span>PRESS F</span>
               <span>{t('share_post_footer')}</span>
             </div>
@@ -222,19 +222,19 @@ const SharePost = () => {
 
           <button
             onClick={handleShare}
-            className="mt-4 w-full px-3 py-2 rounded-lg border border-accent-cyan/40 text-accent-cyan bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-all font-bold tracking-widest text-caption uppercase flex items-center justify-center gap-2"
+            className="mt-4 w-full px-3 py-2 rounded-lg border border-accent-cyan/40 text-accent-cyan bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-all font-bold tracking-widest text-xs uppercase flex items-center justify-center gap-2"
           >
             <Share2 size={14} /> {t('share_post_cta')}
           </button>
           <button
             onClick={handleCopy}
-            className="mt-2 w-full px-3 py-2 rounded-lg border border-border text-muted hover:text-primary transition-all font-bold tracking-widest text-caption uppercase flex items-center justify-center gap-2"
+            className="mt-2 w-full px-3 py-2 rounded-lg border border-border text-muted hover:text-primary transition-all font-bold tracking-widest text-xs uppercase flex items-center justify-center gap-2"
           >
             <ClipboardCopy size={14} /> {t('share_copy')}
           </button>
           <button
             onClick={handleDownload}
-            className="mt-2 w-full px-3 py-2 rounded-lg border border-border text-muted hover:text-primary transition-all font-bold tracking-widest text-caption uppercase flex items-center justify-center gap-2"
+            className="mt-2 w-full px-3 py-2 rounded-lg border border-border text-muted hover:text-primary transition-all font-bold tracking-widest text-xs uppercase flex items-center justify-center gap-2"
           >
             {t('share_download')}
           </button>

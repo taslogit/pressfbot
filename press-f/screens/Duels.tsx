@@ -378,7 +378,7 @@ const Duels = () => {
         <div className="flex bg-card/60 backdrop-blur-md rounded-xl p-1 mb-6 border border-border sticky top-0 z-20 shadow-xl">
           <button 
             onClick={() => { playSound('click'); setActiveTab('mine'); }}
-            className={`flex-1 py-3 rounded-lg text-caption font-black uppercase tracking-wider transition-all duration-300 relative ${
+            className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all duration-300 relative ${
               activeTab === 'mine' ? 'text-orange-500 bg-white/5 shadow-[0_0_15px_rgba(0,0,0,0.5)]' : 'text-muted hover:text-primary'
             }`}
           >
@@ -386,7 +386,7 @@ const Duels = () => {
           </button>
           <button 
             onClick={() => { playSound('click'); setActiveTab('hype'); }}
-            className={`flex-1 py-3 rounded-lg text-caption font-black uppercase tracking-wider transition-all duration-300 relative flex items-center justify-center gap-2 ${
+            className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all duration-300 relative flex items-center justify-center gap-2 ${
               activeTab === 'hype' ? 'text-red-500 bg-white/5 shadow-[0_0_15px_rgba(0,0,0,0.5)]' : 'text-muted hover:text-primary'
             }`}
           >
@@ -394,7 +394,7 @@ const Duels = () => {
           </button>
           <button 
             onClick={() => { playSound('click'); setActiveTab('shame'); }}
-            className={`flex-1 py-3 rounded-lg text-caption font-black uppercase tracking-wider transition-all duration-300 relative flex items-center justify-center gap-2 ${
+            className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all duration-300 relative flex items-center justify-center gap-2 ${
               activeTab === 'shame' ? 'text-gray-400 bg-white/5 shadow-[0_0_15px_rgba(0,0,0,0.5)]' : 'text-muted hover:text-primary'
             }`}
           >
@@ -416,7 +416,7 @@ const Duels = () => {
           <div className="flex gap-2">
             <button
               onClick={() => setPublicFilter('all')}
-              className={`flex-1 py-2 rounded-lg text-caption font-black uppercase tracking-widest border ${
+              className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest border ${
                 publicFilter === 'all' ? 'border-orange-500 text-orange-500' : 'border-border text-muted'
               }`}
             >
@@ -424,7 +424,7 @@ const Duels = () => {
             </button>
             <button
               onClick={() => setPublicFilter('public')}
-              className={`flex-1 py-2 rounded-lg text-caption font-black uppercase tracking-widest border ${
+              className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest border ${
                 publicFilter === 'public' ? 'border-orange-500 text-orange-500' : 'border-border text-muted'
               }`}
             >
@@ -432,7 +432,7 @@ const Duels = () => {
             </button>
             <button
               onClick={() => setPublicFilter('private')}
-              className={`flex-1 py-2 rounded-lg text-caption font-black uppercase tracking-widest border ${
+              className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest border ${
                 publicFilter === 'private' ? 'border-orange-500 text-orange-500' : 'border-border text-muted'
               }`}
             >
@@ -442,7 +442,7 @@ const Duels = () => {
           <div className="flex gap-2">
             <button
               onClick={() => setFavoriteFilter('all')}
-              className={`flex-1 py-2 rounded-lg text-caption font-black uppercase tracking-widest border ${
+              className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest border ${
                 favoriteFilter === 'all' ? 'border-orange-500 text-orange-500' : 'border-border text-muted'
               }`}
             >
@@ -450,7 +450,7 @@ const Duels = () => {
             </button>
             <button
               onClick={() => setFavoriteFilter('favorites')}
-              className={`flex-1 py-2 rounded-lg text-caption font-black uppercase tracking-widest border ${
+              className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest border ${
                 favoriteFilter === 'favorites' ? 'border-orange-500 text-orange-500' : 'border-border text-muted'
               }`}
             >
@@ -512,7 +512,7 @@ const Duels = () => {
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-caption text-muted uppercase font-bold tracking-wider mb-1 block">{t('duel_title_label')}</label>
+                    <label className="text-xs text-muted uppercase font-bold tracking-wider mb-1 block">{t('duel_title_label')}</label>
                     <input 
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
@@ -521,7 +521,7 @@ const Duels = () => {
                     />
                   </div>
                   <div>
-                    <label className="text-caption text-muted uppercase font-bold tracking-wider mb-1 block">{t('duel_opponent_label')}</label>
+                    <label className="text-xs text-muted uppercase font-bold tracking-wider mb-1 block">{t('duel_opponent_label')}</label>
                     <input 
                         value={opponent}
                         onChange={(e) => setOpponent(e.target.value)}
@@ -530,7 +530,7 @@ const Duels = () => {
                       />
                   </div>
                   <div>
-                    <label className="text-caption text-muted uppercase font-bold tracking-wider mb-1 block">{t('duel_stake_label')}</label>
+                    <label className="text-xs text-muted uppercase font-bold tracking-wider mb-1 block">{t('duel_stake_label')}</label>
                     <input 
                       value={stake}
                       onChange={(e) => setStake(e.target.value)}
@@ -539,7 +539,7 @@ const Duels = () => {
                     />
                     <div className="mt-2 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                       {quickStakes.map(s => (
-                        <button key={s} onClick={() => setStake(s)} className="whitespace-nowrap px-3 py-1 bg-orange-500/10 border border-orange-500/30 rounded-full text-caption font-bold text-orange-400">
+                        <button key={s} onClick={() => setStake(s)} className="whitespace-nowrap px-3 py-1 bg-orange-500/10 border border-orange-500/30 rounded-full text-xs font-bold text-orange-400">
                           {s}
                         </button>
                       ))}
@@ -629,7 +629,7 @@ const Duels = () => {
               }`}
             >
               {activeTab === 'hype' && (
-                <div className="absolute top-2 right-2 flex items-center gap-1 bg-red-500 text-white text-caption font-black px-2 py-0.5 rounded-full z-20">
+                <div className="absolute top-2 right-2 flex items-center gap-1 bg-red-500 text-white text-xs font-black px-2 py-0.5 rounded-full z-20">
                   <Flame size={10} fill="white" /> #{index + 1}
                 </div>
               )}
@@ -652,7 +652,7 @@ const Duels = () => {
                 </div>
               )}
               {activeTab === 'shame' && (
-                <div className="absolute top-2 right-2 flex items-center gap-1 bg-gray-600 text-white text-caption font-black px-2 py-0.5 rounded-full z-20">
+                <div className="absolute top-2 right-2 flex items-center gap-1 bg-gray-600 text-white text-xs font-black px-2 py-0.5 rounded-full z-20">
                   SHAME
                 </div>
               )}
@@ -689,12 +689,12 @@ const Duels = () => {
               
               <div className="flex items-center gap-2 text-xs text-muted mb-3 relative z-10">
                  <span className="font-mono text-primary">@{tg.initDataUnsafe?.user?.username || 'me'}</span>
-                 <span className="text-caption font-bold text-orange-500">{t('vs')}</span>
+                 <span className="text-xs font-bold text-orange-500">{t('vs')}</span>
                  <span className={`font-mono ${activeTab === 'shame' ? 'text-red-500 line-through' : 'text-primary'}`}>{duel.opponent}</span>
               </div>
               
               {activeTab === 'shame' && duel.loser && (
-                  <div className="text-caption bg-red-500/10 text-red-500 font-bold px-2 py-1 rounded mb-2">
+                  <div className="text-xs bg-red-500/10 text-red-500 font-bold px-2 py-1 rounded mb-2">
                       LOSER: {duel.loser}
                   </div>
               )}
@@ -708,7 +708,7 @@ const Duels = () => {
                   <div className="flex items-center gap-1 text-red-400">
                     <Flame size={12} className="fill-current" />
                     <span className="font-bold">{duel.viewsCount || 0}</span>
-                    <span className="text-muted text-caption">{t('views') || 'views'}</span>
+                    <span className="text-muted text-xs">{t('views') || 'views'}</span>
                   </div>
                 )}
                 {activeTab === 'mine' && duel.witnessCount !== undefined && duel.witnessCount > 0 && (
