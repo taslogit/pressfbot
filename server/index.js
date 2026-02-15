@@ -774,7 +774,38 @@ app.get('/api/metrics/prometheus', globalLimiter, (req, res) => {
             }
           }
 
-          // Check-in reminders
+          // Streak at risk — urgent notification when streak will be lost
+          const streakRiskResult = await pool.query(
+            `SELECT us.user_id, us.current_streak
+             FROM user_settings us
+             WHERE us.notifications_enabled = true
+               AND us.telegram_notifications_enabled = true
+               AND us.current_streak >= 3
+               AND us.last_streak_date = (CURRENT_DATE - INTERVAL '1 day')::date
+               AND NOT EXISTS (
+                 SELECT 1 FROM notification_events ne
+                 WHERE ne.user_id = us.user_id
+                   AND ne.event_type = 'streak_risk'
+                   AND ne.created_at > now() - INTERVAL '12 hours'
+               )
+             LIMIT 30`
+          );
+
+          for (const row of streakRiskResult.rows) {
+            try {
+              const msg = `⚠️ <b>Streak at risk!</b>\n\nYour ${row.current_streak}-day streak will reset if you don't check in today. Tap the skull now! 🔥`;
+              await bot.telegram.sendMessage(row.user_id.toString(), msg, { parse_mode: 'HTML' });
+              await pool.query(
+                `INSERT INTO notification_events (id, user_id, event_type, title, message)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [uuidv4(), row.user_id, 'streak_risk', 'Streak at risk', msg]
+              );
+            } catch (notifyError) {
+              logger.warn('Failed to notify streak risk', { userId: row.user_id, error: notifyError.message });
+            }
+          }
+
+          // Check-in reminders (timer expired)
           const checkinResult = await pool.query(
             `SELECT user_id, dead_man_switch_days, last_check_in, checkin_notified_at, checkin_reminder_interval_minutes
              FROM user_settings

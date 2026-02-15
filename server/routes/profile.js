@@ -729,6 +729,90 @@ const createProfileRoutes = (pool) => {
     }
   });
 
+  // POST /api/profile/daily-login-loot — Daily login bonus (5–15 XP)
+  router.post('/daily-login-loot', async (req, res) => {
+    try {
+      if (!pool) return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      const userId = req.userId;
+      if (!userId) return sendError(res, 401, 'AUTH_REQUIRED', 'Not authenticated');
+
+      const today = new Date().toISOString().split('T')[0];
+      const settings = await pool.query(
+        'SELECT last_daily_login_loot FROM user_settings WHERE user_id = $1',
+        [userId]
+      );
+
+      if (settings.rowCount > 0 && settings.rows[0].last_daily_login_loot) {
+        const last = new Date(settings.rows[0].last_daily_login_loot).toISOString().split('T')[0];
+        if (last === today) {
+          return res.json({ ok: true, claimed: false, xp: 0 });
+        }
+      }
+
+      const xp = 5 + Math.floor(Math.random() * 11);
+      await pool.query(
+        `UPDATE profiles SET experience = experience + $1, spendable_xp = COALESCE(spendable_xp, 0) + $1, updated_at = now() WHERE user_id = $2`,
+        [xp, userId]
+      );
+      const upd = await pool.query(
+        `UPDATE user_settings SET last_daily_login_loot = $2 WHERE user_id = $1`,
+        [userId, today]
+      );
+      if (upd.rowCount === 0) {
+        await pool.query(
+          `INSERT INTO user_settings (user_id, last_daily_login_loot) VALUES ($1, $2)`,
+          [userId, today]
+        );
+      }
+      await cache.del(`profile:${userId}`);
+
+      return res.json({ ok: true, claimed: true, xp });
+    } catch (error) {
+      logger.error('Daily login loot error', error);
+      return sendError(res, 500, 'LOOT_FAILED', 'Failed to claim loot');
+    }
+  });
+
+  // POST /api/profile/guide-reward — One-time +50 XP for completing onboarding
+  router.post('/guide-reward', async (req, res) => {
+    try {
+      if (!pool) return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      const userId = req.userId;
+      if (!userId) return sendError(res, 401, 'AUTH_REQUIRED', 'Not authenticated');
+
+      const settings = await pool.query(
+        'SELECT guide_reward_claimed FROM user_settings WHERE user_id = $1',
+        [userId]
+      );
+
+      if (settings.rowCount > 0 && settings.rows[0].guide_reward_claimed) {
+        return res.json({ ok: true, claimed: false, xp: 0 });
+      }
+
+      const xp = 50;
+      await pool.query(
+        `UPDATE profiles SET experience = experience + $1, spendable_xp = COALESCE(spendable_xp, 0) + $1, updated_at = now() WHERE user_id = $2`,
+        [xp, userId]
+      );
+      const upd = await pool.query(
+        `UPDATE user_settings SET guide_reward_claimed = true WHERE user_id = $1`,
+        [userId]
+      );
+      if (upd.rowCount === 0) {
+        await pool.query(
+          `INSERT INTO user_settings (user_id, guide_reward_claimed) VALUES ($1, true)`,
+          [userId]
+        );
+      }
+      await cache.del(`profile:${userId}`);
+
+      return res.json({ ok: true, claimed: true, xp });
+    } catch (error) {
+      logger.error('Guide reward error', error);
+      return sendError(res, 500, 'REWARD_FAILED', 'Failed to claim reward');
+    }
+  });
+
   // GET /api/profile/referral - Get referral info
   router.get('/referral', async (req, res) => {
     try {

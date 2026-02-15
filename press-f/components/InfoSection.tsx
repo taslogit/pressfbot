@@ -11,9 +11,10 @@ interface Props {
   description: string;
   id?: string; // Unique ID for persistence (e.g., 'landing_help')
   autoOpen?: boolean; // If true, opens automatically if not dismissed
+  trigger?: React.ReactNode; // Custom trigger instead of default (i) button
 }
 
-const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false }) => {
+const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false, trigger }) => {
   const [isOpen, setIsOpen] = useState(false);
   const { t } = useTranslation();
 
@@ -197,12 +198,18 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
 
   return (
     <>
-      <button 
-        onClick={() => setIsOpen(true)} 
-        className="p-1.5 rounded-full bg-white/5 border border-white/10 text-muted hover:text-accent-cyan hover:border-accent-cyan hover:bg-accent-cyan/10 transition-all active:scale-95 z-20 animate-pulse motion-reduce:animate-none shadow-[0_0_12px_rgba(0,224,255,0.45)]"
-      >
-        <Info size={18} />
-      </button>
+      {trigger ? (
+        <div onClick={() => setIsOpen(true)} className="cursor-pointer">
+          {trigger}
+        </div>
+      ) : (
+        <button 
+          onClick={() => setIsOpen(true)} 
+          className="p-1.5 rounded-full bg-white/5 border border-white/10 text-muted hover:text-accent-cyan hover:border-accent-cyan hover:bg-accent-cyan/10 transition-all active:scale-95 z-20 animate-pulse motion-reduce:animate-none shadow-[0_0_12px_rgba(0,224,255,0.45)]"
+        >
+          <Info size={18} />
+        </button>
+      )}
 
       {isOpen && createPortal(
         <AnimatePresence>

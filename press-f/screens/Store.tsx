@@ -43,6 +43,8 @@ const Store = () => {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [itemType, setItemType] = useState<'stars' | 'xp' | 'ton' | null>(null);
   const [myItems, setMyItems] = useState<any[]>([]);
+  const [firstPurchaseEligible, setFirstPurchaseEligible] = useState(false);
+  const [flashSale, setFlashSale] = useState<{ itemId: string; discount: number; endsAt: string } | null>(null);
 
   const loadData = (silent = false) => {
     if (!silent) setLoading(true);
@@ -54,10 +56,16 @@ const Store = () => {
       storeAPI.getMyItems()
     ]).then(([starsRes, xpRes, premRes, profileRes, myRes]) => {
       if (starsRes.ok && starsRes.data?.catalog) setStarsCatalog(starsRes.data.catalog);
-      if (xpRes.ok && xpRes.data?.catalog) setXpCatalog(xpRes.data.catalog);
+      if (xpRes.ok) {
+        setXpCatalog(xpRes.data?.catalog || []);
+        setFlashSale(xpRes.data?.flashSale || null);
+      }
       if (premRes.ok && premRes.data) setPremiumStatus(premRes.data);
       if (profileRes.ok && profileRes.data?.profile) setProfile(profileRes.data.profile);
-      if (myRes.ok && myRes.data?.items) setMyItems(myRes.data.items);
+      if (myRes.ok) {
+        setMyItems(myRes.data?.items || []);
+        setFirstPurchaseEligible(myRes.data?.firstPurchaseEligible ?? false);
+      }
       if (!silent) setLoading(false);
     }).catch(() => { if (!silent) setLoading(false); });
   };
@@ -211,6 +219,16 @@ const Store = () => {
             exit={{ opacity: 0, y: -8 }}
             className="space-y-6"
           >
+            {flashSale && (
+              <div className="mb-3 px-3 py-2 rounded-xl bg-orange-500/20 border border-orange-500/50 text-orange-400 text-xs font-bold text-center">
+                ⚡ {t('store_flash_sale')}
+              </div>
+            )}
+            {firstPurchaseEligible && (
+              <div className="mb-3 px-3 py-2 rounded-xl bg-accent-lime/20 border border-accent-lime/50 text-accent-lime text-xs font-bold text-center">
+                🎉 {t('store_first_purchase_discount')}
+              </div>
+            )}
             <div className="text-xs text-muted mb-2">{t('store_xp_hint')}</div>
             {Object.entries(xpByCategory).map(([category, items]) => (
               <div key={category}>
@@ -219,7 +237,11 @@ const Store = () => {
                 </h4>
                 <div className="grid gap-2">
                   {items.map((item: any) => {
-                    const cost = item.cost_xp || item.cost_rep;
+                    const baseCost = item.cost_xp || item.cost_rep || 0;
+                    const isFlash = flashSale?.itemId === item.id && !ownedItemIds.has(item.id);
+                    const isFirst = firstPurchaseEligible && !ownedItemIds.has(item.id) && !isFlash;
+                    const discount = isFlash ? 0.5 : (isFirst ? 0.8 : 1);
+                    const cost = Math.floor(baseCost * discount);
                     const costStr = item.cost_rep ? `${cost} REP` : `${cost} XP`;
                     return (
                       <motion.button
@@ -236,6 +258,9 @@ const Store = () => {
                             {item.name}
                             {ownedItemIds.has(item.id) && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent-lime/20 text-accent-lime">✓</span>
+                            )}
+                            {isFlash && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/30 text-orange-400">−50%</span>
                             )}
                           </span>
                           <span className="text-xs text-muted line-clamp-2">{item.description}</span>
@@ -369,14 +394,38 @@ const Store = () => {
                 {itemType === 'xp' && (
                   <>
                     <span className="text-accent-pink font-bold">
-                      {selectedItem.cost_rep ? `${selectedItem.cost_rep} REP` : `${selectedItem.cost_xp || 0} XP`}
+                      {(() => {
+                        const isFlash = flashSale?.itemId === selectedItem.id && !ownedItemIds.has(selectedItem.id);
+                        const isFirst = firstPurchaseEligible && !ownedItemIds.has(selectedItem.id) && !isFlash;
+                        const disc = isFlash ? 0.5 : (isFirst ? 0.8 : 1);
+                        const base = selectedItem.cost_rep || selectedItem.cost_xp || 0;
+                        const cost = Math.floor(base * disc);
+                        const suffix = selectedItem.cost_rep ? ' REP' : ' XP';
+                        return (
+                          <>
+                            {cost}{suffix}
+                            {(isFlash || isFirst) && (
+                              <span className="text-[10px] ml-1 text-accent-lime">
+                                ({isFlash ? '−50%' : '−20%'})
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
                     </span>
                     {ownedItemIds.has(selectedItem.id) && (
                       <span className="text-accent-lime text-xs">{t('store_owned')}</span>
                     )}
-                    {(selectedItem.cost_xp > 0 && userXP < (selectedItem.cost_xp || 0)) && !ownedItemIds.has(selectedItem.id) && (
-                      <span className="text-red-400 text-xs">{t('store_insufficient_xp')}</span>
-                    )}
+                    {(() => {
+                      const isFlash = flashSale?.itemId === selectedItem.id && !ownedItemIds.has(selectedItem.id);
+                      const isFirst = firstPurchaseEligible && !ownedItemIds.has(selectedItem.id) && !isFlash;
+                      const disc = isFlash ? 0.5 : (isFirst ? 0.8 : 1);
+                      const base = selectedItem.cost_rep || selectedItem.cost_xp || 0;
+                      const cost = Math.floor(base * disc);
+                      const isXp = !selectedItem.cost_rep;
+                      const insufficient = isXp && userXP < cost && !ownedItemIds.has(selectedItem.id);
+                      return insufficient ? <span className="text-red-400 text-xs">{t('store_insufficient_xp')}</span> : null;
+                    })()}
                   </>
                 )}
                 {!(itemType === 'xp' && ownedItemIds.has(selectedItem.id)) && (

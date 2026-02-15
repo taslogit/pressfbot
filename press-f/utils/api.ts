@@ -279,6 +279,12 @@ export const profileAPI = {
   getStreak: async () => {
     return apiRequest<{ streak: any }>('/api/profile/streak');
   },
+  claimDailyLoginLoot: async () => {
+    return apiRequest<{ claimed: boolean; xp: number }>('/api/profile/daily-login-loot', { method: 'POST' });
+  },
+  claimGuideReward: async () => {
+    return apiRequest<{ claimed: boolean; xp: number }>('/api/profile/guide-reward', { method: 'POST' });
+  },
   getReferral: async () => {
     return apiRequest<{ 
       referralCode: string; 

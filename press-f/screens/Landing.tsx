@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ShieldCheck, Skull, Zap, Info, ChevronRight, Moon, Sun, Hourglass, Activity, Target, Terminal, FileText, Swords, Users, RefreshCw, Lock, Share2, Signal } from 'lucide-react';
+import { Plus, ShieldCheck, Skull, Zap, Info, ChevronRight, Moon, Sun, Hourglass, Activity, Target, Terminal, FileText, Swords, Users, RefreshCw, Lock, Share2, Signal, BookOpen, ShoppingBag } from 'lucide-react';
 import { useDeadManSwitch } from '../hooks/useDeadManSwitch';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -36,7 +36,7 @@ const Landing = () => {
   // showQuestLog removed - use Daily Quests component instead
   const [settings, setSettings] = useState(storage.getSettings());
   const [showSharePulse, setShowSharePulse] = useState(false);
-  const [xpNotification, setXpNotification] = useState<{ xp: number; level?: number; levelUp?: boolean; bonusLabel?: 'lucky' | 'comeback' | 'milestone' } | null>(null);
+  const [xpNotification, setXpNotification] = useState<{ xp: number; level?: number; levelUp?: boolean; bonusLabel?: 'lucky' | 'comeback' | 'milestone' | 'daily' | 'guide' } | null>(null);
 
   // Dashboard Data
   const [activeDuels, setActiveDuels] = useState(0);
@@ -100,6 +100,14 @@ const Landing = () => {
       // Keep localStorage data
     });
 
+    // Daily login loot
+    profileAPI.claimDailyLoginLoot().then((res) => {
+      if (isMounted && res.ok && res.data?.claimed && res.data?.xp) {
+        setXpNotification({ xp: res.data.xp, bonusLabel: 'daily' });
+        setTimeout(() => setXpNotification(null), 2500);
+      }
+    });
+
     // Auto-show guide if not seen
     if (!storage.getHasSeenGuide()) {
       setTimeout(() => setShowGuide(true), 500);
@@ -119,9 +127,16 @@ const Landing = () => {
     };
   }, [justCheckedIn]);
 
-  const handleCloseGuide = () => {
+  const handleCloseGuide = async (completed?: boolean) => {
     setShowGuide(false);
     storage.setHasSeenGuide();
+    if (completed) {
+      const res = await profileAPI.claimGuideReward();
+      if (res.ok && res.data?.claimed && res.data?.xp) {
+        setXpNotification({ xp: res.data.xp, bonusLabel: 'guide' });
+        setTimeout(() => setXpNotification(null), 2500);
+      }
+    }
   };
 
   const handleThemeToggle = () => {
@@ -323,18 +338,12 @@ const Landing = () => {
           <div>• {t('home_value_line2')}</div>
           <div>• {t('home_value_line3')}</div>
         </div>
-        <div className="grid grid-cols-3 gap-2 mt-3">
+        <div className="grid grid-cols-2 gap-2 mt-3">
           <button
             onClick={() => { playSound('click'); navigate('/create-letter'); }}
             className="px-2 py-2 rounded-lg border border-accent-lime/40 text-accent-lime bg-accent-lime/10 hover:bg-accent-lime/20 transition-all font-bold tracking-widest text-[10px] uppercase"
           >
             {t('home_cta_create')}
-          </button>
-          <button
-            onClick={() => { playSound('click'); navigate('/store'); }}
-            className="px-2 py-2 rounded-lg border border-accent-cyan/40 text-accent-cyan bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-all font-bold tracking-widest text-[10px] uppercase"
-          >
-            {t('nav_store')}
           </button>
           <button
             onClick={() => setShowGuide(true)}
@@ -567,6 +576,34 @@ const Landing = () => {
               <div>
                 <p className="text-xs font-bold text-primary">{t('widget_witness')}</p>
                 <p className="text-[10px] text-muted">{t('witness_protocol')}</p>
+              </div>
+            </motion.div>
+
+            <motion.div 
+              whileTap={{ scale: 0.98 }}
+              onClick={() => { playSound('click'); navigate('/store'); }}
+              className="bg-card/60 backdrop-blur-md border border-border rounded-2xl p-4 flex flex-col justify-between h-28 hover:border-accent-lime/50 transition-colors cursor-pointer group"
+            >
+              <div className="flex justify-between items-start">
+                 <ShoppingBag size={20} className="text-accent-lime group-hover:drop-shadow-[0_0_8px_rgba(180,255,0,0.6)]" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-primary">{t('widget_store')}</p>
+                <p className="text-[10px] text-muted">{t('widget_store_desc')}</p>
+              </div>
+            </motion.div>
+
+            <motion.div 
+              whileTap={{ scale: 0.98 }}
+              onClick={() => { playSound('click'); navigate('/wiki'); }}
+              className="bg-card/60 backdrop-blur-md border border-border rounded-2xl p-4 flex flex-col justify-between h-28 hover:border-accent-cyan/50 transition-colors cursor-pointer group col-span-2"
+            >
+              <div className="flex items-center gap-3">
+                 <BookOpen size={20} className="text-accent-cyan group-hover:drop-shadow-[0_0_8px_rgba(0,224,255,0.6)]" />
+                 <div className="text-left">
+                   <p className="text-xs font-bold text-primary">{t('wiki_title')}</p>
+                   <p className="text-[10px] text-muted">{t('wiki_intro')}</p>
+                 </div>
               </div>
             </motion.div>
 

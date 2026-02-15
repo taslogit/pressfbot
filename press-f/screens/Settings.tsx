@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings as SettingsIcon, Bell, Globe2, Wallet, Sparkles } from 'lucide-react';
+import { Settings as SettingsIcon, Bell, Globe2, Wallet, Sparkles, BookOpen, ChevronRight } from 'lucide-react';
 import { TonConnectButton, useTonAddress, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { storage } from '../utils/storage';
 import { tonAPI, starsAPI, storeAPI } from '../utils/api';
@@ -27,6 +27,7 @@ const Settings = () => {
   const [escrowToken, setEscrowToken] = useState('TON');
   const [escrowAmount, setEscrowAmount] = useState(0);
   const [storeOpen, setStoreOpen] = useState(false);
+  const [wikiOpen, setWikiOpen] = useState(false);
   const [premiumStatus, setPremiumStatus] = useState<{ isPremium: boolean; starsBalance?: number; expiresAt?: string | null } | null>(null);
   const [storeCatalog, setStoreCatalog] = useState<any[]>([]);
   const [myStoreItems, setMyStoreItems] = useState<any[]>([]);
@@ -362,7 +363,6 @@ const Settings = () => {
               </div>
               <span className="text-[10px] text-muted uppercase">{isTonOpsOpen ? t('ton_ops_hide') : t('ton_ops_show')}</span>
             </button>
-
             <AnimatePresence>
               {isTonOpsOpen && (
                 <motion.div
@@ -495,6 +495,51 @@ const Settings = () => {
                       {t('ton_create_escrow')}
                     </button>
                   </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <button
+              onClick={() => setWikiOpen((v) => !v)}
+              className="w-full flex items-center justify-between mt-4"
+            >
+              <div className="flex items-center gap-2 text-[10px] text-muted uppercase tracking-widest">
+                <BookOpen size={14} className="text-accent-cyan" />
+                {t('wiki_title')}
+              </div>
+              <span className="text-[10px] text-muted uppercase">{wikiOpen ? t('ton_ops_hide') : t('ton_ops_show')}</span>
+            </button>
+            <AnimatePresence>
+              {wikiOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden mt-3 space-y-2"
+                >
+                  <div className="text-[10px] text-muted mb-2">{t('wiki_intro')}</div>
+                  {[
+                    { key: 'checkin', topic: 'wiki_topic_checkin', content: 'wiki_checkin' },
+                    { key: 'xp', topic: 'wiki_topic_xp', content: 'wiki_xp' },
+                    { key: 'store', topic: 'wiki_topic_store', content: 'wiki_store' },
+                    { key: 'letters', topic: 'wiki_topic_letters', content: 'wiki_letters' },
+                    { key: 'duels', topic: 'wiki_topic_duels', content: 'wiki_duels' },
+                    { key: 'squads', topic: 'wiki_topic_squads', content: 'wiki_squads' },
+                    { key: 'legacy', topic: 'wiki_topic_legacy', content: 'wiki_legacy' },
+                    { key: 'witnesses', topic: 'wiki_topic_witnesses', content: 'wiki_witnesses' },
+                  ].map(({ key, topic, content }) => (
+                    <InfoSection
+                      key={key}
+                      title={t(topic)}
+                      description={t(content)}
+                      trigger={
+                        <div className="flex items-center justify-between py-2 px-3 rounded-lg border border-border/60 bg-black/40 text-left hover:border-accent-cyan/50 hover:bg-accent-cyan/5 transition-colors">
+                          <span className="text-xs font-medium text-primary">{t(topic)}</span>
+                          <ChevronRight size={14} className="text-muted" />
+                        </div>
+                      }
+                    />
+                  ))}
                 </motion.div>
               )}
             </AnimatePresence>

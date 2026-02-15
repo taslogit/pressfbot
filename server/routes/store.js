@@ -137,8 +137,22 @@ const createStoreRoutes = (pool) => {
 
   // ─── GET /api/store/catalog ───────────────────────
   router.get('/catalog', (req, res) => {
-    const catalog = Object.entries(XP_STORE).map(([id, item]) => ({ id, ...item }));
-    return res.json({ ok: true, catalog });
+    const entries = Object.entries(XP_STORE);
+    const catalog = entries.map(([id, item]) => ({ id, ...item }));
+
+    // Flash Sale: 1 random XP item -50% for current UTC hour
+    const now = new Date();
+    const hourSeed = now.getUTCFullYear() * 8760 + now.getUTCMonth() * 720 + now.getUTCDate() * 24 + now.getUTCHours();
+    const flashIndex = hourSeed % entries.length;
+    const flashItemId = entries[flashIndex][0];
+    const flashEndsAt = new Date(now);
+    flashEndsAt.setUTCHours(flashEndsAt.getUTCHours() + 1, 0, 0, 0);
+
+    return res.json({
+      ok: true,
+      catalog,
+      flashSale: { itemId: flashItemId, discount: 0.5, endsAt: flashEndsAt.toISOString() }
+    });
   });
 
   // ─── GET /api/store/my-items — Purchased items ────
@@ -154,7 +168,11 @@ const createStoreRoutes = (pool) => {
         [userId]
       );
 
-      return res.json({ ok: true, items: result.rows });
+      return res.json({
+        ok: true,
+        items: result.rows,
+        firstPurchaseEligible: result.rows.length === 0
+      });
     } catch (error) {
       logger.error('My items error:', error);
       return sendError(res, 500, 'STORE_FETCH_FAILED', 'Failed to fetch items');
@@ -185,6 +203,23 @@ const createStoreRoutes = (pool) => {
         }
       }
 
+      // Flash Sale: 50% off for 1 item per hour
+      const now = new Date();
+      const hourSeed = now.getUTCFullYear() * 8760 + now.getUTCMonth() * 720 + now.getUTCDate() * 24 + now.getUTCHours();
+      const entries = Object.entries(XP_STORE);
+      const flashItemId = entries[hourSeed % entries.length][0];
+      const isFlashSale = itemId === flashItemId;
+
+      // First purchase 20% discount (doesn't stack with flash sale)
+      const purchaseCount = await pool.query(
+        `SELECT COUNT(*) as n FROM store_purchases WHERE user_id = $1`,
+        [userId]
+      );
+      const isFirstPurchase = parseInt(purchaseCount.rows[0]?.n || '0', 10) === 0;
+      const discount = isFlashSale ? 0.5 : (isFirstPurchase ? 0.8 : 1);
+      const actualCostXp = item.cost_xp > 0 ? Math.floor(item.cost_xp * discount) : 0;
+      const actualCostRep = item.cost_rep > 0 ? Math.floor(item.cost_rep * discount) : 0;
+
       // Check balance
       const profile = await pool.query(
         `SELECT spendable_xp, reputation FROM profiles WHERE user_id = $1`,
@@ -197,16 +232,16 @@ const createStoreRoutes = (pool) => {
 
       const { spendable_xp = 0, reputation = 0 } = profile.rows[0];
 
-      if (item.cost_xp > 0 && spendable_xp < item.cost_xp) {
+      if (actualCostXp > 0 && spendable_xp < actualCostXp) {
         return sendError(res, 400, 'INSUFFICIENT_XP', 'Not enough XP', {
-          required: item.cost_xp,
+          required: actualCostXp,
           available: spendable_xp
         });
       }
 
-      if (item.cost_rep > 0 && reputation < item.cost_rep) {
+      if (actualCostRep > 0 && reputation < actualCostRep) {
         return sendError(res, 400, 'INSUFFICIENT_REP', 'Not enough reputation', {
-          required: item.cost_rep,
+          required: actualCostRep,
           available: reputation
         });
       }
@@ -217,18 +252,18 @@ const createStoreRoutes = (pool) => {
         await client.query('BEGIN');
 
         // Deduct spendable XP
-        if (item.cost_xp > 0) {
+        if (actualCostXp > 0) {
           await client.query(
             `UPDATE profiles SET spendable_xp = spendable_xp - $2 WHERE user_id = $1`,
-            [userId, item.cost_xp]
+            [userId, actualCostXp]
           );
         }
 
-        // Record purchase
+        // Record purchase (store actual charged amount)
         await client.query(
           `INSERT INTO store_purchases (user_id, item_type, item_id, cost_xp, cost_rep)
            VALUES ($1, $2, $3, $4, $5)`,
-          [userId, item.category, itemId, item.cost_xp, item.cost_rep]
+          [userId, item.category, itemId, actualCostXp, actualCostRep]
         );
 
         // Apply permanent items to profile
@@ -243,12 +278,14 @@ const createStoreRoutes = (pool) => {
 
         await client.query('COMMIT');
 
-        logger.info('Store purchase', { userId, itemId, costXp: item.cost_xp, costRep: item.cost_rep });
+        logger.info('Store purchase', { userId, itemId, costXp: actualCostXp, costRep: actualCostRep, firstPurchase: isFirstPurchase });
 
         return res.json({
           ok: true,
           item: { id: itemId, ...item },
-          remainingXp: spendable_xp - item.cost_xp
+          remainingXp: spendable_xp - actualCostXp,
+          firstPurchaseDiscount: isFirstPurchase,
+          flashSaleDiscount: isFlashSale
         });
       } catch (txError) {
         await client.query('ROLLBACK');

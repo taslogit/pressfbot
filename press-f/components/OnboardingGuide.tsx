@@ -8,7 +8,7 @@ import { analytics } from '../utils/analytics';
 
 interface Props {
   isVisible: boolean;
-  onClose: () => void;
+  onClose: (completed?: boolean) => void;
 }
 
 const OnboardingGuide: React.FC<Props> = ({ isVisible, onClose }) => {
@@ -67,14 +67,14 @@ const OnboardingGuide: React.FC<Props> = ({ isVisible, onClose }) => {
       analytics.track('onboarding_step', { step: nextStep, stepId: steps[nextStep].id });
     } else {
       analytics.track('onboarding_completed', { totalSteps: steps.length });
-      onClose();
+      onClose(true);
     }
   };
 
   const handleSkip = (e: React.MouseEvent) => {
     e.stopPropagation();
     analytics.track('onboarding_skipped', { currentStep: step, totalSteps: steps.length });
-    onClose();
+    onClose(false);
   };
 
   if (!isVisible) return null;
@@ -124,7 +124,7 @@ const OnboardingGuide: React.FC<Props> = ({ isVisible, onClose }) => {
 
          {/* Close Button - Explicitly added here */}
          <button 
-            onClick={onClose}
+            onClick={() => onClose(false)}
             className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
          >
             <X size={24} />
