@@ -577,8 +577,24 @@ const Duels = () => {
               </div>
             ))
           ) : displayFiltered.length === 0 ? (
-            <div className="text-center py-10 opacity-70">
-              <p className="text-muted font-mono text-xs">{t('no_results')}</p>
+            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+              <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 relative">
+                <div className="absolute inset-0 bg-accent-pink/5 blur-xl rounded-full" />
+                <Swords size={40} className="relative z-10 text-muted" />
+              </div>
+              <h3 className="text-lg font-bold text-primary mb-2 tracking-wide">
+                {t('no_results')}
+              </h3>
+              <p className="text-sm text-muted max-w-xs leading-relaxed mb-6 font-mono">
+                {t('duels_empty_hint') || 'No duels yet. Start a new beef and challenge someone.'}
+              </p>
+              <button 
+                onClick={() => setIsCreating(true)}
+                className="px-6 py-3 rounded-xl bg-accent-pink/10 border border-accent-pink/30 text-accent-pink text-xs font-bold uppercase tracking-widest hover:bg-accent-pink/20 transition-all active:scale-95"
+              >
+                {t('create_beef') || 'START A BEEF'}
+              </button>
+              <div className="mt-8 w-16 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
             </div>
           ) : (
             displayFiltered.map((duel, index) => {

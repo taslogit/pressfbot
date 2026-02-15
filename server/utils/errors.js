@@ -19,4 +19,15 @@ const sendValidationError = (res, zodError) => {
   );
 };
 
-module.exports = { sendError, sendValidationError };
+// Helper to send error from AppError instance
+const sendAppError = (res, appError) => {
+  return sendError(
+    res,
+    appError.statusCode,
+    appError.code,
+    appError.message,
+    appError.details
+  );
+};
+
+module.exports = { sendError, sendValidationError, sendAppError };

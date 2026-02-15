@@ -6,6 +6,7 @@ const { normalizeProfile, normalizeSettings } = require('../services/profileServ
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { cache } = require('../utils/cache');
+const { checkAchievements, getUserAchievements } = require('../utils/achievements');
 
 const profileUpdateSchema = z.object({
   avatar: z.string().optional(),
@@ -443,7 +444,10 @@ const createProfileRoutes = (pool) => {
       const checkInXP = 10;
       await client.query(
         `UPDATE profiles 
-         SET experience = experience + $1, total_xp_earned = total_xp_earned + $1, updated_at = now()
+         SET experience = experience + $1, 
+             total_xp_earned = total_xp_earned + $1,
+             spendable_xp = COALESCE(spendable_xp, 0) + $1,
+             updated_at = now()
          WHERE user_id = $2`,
         [checkInXP, userId]
       );
@@ -767,6 +771,35 @@ const createProfileRoutes = (pool) => {
     } catch (error) {
       logger.error('Get referral info error', error);
       return sendError(res, 500, 'REFERRAL_FETCH_FAILED', 'Failed to fetch referral info');
+    }
+  });
+
+  // ─── GET /api/profile/achievements ─────────────────
+  router.get('/achievements', async (req, res) => {
+    try {
+      const userId = req.userId;
+      if (!userId) return sendError(res, 401, 'AUTH_REQUIRED', 'Not authenticated');
+
+      // Check for new achievements first
+      const newAchievements = await checkAchievements(pool, userId);
+      
+      // Get all achievements with user's progress
+      const achievements = await getUserAchievements(pool, userId);
+
+      return res.json({
+        ok: true,
+        achievements,
+        newAchievements: newAchievements.map(a => ({
+          id: a.id,
+          name: a.name,
+          description: a.description,
+          icon: a.icon,
+          xp_reward: a.xp_reward
+        }))
+      });
+    } catch (error) {
+      logger.error('Get achievements error:', error);
+      return sendError(res, 500, 'ACHIEVEMENTS_FETCH_FAILED', 'Failed to fetch achievements');
     }
   });
 

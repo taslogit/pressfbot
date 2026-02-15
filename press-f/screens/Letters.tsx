@@ -482,15 +482,24 @@ const Letters = () => {
               </div>
             ))
           ) : filteredLetters.length === 0 ? (
-            <div className="text-center py-20 opacity-70">
-              <Terminal size={48} className="mx-auto text-muted mb-4 opacity-50" />
-              <p className="text-muted mb-4 font-mono text-xs">{t('no_results')}</p>
+            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+              <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 relative">
+                <div className="absolute inset-0 bg-accent-cyan/5 blur-xl rounded-full" />
+                <FileText size={40} className="relative z-10 text-muted" />
+              </div>
+              <h3 className="text-lg font-bold text-primary mb-2 tracking-wide">
+                {t('no_results')}
+              </h3>
+              <p className="text-sm text-muted max-w-xs leading-relaxed mb-6 font-mono">
+                {t('letters_empty_hint') || 'Create your first time-locked letter. It will be stored securely until the unlock date.'}
+              </p>
               <button 
                 onClick={() => navigate('/create-letter')}
-                className="px-6 py-2 rounded border border-accent-lime/30 text-accent-lime bg-accent-lime/10 hover:bg-accent-lime/20 transition-all font-bold tracking-widest text-xs uppercase"
+                className="px-6 py-3 rounded-xl bg-accent-lime/10 border border-accent-lime/30 text-accent-lime text-xs font-bold uppercase tracking-widest hover:bg-accent-lime/20 transition-all active:scale-95"
               >
                 {t('write_now')}
               </button>
+              <div className="mt-8 w-16 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
             </div>
           ) : (
             letterCards

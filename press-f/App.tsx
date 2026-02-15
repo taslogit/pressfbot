@@ -33,7 +33,7 @@ const TelegramHandler = () => {
   useEffect(() => {
     console.log('[App] Initializing TelegramHandler...');
     
-    // 1. Initialize TG (Expand, Colors)
+    // 1. Initialize TG (Expand, Colors, ClosingConfirmation, ThemeChanged)
     try {
       initTelegramApp();
       console.log('[App] Telegram initialized');
@@ -42,7 +42,6 @@ const TelegramHandler = () => {
     }
 
     // 2. Handle Deep Links (Start Params)
-    // Format: t.me/bot?start=witness_123 or t.me/bot?start=duel_456
     const startParam = tg.initDataUnsafe?.start_param;
     console.log('[App] Start param:', startParam);
 
@@ -66,29 +65,24 @@ const TelegramHandler = () => {
       }
     }
 
-    // 3. ALWAYS redirect to home if no deep link (guarantee home page on start)
+    // 3. ALWAYS redirect to home if no deep link
     if (!startParam) {
-      console.log("[App] No deep link: forcing navigation to home page");
-      // Use setTimeout to ensure router is ready
       setTimeout(() => {
         navigate('/', { replace: true });
       }, 0);
     }
   }, []);
 
-  // 4. Fallback: ensure home page on initial mount if no deep link
+  // Fallback: ensure home page on initial mount if no deep link
   useEffect(() => {
     const startParam = tg.initDataUnsafe?.start_param;
     const currentPath = location.pathname;
-    
-    // If no deep link and not on home, redirect to home
     if (!startParam && currentPath !== '/') {
-      console.log("Fallback: redirecting to home from:", currentPath);
       navigate('/', { replace: true });
     }
   }, []);
 
-  // 3. Handle Back Button
+  // Handle Back Button
   useEffect(() => {
     if (location.pathname === '/') {
       tg.BackButton.hide();
@@ -99,6 +93,44 @@ const TelegramHandler = () => {
       return () => tg.BackButton.offClick(handleBack);
     }
   }, [location, navigate]);
+
+  // MainButton: Show contextual CTA based on current route
+  useEffect(() => {
+    const path = location.pathname;
+
+    try {
+      if (path === '/') {
+        // Home: "CHECK IN" button
+        tg.MainButton.setText('CHECK IN');
+        tg.MainButton.show();
+        const handleCheckIn = () => {
+          // Trigger check-in via custom event (Landing listens for it)
+          window.dispatchEvent(new CustomEvent('pressf:checkin'));
+        };
+        tg.MainButton.onClick(handleCheckIn);
+        return () => {
+          tg.MainButton.offClick(handleCheckIn);
+          tg.MainButton.hide();
+        };
+      } else if (path === '/create-letter') {
+        // CreateLetter: "SEND" button  
+        tg.MainButton.setText('SEND');
+        tg.MainButton.show();
+        const handleSend = () => {
+          window.dispatchEvent(new CustomEvent('pressf:send-letter'));
+        };
+        tg.MainButton.onClick(handleSend);
+        return () => {
+          tg.MainButton.offClick(handleSend);
+          tg.MainButton.hide();
+        };
+      } else {
+        tg.MainButton.hide();
+      }
+    } catch (e) {
+      // Old TG versions may not support MainButton
+    }
+  }, [location.pathname]);
 
   return null;
 };

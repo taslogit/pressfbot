@@ -518,6 +518,92 @@ const createTables = async (pool) => {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_activity_feed_public ON activity_feed(is_public, created_at DESC) WHERE is_public = true`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_activity_feed_type ON activity_feed(activity_type, created_at DESC)`);
 
+    // ─── GIN indexes for full-text search performance ──
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_letters_title_fts 
+        ON letters USING GIN (to_tsvector('russian', title))
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_letters_content_fts 
+        ON letters USING GIN (to_tsvector('russian', COALESCE(content, '')))
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_duels_title_fts 
+        ON duels USING GIN (to_tsvector('russian', COALESCE(title, '')))
+    `);
+    // Composite index for common letter queries
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_letters_user_status_created 
+        ON letters(user_id, status, created_at DESC)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_duels_user_status_created 
+        ON duels(user_id, status, created_at DESC)
+    `);
+
+    // ─── Monetization tables ────────────────────────────
+
+    // Stars purchase history
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS stars_purchases (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id BIGINT NOT NULL,
+        item_type VARCHAR(50) NOT NULL,
+        item_id VARCHAR(255),
+        stars_amount INTEGER NOT NULL,
+        telegram_payment_charge_id VARCHAR(255),
+        provider_payment_charge_id VARCHAR(255),
+        status VARCHAR(50) DEFAULT 'completed',
+        created_at TIMESTAMP DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_stars_purchases_user ON stars_purchases(user_id, created_at DESC)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_stars_purchases_status ON stars_purchases(status)`);
+
+    // Premium subscriptions
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS premium_subscriptions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id BIGINT UNIQUE NOT NULL,
+        plan VARCHAR(50) NOT NULL DEFAULT 'monthly',
+        stars_paid INTEGER NOT NULL DEFAULT 0,
+        started_at TIMESTAMP DEFAULT now(),
+        expires_at TIMESTAMP NOT NULL,
+        auto_renew BOOLEAN DEFAULT true,
+        status VARCHAR(50) DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_premium_user ON premium_subscriptions(user_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_premium_expires ON premium_subscriptions(expires_at) WHERE status = 'active'`);
+
+    // XP/REP Store — purchase log
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS store_purchases (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id BIGINT NOT NULL,
+        item_type VARCHAR(50) NOT NULL,
+        item_id VARCHAR(255),
+        cost_xp INTEGER DEFAULT 0,
+        cost_rep INTEGER DEFAULT 0,
+        cost_stars INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_store_purchases_user ON store_purchases(user_id, created_at DESC)`);
+
+    // Referral revenue share tracking
+    await pool.query(`ALTER TABLE referral_events ADD COLUMN IF NOT EXISTS revenue_share_total INTEGER DEFAULT 0`);
+    await pool.query(`ALTER TABLE referral_events ADD COLUMN IF NOT EXISTS revenue_share_paid INTEGER DEFAULT 0`);
+    await pool.query(`ALTER TABLE referral_events ADD COLUMN IF NOT EXISTS tier VARCHAR(20) DEFAULT 'bronze'`);
+
+    // Profile premium flag
+    await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_premium BOOLEAN DEFAULT false`);
+    await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS premium_expires_at TIMESTAMP`);
+    await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS stars_balance INTEGER DEFAULT 0`);
+    // Spendable points balance
+    await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS spendable_xp INTEGER DEFAULT 0`);
+
     logger.info('✅ All tables created successfully');
     return true;
   } catch (error) {

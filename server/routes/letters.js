@@ -7,6 +7,7 @@ const { normalizeLetter } = require('../services/lettersService');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { getXPReward } = require('../utils/xpSystem');
+const { sanitizeInput } = require('../utils/sanitize');
 const VALID_LETTER_STATUSES = ['draft', 'scheduled', 'sent'];
 const VALID_LETTER_TYPES = ['generic', 'crypto', 'love', 'roast', 'confession'];
 const VALID_LETTER_SORT = ['created_at', 'unlock_date', 'title'];
@@ -35,7 +36,7 @@ const letterSchema = z.object({
   isFavorite: z.boolean().optional()
 });
 
-const createLettersRoutes = (pool, createLimiter) => {
+const createLettersRoutes = (pool, createLimiter, letterLimitCheck) => {
   // GET /api/letters - Get all letters for user
   router.get('/', async (req, res) => {
     try {
@@ -232,8 +233,8 @@ const createLettersRoutes = (pool, createLimiter) => {
     }
   });
 
-  // POST /api/letters - Create new letter (with rate limiting)
-  router.post('/', createLimiter || ((req, res, next) => next()), validateBody(letterSchema), async (req, res) => {
+  // POST /api/letters - Create new letter (with rate limiting + free tier check)
+  router.post('/', createLimiter || ((req, res, next) => next()), letterLimitCheck || ((req, res, next) => next()), validateBody(letterSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -244,6 +245,8 @@ const createLettersRoutes = (pool, createLimiter) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
+      // Sanitize user input to prevent stored XSS
+      const sanitizedBody = sanitizeInput(req.body);
       const {
         id,
         title,
@@ -257,7 +260,7 @@ const createLettersRoutes = (pool, createLimiter) => {
         encryptedContent,
         ipfsHash,
         isFavorite
-      } = req.body;
+      } = sanitizedBody;
 
       // Security: Validate string lengths on server (in addition to Zod validation)
       if (title && typeof title === 'string' && title.length > MAX_TITLE_SIZE) {
@@ -385,7 +388,10 @@ const createLettersRoutes = (pool, createLimiter) => {
         try {
           await pool.query(
             `UPDATE profiles 
-             SET experience = experience + $1, total_xp_earned = total_xp_earned + $1, updated_at = now()
+             SET experience = experience + $1, 
+                 total_xp_earned = total_xp_earned + $1, 
+                 spendable_xp = COALESCE(spendable_xp, 0) + $1,
+                 updated_at = now()
              WHERE user_id = $2`,
             [xpReward, userId]
           );
@@ -645,8 +651,8 @@ const createLettersRoutes = (pool, createLimiter) => {
       if (attachments !== undefined && allowedFields.attachments) {
         // Security: Validate attachments if provided
         if (Array.isArray(attachments)) {
-          if (attachments.length > MAX_ATTACHMENTS_COUNT) {
-            return sendError(res, 400, 'VALIDATION_ERROR', `Maximum ${MAX_ATTACHMENTS_COUNT} attachments allowed`);
+          if (attachments.length > MAX_ATTACHMENTS) {
+            return sendError(res, 400, 'VALIDATION_ERROR', `Maximum ${MAX_ATTACHMENTS} attachments allowed`);
           }
           
           let totalAttachmentsSize = 0;

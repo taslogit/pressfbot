@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Skull, Send, Swords, Gift, ChevronRight, Zap, Shield, Terminal, X } from 'lucide-react';
+import { Skull, Swords, ChevronRight, Terminal, X } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { analytics } from '../utils/analytics';
 
@@ -16,7 +16,7 @@ const OnboardingGuide: React.FC<Props> = ({ isVisible, onClose }) => {
   const [step, setStep] = useState(0);
   const [bootSequence, setBootSequence] = useState(true);
 
-  // Define steps
+  // Define steps (streamlined to 3 for faster onboarding)
   const steps = [
     {
       id: 'welcome',
@@ -36,34 +36,18 @@ const OnboardingGuide: React.FC<Props> = ({ isVisible, onClose }) => {
     },
     {
       id: 'drops',
-      icon: <Send size={64} className="text-accent-pink" />,
+      icon: <Swords size={64} className="text-accent-pink" />,
       title: 'guide_step3_title',
       desc: 'guide_step3_desc',
       color: 'border-accent-pink text-accent-pink',
       bg: 'bg-accent-pink/10'
-    },
-    {
-      id: 'squad',
-      icon: <Shield size={64} className="text-blue-500" />,
-      title: 'guide_step4_title',
-      desc: 'guide_step4_desc',
-      color: 'border-blue-500 text-blue-500',
-      bg: 'bg-blue-500/10'
-    },
-    {
-      id: 'loot',
-      icon: <Gift size={64} className="text-accent-gold" />,
-      title: 'guide_step5_title',
-      desc: 'guide_step5_desc',
-      color: 'border-accent-gold text-accent-gold',
-      bg: 'bg-accent-gold/10'
     }
   ];
 
-  // Boot Sequence Effect
+  // Boot Sequence Effect (reduced from 2s to 0.8s for faster onboarding)
   useEffect(() => {
     if (isVisible) {
-      setTimeout(() => setBootSequence(false), 2000);
+      setTimeout(() => setBootSequence(false), 800);
     }
   }, [isVisible]);
 

@@ -5,3 +5,28 @@ http:
         stsSeconds: 63072000
         stsIncludeSubdomains: true
         frameDeny: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        customResponseHeaders:
+          X-Powered-By: ""
+          Server: ""
+    
+    # Gzip/Brotli compression (replaces CDN for static assets)
+    compress:
+      compress:
+        excludedContentTypes:
+          - "text/event-stream"
+    
+    # Rate limiting at proxy level
+    rateLimit:
+      rateLimit:
+        average: 100
+        burst: 50
+        period: 1s
+
+    # Retry on backend errors
+    retry:
+      retry:
+        attempts: 3
+        initialInterval: 100ms

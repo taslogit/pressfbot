@@ -51,6 +51,8 @@ const mockWebApp = {
   openLink: (url: string) => window.open(url, '_blank'),
   setHeaderColor: (color: string) => console.log(`[TG_MOCK] Header Color: ${color}`),
   setBackgroundColor: (color: string) => console.log(`[TG_MOCK] Bg Color: ${color}`),
+  enableClosingConfirmation: () => console.log('[TG_MOCK] enableClosingConfirmation'),
+  disableClosingConfirmation: () => console.log('[TG_MOCK] disableClosingConfirmation'),
   onEvent: (eventType: string, callback: () => void) => {},
   offEvent: (eventType: string, callback: () => void) => {},
   platform: 'unknown'
@@ -83,12 +85,32 @@ export const initTelegramApp = () => {
     tg.ready();
     tg.expand(); // Force full screen height
     
+    // Prevent accidental closure when user has unsaved data
+    try {
+      tg.enableClosingConfirmation();
+    } catch (e) {
+      console.warn('Old TG version, cannot enable closing confirmation');
+    }
+    
     // Set colors to match your theme (Dark #0f0d16)
     try {
         tg.setHeaderColor('#0f0d16');
         tg.setBackgroundColor('#0f0d16');
     } catch (e) {
         console.warn('Old TG version, cannot set colors');
+    }
+
+    // Listen for theme changes from Telegram
+    try {
+      tg.onEvent('themeChanged', () => {
+        // Re-apply our dark theme colors on Telegram theme change
+        try {
+          tg.setHeaderColor('#0f0d16');
+          tg.setBackgroundColor('#0f0d16');
+        } catch (e) {}
+      });
+    } catch (e) {
+      console.warn('Old TG version, cannot listen for theme changes');
     }
   } else {
     // When not inside Telegram, attempt to simulate an initData string and auto-verify with local backend

@@ -36,7 +36,7 @@ const GIFT_TYPES = {
   }
 };
 
-const createGiftsRoutes = (pool) => {
+const createGiftsRoutes = (pool, giftLimitCheck) => {
   // GET /api/gifts - Get user's gifts (sent and received) with pagination
   router.get('/', async (req, res) => {
     try {
@@ -120,7 +120,7 @@ const createGiftsRoutes = (pool) => {
   });
 
   // POST /api/gifts - Send a gift
-  router.post('/', async (req, res) => {
+  router.post('/', giftLimitCheck || ((req, res, next) => next()), async (req, res) => {
     const client = await pool?.connect();
     if (!client) {
       return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');

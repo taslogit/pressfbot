@@ -226,6 +226,56 @@ bot.start(sendStartMessage);
 bot.command('start', sendStartMessage);
 bot.command('help', sendStartMessage);
 
+// ─── Telegram Stars Payment Handlers ─────────────────
+// Pre-checkout query: MUST answer within 10 seconds
+bot.on('pre_checkout_query', async (ctx) => {
+  try {
+    logger.info('Pre-checkout query received', { 
+      id: ctx.preCheckoutQuery.id,
+      from: ctx.preCheckoutQuery.from?.id,
+      totalAmount: ctx.preCheckoutQuery.total_amount 
+    });
+    // Always approve (validation happens in processStarsPayment)
+    await ctx.answerPreCheckoutQuery(true);
+  } catch (error) {
+    logger.error('Pre-checkout query error:', error);
+    try {
+      await ctx.answerPreCheckoutQuery(false, 'Payment processing error. Please try again.');
+    } catch (e) {}
+  }
+});
+
+// Successful payment: process and deliver the item
+bot.on('message', async (ctx, next) => {
+  if (ctx.message?.successful_payment) {
+    const payment = ctx.message.successful_payment;
+    const userId = ctx.from?.id;
+    
+    logger.info('Successful Stars payment', {
+      userId,
+      totalAmount: payment.total_amount,
+      currency: payment.currency,
+      payload: payment.invoice_payload
+    });
+
+    try {
+      await processStarsPayment(pool, bot, {
+        userId,
+        payload: payment.invoice_payload,
+        telegramPaymentChargeId: payment.telegram_payment_charge_id,
+        providerPaymentChargeId: payment.provider_payment_charge_id
+      });
+
+      await ctx.reply('✅ Payment successful! Your purchase has been activated.');
+    } catch (error) {
+      logger.error('Payment processing error:', error);
+      await ctx.reply('⚠️ Payment received but activation failed. Contact support.');
+    }
+    return;
+  }
+  return next();
+});
+
 // Telegram webhook callback (MUST be first, before any other middleware)
 if (USE_WEBHOOK) {
   // Add a simple handler for HEAD/GET requests to /bot for debugging (BEFORE webhookCallback)
@@ -279,7 +329,7 @@ app.use((req, res, next) => {
 });
 
 // Monitoring: Add basic monitoring middleware (skip for /bot webhook)
-const { monitoringMiddleware, getMetrics, updateHealthStatus } = require('./middleware/monitoring');
+const { monitoringMiddleware, getMetrics, getPrometheusMetrics, updateHealthStatus, trackBusiness } = require('./middleware/monitoring');
 app.use((req, res, next) => {
   // Skip monitoring for webhook endpoint to avoid interference
   if (req.path === '/bot') {
@@ -411,6 +461,7 @@ app.use((req, res, next) => {
 
 // Import routes and middleware
 const { createAuthMiddleware } = require('./middleware/auth');
+const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const { createLettersRoutes } = require('./routes/letters');
 const { createProfileRoutes } = require('./routes/profile');
 const { createDuelsRoutes } = require('./routes/duels');
@@ -425,6 +476,9 @@ const { createTournamentsRoutes } = require('./routes/tournaments');
 const { createActivityRoutes, logActivity } = require('./routes/activity');
 const { createSquadsRoutes } = require('./routes/squads');
 const { createWitnessesRoutes } = require('./routes/witnesses');
+const { createStarsRoutes, processStarsPayment } = require('./routes/stars');
+const { createStoreRoutes } = require('./routes/store');
+const { createLimitCheck, createLimitsRoute } = require('./middleware/freeTier');
 const { normalizeLetter } = require('./services/lettersService');
 const { normalizeDuel } = require('./services/duelsService');
 const { normalizeLegacyItem } = require('./services/legacyService');
@@ -432,23 +486,30 @@ const { normalizeLegacyItem } = require('./services/legacyService');
 // Apply auth middleware
 const authMiddleware = createAuthMiddleware(pool);
 
+// Free-tier limit checks (premium users bypass)
+const letterLimitCheck = createLimitCheck(pool, 'letters', 'letters');
+const duelLimitCheck = createLimitCheck(pool, 'duels', 'duels');
+const giftLimitCheck = createLimitCheck(pool, 'gifts', 'gifts', 'sender_id');
+
 // Register API routes with rate limiting
-// Note: Rate limiters for POST requests are applied inside route handlers
-// Apply GET limiter to all GET endpoints, POST limiter to all POST endpoints
-app.use('/api/letters', authMiddleware, getLimiter, createLettersRoutes(pool, letterCreateLimiter));
+app.use('/api/letters', authMiddleware, getLimiter, createLettersRoutes(pool, letterCreateLimiter, letterLimitCheck));
 app.use('/api/profile', authMiddleware, getLimiter, createProfileRoutes(pool, bot));
-app.use('/api/duels', authMiddleware, getLimiter, createDuelsRoutes(pool, duelCreateLimiter));
+app.use('/api/duels', authMiddleware, getLimiter, createDuelsRoutes(pool, duelCreateLimiter, duelLimitCheck));
 app.use('/api/legacy', authMiddleware, getLimiter, createLegacyRoutes(pool));
 app.use('/api/notifications', authMiddleware, getLimiter, createNotificationsRoutes(pool, bot));
 app.use('/api/ton', authMiddleware, getLimiter, createTonRoutes(pool));
 app.use('/api/daily-quests', authMiddleware, getLimiter, createDailyQuestsRoutes(pool, bot));
 app.use('/api/avatars', getLimiter, createAvatarsRoutes()); // No auth needed for public avatars list
-app.use('/api/gifts', authMiddleware, getLimiter, createGiftsRoutes(pool));
+app.use('/api/gifts', authMiddleware, getLimiter, createGiftsRoutes(pool, giftLimitCheck));
 app.use('/api/events', authMiddleware, getLimiter, createEventsRoutes(pool));
 app.use('/api/tournaments', authMiddleware, getLimiter, createTournamentsRoutes(pool));
 app.use('/api/activity', authMiddleware, getLimiter, createActivityRoutes(pool));
 app.use('/api/squads', authMiddleware, getLimiter, createSquadsRoutes(pool));
 app.use('/api/witnesses', authMiddleware, getLimiter, createWitnessesRoutes(pool));
+// Monetization routes
+app.use('/api/stars', authMiddleware, getLimiter, createStarsRoutes(pool, bot));
+app.use('/api/store', authMiddleware, getLimiter, createStoreRoutes(pool));
+app.get('/api/limits', authMiddleware, getLimiter, createLimitsRoute(pool));
 
 // Global search across letters, duels, legacy (with rate limiting and pagination)
 app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {
@@ -591,7 +652,7 @@ app.get('/api/health', async (_req, res) => {
   return res.status(statusCode).json(health);
 });
 
-// Metrics endpoint (no auth, but rate limited)
+// JSON metrics endpoint (rate limited)
 app.get('/api/metrics', globalLimiter, (req, res) => {
   try {
     const metrics = getMetrics();
@@ -599,6 +660,17 @@ app.get('/api/metrics', globalLimiter, (req, res) => {
   } catch (error) {
     logger.error('Get metrics error:', error);
     return sendError(res, 500, 'METRICS_FETCH_FAILED', 'Failed to fetch metrics');
+  }
+});
+
+// Prometheus-compatible metrics endpoint (for Grafana/Prometheus scraping)
+app.get('/api/metrics/prometheus', globalLimiter, (req, res) => {
+  try {
+    res.set('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+    return res.send(getPrometheusMetrics());
+  } catch (error) {
+    logger.error('Prometheus metrics error:', error);
+    return res.status(500).send('# Error generating metrics\n');
   }
 });
 
@@ -958,7 +1030,10 @@ app.post('/api/verify', async (req, res) => {
               if (xpReward > 0) {
                 await pool.query(
                   `UPDATE profiles 
-                   SET experience = experience + $1, total_xp_earned = total_xp_earned + $1, updated_at = now()
+                   SET experience = experience + $1, 
+                       total_xp_earned = total_xp_earned + $1, 
+                       spendable_xp = COALESCE(spendable_xp, 0) + $1,
+                       updated_at = now()
                    WHERE user_id = $2`,
                   [xpReward, referrerId]
                 );
@@ -1014,39 +1089,48 @@ app.post('/api/verify', async (req, res) => {
   }
 });
 
-// Temporary endpoint to enqueue a test job into Bull
-// POST /api/enqueue-test { chatId: number, text?: string, token?: string }
-app.post('/api/enqueue-test', async (req, res) => {
-  if (!jobsQueue) {
-    return res.status(503).json({ ok: false, error: 'queue disabled' });
-  }
-  const { chatId, text, token } = req.body || {};
-  if (!chatId) return res.status(400).json({ ok: false, error: 'chatId required' });
+// Security: Test endpoint disabled in production
+// To enable for debugging, set ENABLE_TEST_ENDPOINTS=true in .env
+if (process.env.ENABLE_TEST_ENDPOINTS === 'true') {
+  app.post('/api/enqueue-test', authMiddleware, async (req, res) => {
+    if (!jobsQueue) {
+      return res.status(503).json({ ok: false, error: 'queue disabled' });
+    }
+    const { chatId, text } = req.body || {};
+    if (!chatId) return res.status(400).json({ ok: false, error: 'chatId required' });
 
-  const jobData = {
-    type: 'send_message',
-    chatId,
-    text: text || 'Test message from Press F worker',
-    token: token || BOT_TOKEN
-  };
+    const jobData = {
+      type: 'send_message',
+      chatId,
+      text: text || 'Test message from Press F worker',
+      token: BOT_TOKEN
+    };
 
-  try {
-    const job = await jobsQueue.add(jobData);
-    return res.json({ ok: true, jobId: job.id });
-  } catch (e) {
-    logger.error('Failed to enqueue job', { error: e?.message || e, jobType: jobData?.type });
-    return res.status(500).json({ ok: false });
-  }
-});
+    try {
+      const job = await jobsQueue.add(jobData);
+      logger.info('Test job enqueued', { jobId: job.id, userId: req.userId });
+      return res.json({ ok: true, jobId: job.id });
+    } catch (e) {
+      logger.error('Failed to enqueue job', { error: e?.message || e, jobType: jobData?.type });
+      return res.status(500).json({ ok: false });
+    }
+  });
+  logger.warn('⚠️ Test endpoints ENABLED — disable in production (ENABLE_TEST_ENDPOINTS)');
+}
 
-// endpoint to get session info (security: removed init_data to prevent data leakage)
-app.get('/api/session/:id', async (req, res) => {
+// endpoint to get session info (requires auth — user can only see their own session)
+app.get('/api/session/:id', authMiddleware, async (req, res) => {
   const id = req.params.id;
   try {
     if (!pool) {
       return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
     }
-    // Security: Do not return init_data (contains sensitive user data)
+
+    // Security: User can only query their own session
+    if (id !== req.sessionId) {
+      return sendError(res, 403, 'FORBIDDEN', 'You can only view your own session');
+    }
+
     const r = await pool.query('SELECT id, telegram_id, created_at, expires_at, last_seen_at FROM sessions WHERE id=$1', [id]);
     if (r.rowCount === 0) {
       return sendError(res, 404, 'SESSION_NOT_FOUND', 'Session not found');
@@ -1108,6 +1192,12 @@ app.get('/api/session/:id', async (req, res) => {
     });
   }
 })();
+
+// 404 handler for undefined routes (must be before error handler)
+app.use(notFoundHandler);
+
+// Global error handler (must be last middleware)
+app.use(errorHandler);
 
 app.listen(PORT, () => logger.info(`Backend running on port ${PORT}`));
 

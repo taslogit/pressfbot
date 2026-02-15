@@ -4,4 +4,6 @@
 node_modules/
 dist/
 .DS_Store
-QA_AUDIT_FULL_REPORT.md
+
+# Документация для разработчиков (аудиты, инструкции) — не пушить в репозиторий
+dev-docs/

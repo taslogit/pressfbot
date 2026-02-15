@@ -7,6 +7,7 @@ const { normalizeDuel } = require('../services/duelsService');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { getXPReward } = require('../utils/xpSystem');
+const { sanitizeInput } = require('../utils/sanitize');
 const VALID_DUEL_STATUSES = ['pending', 'active', 'completed', 'shame'];
 const VALID_DUEL_SORT = ['created_at', 'deadline', 'title', 'status'];
 
@@ -31,7 +32,7 @@ const duelSchema = z.object({
   isFavorite: z.boolean().optional()
 });
 
-const createDuelsRoutes = (pool, createLimiter) => {
+const createDuelsRoutes = (pool, createLimiter, duelLimitCheck) => {
   // GET /api/duels - Get all duels for user
   router.get('/', async (req, res) => {
     try {
@@ -181,8 +182,8 @@ const createDuelsRoutes = (pool, createLimiter) => {
     }
   });
 
-  // POST /api/duels - Create new duel (with rate limiting)
-  router.post('/', createLimiter || ((req, res, next) => next()), validateBody(duelSchema), async (req, res) => {
+  // POST /api/duels - Create new duel (with rate limiting + free tier check)
+  router.post('/', createLimiter || ((req, res, next) => next()), duelLimitCheck || ((req, res, next) => next()), validateBody(duelSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -193,6 +194,8 @@ const createDuelsRoutes = (pool, createLimiter) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
+      // Sanitize user input to prevent stored XSS
+      const sanitizedBody = sanitizeInput(req.body);
       const {
         id,
         title,
@@ -206,7 +209,7 @@ const createDuelsRoutes = (pool, createLimiter) => {
         witnessCount = 0,
         loser,
         isFavorite = false
-      } = req.body;
+      } = sanitizedBody;
 
       // Security: Generate ID on server to prevent conflicts
       const duelId = id || `duel_${Date.now()}_${uuidv4()}`;
@@ -279,7 +282,10 @@ const createDuelsRoutes = (pool, createLimiter) => {
         try {
           await pool.query(
             `UPDATE profiles 
-             SET experience = experience + $1, total_xp_earned = total_xp_earned + $1, updated_at = now()
+             SET experience = experience + $1, 
+                 total_xp_earned = total_xp_earned + $1,
+                 spendable_xp = COALESCE(spendable_xp, 0) + $1,
+                 updated_at = now()
              WHERE user_id = $2`,
             [xpReward, userId]
           );

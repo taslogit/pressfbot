@@ -46,8 +46,21 @@ async function apiRequest<T>(
 ): Promise<{ ok: boolean; data?: T; error?: string; code?: string; details?: any }> {
   try {
     const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
+
+    // Support external AbortController (for component unmount cancellation)
+    // If caller provides a signal, use it; otherwise create a timeout-based one
+    const externalSignal = options.signal;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+    // If external signal aborts, also abort our controller
+    if (externalSignal) {
+      if (externalSignal.aborted) {
+        clearTimeout(timeoutId);
+        return { ok: false, error: 'Request cancelled', code: 'CANCELLED' };
+      }
+      externalSignal.addEventListener('abort', () => controller.abort());
+    }
 
     const res = await fetch(url, {
       ...options,
@@ -91,6 +104,10 @@ async function apiRequest<T>(
     return { ok: true, data };
   } catch (e: any) {
     if (e.name === 'AbortError') {
+      // If aborted by external signal (component unmount), don't retry
+      if (externalSignal?.aborted) {
+        return { ok: false, error: 'Request cancelled', code: 'CANCELLED' };
+      }
       // Retry on timeout
       if (retryCount < MAX_RETRIES) {
         const delay = RETRY_DELAY_MS * Math.pow(2, retryCount);
@@ -498,5 +515,51 @@ export const tonAPI = {
       method: 'POST',
       body: JSON.stringify(payload)
     });
+  }
+};
+
+// ─── Stars / Monetization API ──────────────────────
+export const starsAPI = {
+  getCatalog: async () => {
+    return apiRequest<{ catalog: any[] }>('/api/stars/catalog');
+  },
+  createInvoice: async (itemId: string, recipientId?: string) => {
+    return apiRequest<{ invoiceLink: string; itemId: string; stars: number }>('/api/stars/invoice', {
+      method: 'POST',
+      body: JSON.stringify({ itemId, recipientId })
+    });
+  },
+  getPremiumStatus: async () => {
+    return apiRequest<{ isPremium: boolean; expiresAt: string | null; starsBalance: number }>('/api/stars/premium-status');
+  },
+  getPurchases: async () => {
+    return apiRequest<{ purchases: any[] }>('/api/stars/purchases');
+  }
+};
+
+// ─── XP/REP Store API ──────────────────────────────
+export const storeAPI = {
+  getCatalog: async () => {
+    return apiRequest<{ catalog: any[] }>('/api/store/catalog');
+  },
+  getMyItems: async () => {
+    return apiRequest<{ items: any[] }>('/api/store/my-items');
+  },
+  buyItem: async (itemId: string) => {
+    return apiRequest<{ item: any; remainingXp: number }>('/api/store/buy', {
+      method: 'POST',
+      body: JSON.stringify({ itemId })
+    });
+  }
+};
+
+// ─── Limits API ────────────────────────────────────
+export const limitsAPI = {
+  getStatus: async () => {
+    return apiRequest<{
+      isPremium: boolean;
+      limits: Record<string, { used: number; limit: number; remaining: number }>;
+      resetAt?: string;
+    }>('/api/limits');
   }
 };

@@ -1,0 +1,10 @@
+# Test coverage
+coverage/
+.nyc_output/
+
+# Jest
+.jest-cache/
+
+# Environment
+.env.test
+.env.local

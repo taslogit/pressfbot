@@ -132,9 +132,18 @@ const Notifications = () => {
         {loading ? (
           <div className="text-center text-muted py-8">{t('loading') || 'Loading...'}</div>
         ) : notifications.length === 0 ? (
-          <div className="text-center text-muted py-8">
-            <Bell size={48} className="mx-auto mb-4 opacity-50" />
-            <p>{t('no_notifications') || 'No notifications'}</p>
+          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+            <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 relative">
+              <div className="absolute inset-0 bg-accent-cyan/5 blur-xl rounded-full" />
+              <Bell size={40} className="relative z-10 text-muted" />
+            </div>
+            <h3 className="text-lg font-bold text-primary mb-2 tracking-wide">
+              {t('no_notifications') || 'No notifications'}
+            </h3>
+            <p className="text-sm text-muted max-w-xs leading-relaxed font-mono">
+              {t('notifications_empty_hint') || 'You\'re all caught up. New activity will appear here.'}
+            </p>
+            <div className="mt-8 w-16 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           </div>
         ) : (
           <div className="space-y-3">
