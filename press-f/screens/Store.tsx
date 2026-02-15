@@ -51,35 +51,55 @@ const Store = () => {
   const [achievementsCount, setAchievementsCount] = useState(0);
   const [flashSale, setFlashSale] = useState<{ itemId: string; discount: number; endsAt: string } | null>(null);
   const [mysteryBoxLoading, setMysteryBoxLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
 
   const loadData = (silent = false) => {
     const opts = { signal: getSignal() };
-    if (!silent) setLoading(true);
-    // Progressive: catalogs first (public, fast) — show vitrine immediately
-    Promise.all([starsAPI.getCatalog(opts), storeAPI.getCatalog(opts)]).then(([starsRes, xpRes]) => {
+    if (!silent) {
+      setLoading(true);
+      setCatalogError(null);
+    }
+    // Catalogs: use allSettled so one slow/failed request doesn't block the vitrine forever
+    const catalogTimeout = setTimeout(() => {
+      if (!silent) setLoading(false);
+    }, 12000); // Safety: show UI after 12s even if one request hangs
+    Promise.allSettled([starsAPI.getCatalog(opts), storeAPI.getCatalog(opts)]).then(([starsSettled, xpSettled]) => {
+      clearTimeout(catalogTimeout);
+      const starsRes = starsSettled.status === 'fulfilled' ? starsSettled.value : { ok: false };
+      const xpRes = xpSettled.status === 'fulfilled' ? xpSettled.value : { ok: false };
       if (starsRes.ok && starsRes.data?.catalog) setStarsCatalog(starsRes.data.catalog);
       if (xpRes.ok) {
-        setXpCatalog(xpRes.data?.catalog || []);
+        const catalog = xpRes.data?.catalog ?? xpRes.data?.items ?? [];
+        setXpCatalog(Array.isArray(catalog) ? catalog : []);
         setFlashSale(xpRes.data?.flashSale || null);
       }
+      if (!starsRes.ok && !xpRes.ok) {
+        const msg = xpRes.error || starsRes.error || 'Network error';
+        setCatalogError(msg);
+      } else {
+        setCatalogError(null);
+      }
       if (!silent) setLoading(false);
-    }).catch(() => { if (!silent) setLoading(false); });
+    });
 
-    // Auth-dependent data in parallel (profile, my-items, premium) — no-block catalog
-    Promise.all([
+    // Auth-dependent data in parallel — don't block catalog
+    Promise.allSettled([
       starsAPI.getPremiumStatus(opts),
       profileAPI.get(opts),
       storeAPI.getMyItems(opts)
-    ]).then(([premRes, profileRes, myRes]) => {
-      if (premRes.ok && premRes.data) setPremiumStatus(premRes.data);
-      if (profileRes.ok && profileRes.data?.profile) setProfile(profileRes.data.profile);
-      if (myRes.ok) {
-        setMyItems(myRes.data?.items || []);
-        setFirstPurchaseEligible(myRes.data?.firstPurchaseEligible ?? false);
-        setAchievementDiscountPercent(myRes.data?.achievementDiscountPercent ?? 0);
-        setAchievementsCount(myRes.data?.achievementsCount ?? 0);
+    ]).then(([prem, profileRes, myRes]) => {
+      const premVal = prem.status === 'fulfilled' ? prem.value : null;
+      const profileVal = profileRes.status === 'fulfilled' ? profileRes.value : null;
+      const myVal = myRes.status === 'fulfilled' ? myRes.value : null;
+      if (premVal?.ok && premVal.data) setPremiumStatus(premVal.data);
+      if (profileVal?.ok && profileVal.data?.profile) setProfile(profileVal.data.profile);
+      if (myVal?.ok) {
+        setMyItems(myVal.data?.items || []);
+        setFirstPurchaseEligible(myVal.data?.firstPurchaseEligible ?? false);
+        setAchievementDiscountPercent(myVal.data?.achievementDiscountPercent ?? 0);
+        setAchievementsCount(myVal.data?.achievementsCount ?? 0);
       }
-    }).catch(() => {}); // Don't block UI; owned badges etc. will appear when ready
+    });
   };
 
   useEffect(() => {
@@ -142,7 +162,7 @@ const Store = () => {
     return tk !== `store_item_${itemId}` ? tk : fallback;
   };
 
-  if (loading) {
+  if (loading && !catalogError) {
     return (
       <div className="min-h-[40vh] flex items-center justify-center">
         <div className="text-muted text-sm">{t('settings_loading')}</div>
@@ -166,6 +186,18 @@ const Store = () => {
         </div>
       </div>
       <div className="relative z-10">
+      {catalogError && (
+        <div className="mb-4 p-3 rounded-xl border border-red-500/50 bg-red-500/10 flex items-center justify-between gap-3">
+          <span className="text-xs text-red-200 flex-1">{catalogError}</span>
+          <button
+            type="button"
+            onClick={() => loadData()}
+            className="shrink-0 px-3 py-1.5 rounded-lg bg-red-500/30 border border-red-500/50 text-red-200 text-xs font-bold uppercase hover:bg-red-500/50 transition-colors"
+          >
+            {t('api_error_retry') || 'Retry'}
+          </button>
+        </div>
+      )}
       <div className="flex justify-between items-center mb-4">
         <h2 className="font-mono text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-lime drop-shadow-[0_0_10px_rgba(180,255,0,0.8)]">
           <ShoppingBag size={28} className="text-accent-lime" />
