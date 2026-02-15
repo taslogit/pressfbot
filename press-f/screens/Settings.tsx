@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Settings as SettingsIcon, Bell, Globe2, Wallet, Sparkles } from 'lucide-react';
 import { TonConnectButton, useTonAddress, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { storage } from '../utils/storage';
-import { tonAPI } from '../utils/api';
+import { tonAPI, starsAPI, storeAPI } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
 import { tg } from '../utils/telegram';
@@ -26,6 +26,10 @@ const Settings = () => {
   const [escrowOpponent, setEscrowOpponent] = useState('');
   const [escrowToken, setEscrowToken] = useState('TON');
   const [escrowAmount, setEscrowAmount] = useState(0);
+  const [storeOpen, setStoreOpen] = useState(false);
+  const [premiumStatus, setPremiumStatus] = useState<{ isPremium: boolean; starsBalance?: number; expiresAt?: string | null } | null>(null);
+  const [storeCatalog, setStoreCatalog] = useState<any[]>([]);
+  const [myStoreItems, setMyStoreItems] = useState<any[]>([]);
   const shortAddress = useMemo(() => {
     if (!address) return '';
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -50,6 +54,19 @@ const Settings = () => {
     lastSavedAddress.current = next;
     storage.updateUserProfileAsync({ tonAddress: next });
   }, [address]);
+
+  useEffect(() => {
+    if (!storeOpen) return;
+    starsAPI.getPremiumStatus().then((r) => {
+      if (r.ok && r.data) setPremiumStatus(r.data);
+    });
+    storeAPI.getCatalog().then((r) => {
+      if (r.ok && r.data?.catalog) setStoreCatalog(r.data.catalog);
+    });
+    storeAPI.getMyItems().then((r) => {
+      if (r.ok && r.data?.items) setMyStoreItems(r.data.items);
+    });
+  }, [storeOpen]);
 
   const handleToggleNotifications = (key: 'notificationsEnabled' | 'telegramNotificationsEnabled') => {
     const updated = { ...settings, [key]: !settings[key] };
@@ -288,6 +305,53 @@ const Settings = () => {
           </div>
 
           <div className="border-t border-border/50 pt-4">
+            <button
+              onClick={() => setStoreOpen((v) => !v)}
+              className="w-full flex items-center justify-between mb-2"
+            >
+              <div className="flex items-center gap-2 text-[10px] text-muted uppercase tracking-widest">
+                <Sparkles size={14} className="text-accent-lime" />
+                {t('settings_store_title')}
+              </div>
+              <span className="text-[10px] text-muted uppercase">{storeOpen ? t('ton_ops_hide') : t('ton_ops_show')}</span>
+            </button>
+            <AnimatePresence>
+              {storeOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden mb-4 space-y-2"
+                >
+                  <div className="bg-black/30 border border-border rounded-xl p-3">
+                    <div className="text-[10px] text-muted uppercase tracking-widest mb-2">{t('settings_premium_status')}</div>
+                    {premiumStatus ? (
+                      <div className="text-xs">
+                        {premiumStatus.isPremium ? (
+                          <span className="text-accent-lime">✓ {t('settings_premium_active')}</span>
+                        ) : (
+                          <span className="text-muted">{t('settings_premium_inactive')}</span>
+                        )}
+                        {premiumStatus.starsBalance != null && (
+                          <span className="ml-2 text-muted">• {premiumStatus.starsBalance} ⭐</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-muted">{t('settings_loading')}</div>
+                    )}
+                  </div>
+                  <div className="bg-black/30 border border-border rounded-xl p-3">
+                    <div className="text-[10px] text-muted uppercase tracking-widest mb-2">{t('settings_xp_store')}</div>
+                    <div className="text-xs text-muted">
+                      {storeCatalog.length > 0
+                        ? t('settings_store_items_count', { count: storeCatalog.length })
+                        : t('settings_loading')}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <button
               onClick={() => setIsTonOpsOpen((v) => !v)}
               className="w-full flex items-center justify-between"

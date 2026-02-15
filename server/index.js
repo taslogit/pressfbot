@@ -219,6 +219,12 @@ app.use('/api/static', express.static(staticPath, {
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
   }
 }));
+// Also serve /static for Traefik routing (routes /static to backend)
+app.use('/static', express.static(staticPath, {
+  maxAge: '1y',
+  etag: true,
+  lastModified: true
+}));
 logger.info('Static files served from:', { path: staticPath });
 
 // Register bot commands BEFORE webhook setup

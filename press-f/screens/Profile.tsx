@@ -248,10 +248,10 @@ const Profile = () => {
   // Get current avatar (server avatar or default pressf.jpg)
   const currentAvatar = serverAvatar || availableAvatars.find(av => av.id === DEFAULT_AVATAR_ID) || null;
   
-  // If no avatar selected or avatar not found, use default
+  // If no avatar selected or avatar not found, use default (pressf.png)
   const displayAvatar = currentAvatar || {
     id: DEFAULT_AVATAR_ID,
-    url: `/api/static/avatars/${DEFAULT_AVATAR_ID}.jpg`,
+    url: `/api/static/avatars/${DEFAULT_AVATAR_ID}.png`,
     name: 'PressF'
   };
 

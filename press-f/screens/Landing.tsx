@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, ShieldCheck, Skull, Zap, Info, ChevronRight, Moon, Sun, Hourglass, Activity, Target, Terminal, FileText, Swords, Users, RefreshCw, Lock, Share2, Signal } from 'lucide-react';
@@ -55,6 +55,9 @@ const Landing = () => {
       navigate('/resurrection');
     }
   }, [isDead, navigate]);
+
+  // MainButton "CHECK IN" listener - Landing must listen for pressf:checkin from App
+  const handleCheckInRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     let isMounted = true;
@@ -226,6 +229,13 @@ const Landing = () => {
       setJustCheckedIn(true);
     }
   };
+  handleCheckInRef.current = handleCheckIn;
+
+  useEffect(() => {
+    const handler = () => handleCheckInRef.current();
+    window.addEventListener('pressf:checkin', handler);
+    return () => window.removeEventListener('pressf:checkin', handler);
+  }, []);
 
   const handleSharePulse = () => {
     const username = tg.initDataUnsafe?.user?.username;
