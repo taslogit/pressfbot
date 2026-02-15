@@ -67,7 +67,7 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
       const content = (
         <div className="flex items-center gap-2 mt-4 mb-2 pb-1 border-b border-accent-cyan/20">
           <Terminal size={14} className="text-accent-cyan" />
-          <h3 className="text-sm font-black italic uppercase tracking-wider text-white">
+          <h3 className="font-mono text-sm font-black italic uppercase tracking-wider text-white">
             {trimmed.replace('#', '').trim()}
           </h3>
         </div>
@@ -233,7 +233,7 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
                     </div>
                     <div>
                         <div className="text-xs font-mono text-muted uppercase tracking-widest leading-none mb-1">DATA_FILE</div>
-                        <h3 className="font-black text-sm uppercase tracking-wider text-white leading-none">
+                        <h3 className="font-mono font-black text-sm uppercase tracking-wider text-white leading-none">
                           {title}
                         </h3>
                     </div>
@@ -245,7 +245,7 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
 
               {/* CONTENT */}
               <div className="px-5 py-2 overflow-y-auto custom-scrollbar flex-1 bg-[#0a0a0c] relative">
-                 <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+                 <div className="absolute inset-0 bg-decor opacity-[0.03] bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
                  <div className="relative z-10 pt-2 pb-6">
                    {renderLines}
                  </div>

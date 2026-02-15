@@ -96,14 +96,14 @@ const Notifications = () => {
     <div className="pt-4 relative min-h-[80vh] pb-24">
       {/* Background Icon */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 flex items-center justify-center">
-        <div className="opacity-[0.05] text-accent-cyan drop-shadow-[0_0_30px_rgba(0,224,255,0.3)] animate-pulse-fast motion-reduce:animate-none">
+        <div className="bg-decor opacity-[0.05] text-accent-cyan drop-shadow-[0_0_30px_rgba(0,224,255,0.3)] animate-pulse-fast motion-reduce:animate-none">
           <Bell size={450} strokeWidth={0.5} />
         </div>
       </div>
 
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-cyan drop-shadow-[0_0_10px_rgba(0,224,255,0.8)]">
+          <h2 className="font-mono text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-cyan drop-shadow-[0_0_10px_rgba(0,224,255,0.8)]">
             <Bell size={28} className="text-accent-cyan" />
             {t('notifications_title') || 'Notifications'}
             {unreadCount > 0 && (

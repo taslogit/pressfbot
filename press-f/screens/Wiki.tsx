@@ -26,7 +26,7 @@ const Wiki = () => {
     <div className="pt-4 pb-24 min-h-[80vh] relative">
       {/* Background Animation — same as Landing, Store */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 flex items-center justify-center">
-        <div className="opacity-[0.05] text-accent-cyan drop-shadow-[0_0_30px_rgba(0,224,255,0.3)] animate-spin-slow">
+        <div className="bg-decor opacity-[0.05] text-accent-cyan drop-shadow-[0_0_30px_rgba(0,224,255,0.3)] animate-spin-slow">
           <BookOpen size={450} strokeWidth={0.5} />
         </div>
       </div>
@@ -37,7 +37,7 @@ const Wiki = () => {
             <BookOpen size={22} className="text-accent-cyan" />
           </div>
           <div>
-            <h2 className="text-xl font-black uppercase tracking-widest text-accent-cyan">
+            <h2 className="font-mono text-xl font-black uppercase tracking-widest text-accent-cyan">
               {t('wiki_title')}
             </h2>
             <p className="text-xs text-muted">{t('wiki_intro')}</p>

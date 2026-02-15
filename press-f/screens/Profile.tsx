@@ -376,7 +376,7 @@ const Profile = () => {
                               className="w-full h-full object-cover drop-shadow-[0_0_15px_rgba(0,224,255,0.5)]"
                             />
                         </div>
-                        <h2 className="text-2xl font-black text-white">{tg.initDataUnsafe?.user?.first_name}</h2>
+                        <h2 className="font-mono text-2xl font-black text-white">{tg.initDataUnsafe?.user?.first_name}</h2>
                         <p className="text-accent-cyan font-mono tracking-widest text-xs mb-4">LVL {currentLevel} // {levelTitle}</p>
                         
                         <div className="grid grid-cols-2 gap-2 mb-6">
@@ -565,14 +565,14 @@ const Profile = () => {
 
       {/* Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 flex items-center justify-center">
-        <div className="opacity-[0.05] text-purple-500 drop-shadow-[0_0_30px_rgba(168,85,247,0.3)] animate-float motion-reduce:animate-none">
+        <div className="bg-decor opacity-[0.05] text-purple-500 drop-shadow-[0_0_30px_rgba(168,85,247,0.3)] animate-float motion-reduce:animate-none">
           <Fingerprint size={450} strokeWidth={0.5} />
         </div>
       </div>
 
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-purple-500 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]">
+          <h2 className="font-mono text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-purple-500 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]">
             <Fingerprint className="text-purple-500" size={28} />
             <span className="drop-shadow-sm">{t('profile_title')}</span>
           </h2>
@@ -752,7 +752,7 @@ const Profile = () => {
                   </div>
               </div>
 
-              <h1 className="text-2xl font-black text-primary mb-1">
+              <h1 className="font-mono text-2xl font-black text-primary mb-1">
                 {tg.initDataUnsafe?.user?.first_name || 'ANON_USER'}
               </h1>
               <p className="text-xs font-mono text-purple-400 mb-4 tracking-widest uppercase">

@@ -44,7 +44,7 @@ const SearchScreen = () => {
 
       <div className="relative z-10">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-red-500 drop-shadow-[0_0_12px_rgba(239,68,68,0.7)]">
+        <h2 className="font-mono text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-red-500 drop-shadow-[0_0_12px_rgba(239,68,68,0.7)]">
           <Search size={28} className="text-red-500" />
           {t('search_title')}
         </h2>

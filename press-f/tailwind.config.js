@@ -7,6 +7,10 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        mono: ['"Share Tech Mono"', 'ui-monospace', 'monospace'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
       spacing: {
         'content-bottom': 'var(--spacing-content-bottom, 5rem)',
       },

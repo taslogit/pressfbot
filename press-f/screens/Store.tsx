@@ -161,13 +161,13 @@ const Store = () => {
     <div className="pb-6 relative">
       {/* Background Animation — same as Landing, Letters, etc. */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 flex items-center justify-center">
-        <div className="opacity-[0.05] text-accent-lime drop-shadow-[0_0_30px_rgba(180,255,0,0.3)] animate-spin-slow">
+        <div className="bg-decor opacity-[0.05] text-accent-lime drop-shadow-[0_0_30px_rgba(180,255,0,0.3)] animate-spin-slow">
           <ShoppingBag size={450} strokeWidth={0.5} />
         </div>
       </div>
       <div className="relative z-10">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-lime drop-shadow-[0_0_10px_rgba(180,255,0,0.8)]">
+        <h2 className="font-mono text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-lime drop-shadow-[0_0_10px_rgba(180,255,0,0.8)]">
           <ShoppingBag size={28} className="text-accent-lime" />
           {t('nav_store')}
         </h2>
@@ -304,7 +304,7 @@ const Store = () => {
               <div className="text-center py-8 text-muted text-sm">{t('store_no_items') || 'No items available'}</div>
             ) : sortedCategoryEntries.map(([category, items]) => (
               <div key={category}>
-                <h4 className="text-xs font-black uppercase tracking-widest text-accent-pink mb-2">
+                <h4 className="font-mono text-xs font-black uppercase tracking-widest text-accent-pink mb-2">
                   {t(CATEGORY_LABELS[category] as any) || category}
                 </h4>
                 <div className="grid gap-2">

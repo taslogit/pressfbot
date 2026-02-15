@@ -107,7 +107,7 @@ const SeasonalEvents: React.FC = () => {
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-4">
         <Calendar size={18} className="text-accent-pink" />
-        <h3 className="text-xs font-black uppercase tracking-wider text-purple-400">
+        <h3 className="font-mono text-xs font-black uppercase tracking-wider text-purple-400">
           {t('seasonal_events') || 'SEASONAL EVENTS'}
         </h3>
       </div>
@@ -151,7 +151,7 @@ const SeasonalEvents: React.FC = () => {
                 <div className="flex items-center gap-2">
                   {selectedEvent.icon && <span className="text-2xl">{selectedEvent.icon}</span>}
                   <div>
-                    <h4 className="text-sm font-black text-white">{selectedEvent.name}</h4>
+                    <h4 className="font-mono text-sm font-black text-white">{selectedEvent.name}</h4>
                     {selectedEvent.description && (
                       <p className="text-xs text-muted mt-1">{selectedEvent.description}</p>
                     )}

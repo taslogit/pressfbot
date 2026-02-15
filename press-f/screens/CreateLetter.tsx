@@ -473,7 +473,7 @@ const CreateLetter = () => {
       </AnimatePresence>
 
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-black uppercase tracking-widest flex items-center gap-2 text-accent-cyan drop-shadow-[0_0_10px_rgba(0,224,255,0.8)]">
+        <h2 className="font-mono text-2xl font-black uppercase tracking-widest flex items-center gap-2 text-accent-cyan drop-shadow-[0_0_10px_rgba(0,224,255,0.8)]">
             <Terminal size={24} className="text-accent-cyan" /> 
             {t('new_letter')}
         </h2>

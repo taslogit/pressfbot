@@ -57,7 +57,7 @@ const Resurrection = () => {
                     <AlertTriangle size={80} strokeWidth={1} className="drop-shadow-[0_0_20px_rgba(255,0,0,0.8)]" />
                 </motion.div>
 
-                <h1 className="text-3xl font-black text-center mb-4 tracking-widest uppercase glitch-text text-red-500 drop-shadow-[0_0_12px_rgba(239,68,68,0.8)] flex items-center justify-center gap-3">
+                <h1 className="font-mono text-3xl font-black text-center mb-4 tracking-widest uppercase glitch-text text-red-500 drop-shadow-[0_0_12px_rgba(239,68,68,0.8)] flex items-center justify-center gap-3">
                     <AlertTriangle size={28} className="text-red-500" />
                     SYSTEM FAILURE
                 </h1>
@@ -76,7 +76,7 @@ const Resurrection = () => {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={handleResurrect}
-                    className="w-full py-6 bg-red-600 hover:bg-red-500 text-black font-black text-xl uppercase tracking-widest rounded-none border-2 border-red-500 shadow-[0_0_30px_rgba(255,0,0,0.4)] relative overflow-hidden group"
+                    className="font-mono w-full py-6 bg-red-600 hover:bg-red-500 text-black font-black text-xl uppercase tracking-widest rounded-none border-2 border-red-500 shadow-[0_0_30px_rgba(255,0,0,0.4)] relative overflow-hidden group"
                 >
                     <span className="relative z-10 flex items-center justify-center gap-3">
                         <Power size={24} />

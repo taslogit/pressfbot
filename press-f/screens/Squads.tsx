@@ -171,14 +171,14 @@ const Squads = () => {
         <div className="pt-4 relative min-h-[80vh] pb-24">
             {/* Background Icon */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 flex items-center justify-center">
-                <div className="opacity-[0.05] text-blue-500 drop-shadow-[0_0_30px_rgba(59,130,246,0.3)] animate-pulse-fast motion-reduce:animate-none">
+                <div className="bg-decor opacity-[0.05] text-blue-500 drop-shadow-[0_0_30px_rgba(59,130,246,0.3)] animate-pulse-fast motion-reduce:animate-none">
                     <Users size={450} strokeWidth={0.5} />
                 </div>
             </div>
 
             <div className="relative z-10">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-blue-500 drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]">
+                    <h2 className="font-mono text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-blue-500 drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]">
                         <Users size={28} className="text-blue-500" />
                         {t('squad_title')}
                     </h2>
@@ -212,7 +212,7 @@ const Squads = () => {
                             <div className="bg-card/70 backdrop-blur-xl border border-blue-500/30 rounded-2xl p-8 text-center shadow-2xl relative overflow-hidden group">
                                 <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <ShieldCheck size={48} className="mx-auto text-blue-500 mb-4 drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]" />
-                                <h3 className="text-xl font-black text-white mb-2">{t('no_squad')}</h3>
+                                <h3 className="font-mono text-xl font-black text-white mb-2">{t('no_squad')}</h3>
                                 <p className="text-xs text-muted mb-6">{t('help_squad').split('\n')[2]}</p>
                                 
                                 {!isCreating ? (

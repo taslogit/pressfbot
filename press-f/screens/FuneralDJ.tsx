@@ -24,14 +24,14 @@ const FuneralDJ = () => {
     <div className="pt-4 h-screen flex flex-col relative overflow-hidden">
       {/* Neon Background Icon (CSS Optimized) */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 flex items-center justify-center">
-        <div className="opacity-[0.05] text-accent-gold drop-shadow-[0_0_30px_rgba(255,215,0,0.3)] animate-spin-slow motion-reduce:animate-none">
+        <div className="bg-decor opacity-[0.05] text-accent-gold drop-shadow-[0_0_30px_rgba(255,215,0,0.3)] animate-spin-slow motion-reduce:animate-none">
           <Disc size={450} strokeWidth={0.5} />
         </div>
       </div>
 
        <div className="flex justify-between items-center mb-4 relative z-10">
         <div className="flex items-center gap-3">
-           <h2 className="text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-gold drop-shadow-[0_0_10px_rgba(255,215,0,0.8)]">
+           <h2 className="font-mono text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-gold drop-shadow-[0_0_10px_rgba(255,215,0,0.8)]">
             <Music4 size={28} className="text-accent-gold" />
             {t('funeral_dj')}
           </h2>
