@@ -11,9 +11,6 @@ services:
       - --log.level=DEBUG
       - --entryPoints.web.address=:80
       - --entryPoints.websecure.address=:443
-      - --certificatesResolvers.le.acme.tlsChallenge=true
-      - --certificatesResolvers.le.acme.email=${LETSENCRYPT_EMAIL:-admin@example.com}
-      - --certificatesResolvers.le.acme.storage=/letsencrypt/acme.json
     ports:
       - "80:80"
       - "443:443"

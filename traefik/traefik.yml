@@ -4,6 +4,14 @@ entryPoints:
   websecure:
     address: ":443"
 
+# Замените email на свой для уведомлений Let's Encrypt
+certificatesResolvers:
+  le:
+    acme:
+      email: admin@example.com
+      storage: /letsencrypt/acme.json
+      tlsChallenge: {}
+
 providers:
   docker:
     exposedByDefault: false
