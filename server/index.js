@@ -485,8 +485,8 @@ const { createTournamentsRoutes } = require('./routes/tournaments');
 const { createActivityRoutes, logActivity } = require('./routes/activity');
 const { createSquadsRoutes } = require('./routes/squads');
 const { createWitnessesRoutes } = require('./routes/witnesses');
-const { createStarsRoutes, processStarsPayment } = require('./routes/stars');
-const { createStoreRoutes } = require('./routes/store');
+const { createStarsRoutes, handleStarsCatalog, processStarsPayment } = require('./routes/stars');
+const { createStoreRoutes, handleStoreCatalog } = require('./routes/store');
 const { createLimitCheck, createLimitsRoute } = require('./middleware/freeTier');
 const { normalizeLetter } = require('./services/lettersService');
 const { normalizeDuel } = require('./services/duelsService');
@@ -509,6 +509,9 @@ app.use('/api/notifications', authMiddleware, getLimiter, createNotificationsRou
 app.use('/api/ton', authMiddleware, getLimiter, createTonRoutes(pool));
 app.use('/api/daily-quests', authMiddleware, getLimiter, createDailyQuestsRoutes(pool, bot));
 app.use('/api/avatars', getLimiter, createAvatarsRoutes()); // No auth needed for public avatars list
+// Public catalogs — no auth (static vitrine data; fixes empty Store when session not ready)
+app.get('/api/store/catalog', getLimiter, handleStoreCatalog);
+app.get('/api/stars/catalog', getLimiter, handleStarsCatalog);
 app.use('/api/gifts', authMiddleware, getLimiter, createGiftsRoutes(pool, giftLimitCheck));
 app.use('/api/events', authMiddleware, getLimiter, createEventsRoutes(pool));
 app.use('/api/tournaments', authMiddleware, getLimiter, createTournamentsRoutes(pool));

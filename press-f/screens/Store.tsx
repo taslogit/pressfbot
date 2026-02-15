@@ -53,18 +53,22 @@ const Store = () => {
 
   const loadData = (silent = false) => {
     if (!silent) setLoading(true);
-    Promise.all([
-      starsAPI.getCatalog(),
-      storeAPI.getCatalog(),
-      starsAPI.getPremiumStatus(),
-      profileAPI.get(),
-      storeAPI.getMyItems()
-    ]).then(([starsRes, xpRes, premRes, profileRes, myRes]) => {
+    // Progressive: catalogs first (public, fast) — show vitrine immediately
+    Promise.all([starsAPI.getCatalog(), storeAPI.getCatalog()]).then(([starsRes, xpRes]) => {
       if (starsRes.ok && starsRes.data?.catalog) setStarsCatalog(starsRes.data.catalog);
       if (xpRes.ok) {
         setXpCatalog(xpRes.data?.catalog || []);
         setFlashSale(xpRes.data?.flashSale || null);
       }
+      if (!silent) setLoading(false);
+    }).catch(() => { if (!silent) setLoading(false); });
+
+    // Auth-dependent data in parallel (profile, my-items, premium) — no-block catalog
+    Promise.all([
+      starsAPI.getPremiumStatus(),
+      profileAPI.get(),
+      storeAPI.getMyItems()
+    ]).then(([premRes, profileRes, myRes]) => {
       if (premRes.ok && premRes.data) setPremiumStatus(premRes.data);
       if (profileRes.ok && profileRes.data?.profile) setProfile(profileRes.data.profile);
       if (myRes.ok) {
@@ -73,8 +77,7 @@ const Store = () => {
         setAchievementDiscountPercent(myRes.data?.achievementDiscountPercent ?? 0);
         setAchievementsCount(myRes.data?.achievementsCount ?? 0);
       }
-      if (!silent) setLoading(false);
-    }).catch(() => { if (!silent) setLoading(false); });
+    }).catch(() => {}); // Don't block UI; owned badges etc. will appear when ready
   };
 
   useEffect(() => {

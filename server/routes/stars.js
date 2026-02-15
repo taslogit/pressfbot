@@ -111,16 +111,19 @@ const STORE_CATALOG = {
   }
 };
 
+// Public handler for /api/stars/catalog (no auth — static data for vitrine)
+const handleStarsCatalog = (req, res) => {
+  const catalog = Object.entries(STORE_CATALOG).map(([id, item]) => ({
+    id,
+    ...item
+  }));
+  return res.json({ ok: true, catalog });
+};
+
 const createStarsRoutes = (pool, bot) => {
 
-  // ─── GET /api/stars/catalog — Get store catalog ─────
-  router.get('/catalog', (req, res) => {
-    const catalog = Object.entries(STORE_CATALOG).map(([id, item]) => ({
-      id,
-      ...item
-    }));
-    return res.json({ ok: true, catalog });
-  });
+  // ─── GET /api/stars/catalog (also served publicly in index.js) ───
+  router.get('/catalog', handleStarsCatalog);
 
   // ─── POST /api/stars/invoice — Create Stars invoice ─
   router.post('/invoice', async (req, res) => {
@@ -360,4 +363,4 @@ async function processStarsPayment(pool, bot, { userId, payload, telegramPayment
   }
 }
 
-module.exports = { createStarsRoutes, processStarsPayment, STORE_CATALOG };
+module.exports = { createStarsRoutes, handleStarsCatalog, processStarsPayment, STORE_CATALOG };

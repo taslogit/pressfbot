@@ -202,10 +202,8 @@ const XP_STORE = {
   }
 };
 
-const createStoreRoutes = (pool) => {
-
-  // ─── GET /api/store/catalog ───────────────────────
-  router.get('/catalog', (req, res) => {
+// Public handler for /api/store/catalog (no auth — static data for vitrine)
+const handleStoreCatalog = (req, res) => {
     const entries = Object.entries(XP_STORE);
     const catalog = entries.map(([id, item]) => ({ id, ...item }));
 
@@ -217,12 +215,17 @@ const createStoreRoutes = (pool) => {
     const flashEndsAt = new Date(now);
     flashEndsAt.setUTCHours(flashEndsAt.getUTCHours() + 1, 0, 0, 0);
 
-    return res.json({
-      ok: true,
-      catalog,
-      flashSale: { itemId: flashItemId, discount: 0.5, endsAt: flashEndsAt.toISOString() }
-    });
+  return res.json({
+    ok: true,
+    catalog,
+    flashSale: { itemId: flashItemId, discount: 0.5, endsAt: flashEndsAt.toISOString() }
   });
+};
+
+const createStoreRoutes = (pool) => {
+
+  // ─── GET /api/store/catalog (also served publicly in index.js) ───
+  router.get('/catalog', handleStoreCatalog);
 
   // ─── GET /api/store/my-items — Purchased items ────
   router.get('/my-items', async (req, res) => {
@@ -518,4 +521,4 @@ const createStoreRoutes = (pool) => {
   return router;
 };
 
-module.exports = { createStoreRoutes, XP_STORE };
+module.exports = { createStoreRoutes, handleStoreCatalog, XP_STORE };
