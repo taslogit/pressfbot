@@ -38,6 +38,28 @@ const duelEscrowSchema = z.object({
 });
 
 const createTonRoutes = (pool) => {
+  // GET /api/ton/plans-summary — Has user any inheritance/storage plans (for reminder widget)
+  router.get('/plans-summary', async (req, res) => {
+    try {
+      if (!pool) return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      const userId = req.userId;
+      if (!userId) return sendError(res, 401, 'AUTH_REQUIRED', 'Not authenticated');
+
+      const [inh, stor] = await Promise.all([
+        pool.query('SELECT 1 FROM ton_inheritance_plans WHERE user_id = $1 LIMIT 1', [userId]),
+        pool.query('SELECT 1 FROM ton_storage_plans WHERE user_id = $1 LIMIT 1', [userId])
+      ]);
+      return res.json({
+        ok: true,
+        hasInheritance: inh.rowCount > 0,
+        hasStorage: stor.rowCount > 0
+      });
+    } catch (error) {
+      console.error('Plans summary error:', error);
+      return sendError(res, 500, 'PLANS_FETCH_FAILED', 'Failed to fetch plans');
+    }
+  });
+
   router.post('/inheritance', validateBody(inheritanceSchema), async (req, res) => {
     try {
       if (!pool) {

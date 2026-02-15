@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
+const { activateBoost } = require('../utils/boosts');
 
 // ─── Store Items (purchasable with XP/REP) ──────────
 const XP_STORE = {
@@ -293,6 +294,19 @@ const createStoreRoutes = (pool) => {
           );
         }
 
+        // Apply consumable effects (Phase 6)
+        if (item.type === 'consumable') {
+          if (itemId === 'xp_boost_2x') {
+            await activateBoost(client, userId, itemId, item);
+          } else if (itemId === 'streak_shield') {
+            await client.query(
+              `INSERT INTO user_settings (user_id, streak_free_skip) VALUES ($1, 1)
+               ON CONFLICT (user_id) DO UPDATE SET streak_free_skip = user_settings.streak_free_skip + 1`,
+              [userId]
+            );
+          }
+        }
+
         await client.query('COMMIT');
 
         logger.info('Store purchase', { userId, itemId, costXp: actualCostXp, costRep: actualCostRep, firstPurchase: isFirstPurchase });
@@ -386,6 +400,17 @@ const createStoreRoutes = (pool) => {
              WHERE user_id = $1`,
             [userId, itemId]
           );
+        }
+        if (item.type === 'consumable') {
+          if (itemId === 'xp_boost_2x') {
+            await activateBoost(client, userId, itemId, item);
+          } else if (itemId === 'streak_shield') {
+            await client.query(
+              `INSERT INTO user_settings (user_id, streak_free_skip) VALUES ($1, 1)
+               ON CONFLICT (user_id) DO UPDATE SET streak_free_skip = user_settings.streak_free_skip + 1`,
+              [userId]
+            );
+          }
         }
         await client.query('COMMIT');
       } catch (txError) {

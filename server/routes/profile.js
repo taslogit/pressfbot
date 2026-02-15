@@ -7,6 +7,7 @@ const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { cache } = require('../utils/cache');
 const { checkAchievements, getUserAchievements } = require('../utils/achievements');
+const { getActiveXpMultiplier } = require('../utils/boosts');
 
 const profileUpdateSchema = z.object({
   avatar: z.string().optional(),
@@ -460,8 +461,10 @@ const createProfileRoutes = (pool) => {
 
       const totalBonusXP = comebackXP + reengagementXP + milestoneXP + luckyXP;
 
-      // Award XP for check-in (10 base + bonuses) - in transaction
-      const checkInXP = 10 + totalBonusXP;
+      // Consumable: xp_boost_2x multiplier (Phase 6)
+      const xpMultiplier = await getActiveXpMultiplier(client, userId);
+      const baseAndBonus = 10 + totalBonusXP;
+      const checkInXP = Math.floor(baseAndBonus * xpMultiplier);
       await client.query(
         `UPDATE profiles 
          SET experience = experience + $1, 
@@ -538,7 +541,8 @@ const createProfileRoutes = (pool) => {
           comeback: comebackXP,
           reengagement: reengagementXP,
           milestone: milestoneXP,
-          lucky: luckyXP
+          lucky: luckyXP,
+          xpBoost: xpMultiplier > 1
         }
       });
     } catch (error) {
@@ -730,6 +734,39 @@ const createProfileRoutes = (pool) => {
     } catch (error) {
       logger.error('Get streak error:', { error: error?.message || error });
       return sendError(res, 500, 'STREAK_FETCH_FAILED', 'Failed to fetch streak');
+    }
+  });
+
+  // GET /api/profile/streak-leaderboard — Top users by current streak (roadmap: Streak Leaderboard)
+  router.get('/streak-leaderboard', async (req, res) => {
+    try {
+      if (!pool) return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+
+      const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+      const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+
+      const result = await pool.query(
+        `SELECT us.user_id, us.current_streak, p.avatar, p.title
+         FROM user_settings us
+         JOIN profiles p ON p.user_id = us.user_id
+         WHERE us.current_streak >= 1
+         ORDER BY us.current_streak DESC, us.last_streak_date DESC NULLS LAST
+         LIMIT $1 OFFSET $2`,
+        [limit, offset]
+      );
+
+      const leaderboard = result.rows.map((row, i) => ({
+        rank: offset + i + 1,
+        userId: row.user_id,
+        streak: row.current_streak,
+        avatar: row.avatar || 'pressf',
+        title: row.title || 'Survivor'
+      }));
+
+      return res.json({ ok: true, leaderboard });
+    } catch (error) {
+      logger.error('Streak leaderboard error:', error);
+      return sendError(res, 500, 'LEADERBOARD_FETCH_FAILED', 'Failed to fetch leaderboard');
     }
   });
 

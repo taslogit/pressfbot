@@ -21,7 +21,7 @@ import SeasonalEvents from '../components/SeasonalEvents';
 import Tournaments from '../components/Tournaments';
 import ActivityFeed from '../components/ActivityFeed';
 // Quest type removed - replaced with DailyQuest
-import { profileAPI } from '../utils/api';
+import { profileAPI, tonAPI } from '../utils/api';
 import { analytics } from '../utils/analytics';
 
 const Landing = () => {
@@ -44,6 +44,8 @@ const Landing = () => {
   const [draftLetters, setDraftLetters] = useState(0);
   const [witnessCount, setWitnessCount] = useState(0); 
   const [nextUnlockDate, setNextUnlockDate] = useState<string | null>(null);
+  const [letterOpeningSoon, setLetterOpeningSoon] = useState<{ title: string; recipients: string[]; unlockDate: string; daysLeft: number } | null>(null);
+  const [hasInheritancePlan, setHasInheritancePlan] = useState(false);
   
   // Quest State removed - use Daily Quests instead
 
@@ -96,15 +98,30 @@ const Landing = () => {
       // Keep localStorage data
     });
 
+    tonAPI.getPlansSummary().then((res) => {
+      if (isMounted && res.ok && res.data?.hasInheritance) setHasInheritancePlan(true);
+    }).catch(() => {});
+
     storage.getLettersAsync().then((letters) => {
       if (isMounted) {
         setDraftLetters(letters.filter(l => l.status === 'draft').length);
-        const upcoming = letters
-          .filter(l => l.unlockDate)
-          .map(l => new Date(l.unlockDate as string))
-          .filter(d => !Number.isNaN(d.getTime()) && d.getTime() > Date.now())
-          .sort((a, b) => a.getTime() - b.getTime())[0];
-        setNextUnlockDate(upcoming ? upcoming.toLocaleString() : null);
+        const withUnlock = letters
+          .filter(l => l.unlockDate && l.status !== 'sent')
+          .map((l) => ({
+            letter: l,
+            date: new Date(l.unlockDate as string),
+            daysLeft: Math.ceil((new Date(l.unlockDate as string).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+          }))
+          .filter((x) => !Number.isNaN(x.date.getTime()) && x.date.getTime() > Date.now() && x.daysLeft <= 7)
+          .sort((a, b) => a.date.getTime() - b.date.getTime());
+        const first = withUnlock[0];
+        setNextUnlockDate(first ? first.date.toLocaleString() : null);
+        setLetterOpeningSoon(first ? {
+          title: first.letter.title || '',
+          recipients: first.letter.recipients || [],
+          unlockDate: first.letter.unlockDate as string,
+          daysLeft: first.daysLeft
+        } : null);
       }
     }).catch((error) => {
       console.error('Error loading letters:', error);
@@ -517,6 +534,38 @@ const Landing = () => {
          <StreakIndicator />
       </div>
 
+      {/* Letter opening soon widget — Письмо скоро откроется */}
+      {letterOpeningSoon && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative z-10"
+        >
+          <button
+            onClick={() => { playSound('click'); navigate('/letters'); }}
+            className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-accent-cyan/50 bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-all text-left"
+          >
+            <div className="w-10 h-10 rounded-lg bg-accent-cyan/30 flex items-center justify-center flex-shrink-0">
+              <FileText size={20} className="text-accent-cyan" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-xs font-black uppercase tracking-widest text-accent-cyan block">
+                {t('widget_letter_soon')}
+              </span>
+              <span className="text-sm font-bold text-primary truncate block">
+                {letterOpeningSoon.title}
+              </span>
+              <span className="text-[10px] text-muted">
+                {t('widget_letter_soon_days', { 
+                  days: letterOpeningSoon.daysLeft, 
+                  recipient: (letterOpeningSoon.recipients[0] || '?').replace(/^@/, '') 
+                })}
+              </span>
+            </div>
+          </button>
+        </motion.div>
+      )}
+
       {/* D-Day Beef Widget — Биф решается сегодня */}
       {duelsResolvingToday.length > 0 && (
         <motion.div
@@ -541,6 +590,32 @@ const Landing = () => {
               {duelsResolvingToday.length > 1 && (
                 <span className="text-[10px] text-muted">+{duelsResolvingToday.length - 1} {t('widget_duel_dday_more')}</span>
               )}
+            </div>
+          </button>
+        </motion.div>
+      )}
+
+      {/* Inheritance Reminder — Наследство запланировано */}
+      {hasInheritancePlan && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative z-10"
+        >
+          <button
+            onClick={() => { playSound('click'); navigate('/settings'); }}
+            className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 transition-all text-left"
+          >
+            <div className="w-10 h-10 rounded-lg bg-amber-500/30 flex items-center justify-center flex-shrink-0">
+              <ShieldCheck size={20} className="text-amber-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-xs font-black uppercase tracking-widest text-amber-400 block">
+                {t('widget_inheritance_reminder')}
+              </span>
+              <span className="text-sm font-bold text-primary truncate block">
+                {t('widget_inheritance_hint')}
+              </span>
             </div>
           </button>
         </motion.div>

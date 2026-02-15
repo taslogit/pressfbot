@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit2, Save, Fingerprint, Target, Sparkles, Shield, Zap, Hourglass, Brain, Share2, Activity, Gift, Settings } from 'lucide-react';
+import { Edit2, Save, Fingerprint, Target, Sparkles, Shield, Zap, Hourglass, Brain, Share2, Activity, Gift, Settings, Trophy, Flame } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { tg } from '../utils/telegram';
 import { storage } from '../utils/storage';
@@ -50,6 +50,7 @@ const Profile = () => {
   const [sentGifts, setSentGifts] = useState<any[]>([]);
   const [showSendGiftModal, setShowSendGiftModal] = useState(false);
   const [giftsLoading, setGiftsLoading] = useState(false);
+  const [streakLeaderboard, setStreakLeaderboard] = useState<{ rank: number; streak: number; avatar: string; title: string }[]>([]);
   
   // Calculate level from experience (needed before state initialization)
   const currentXP = profile.experience || 0;
@@ -72,6 +73,13 @@ const Profile = () => {
     
     // Load gifts
     loadGifts();
+
+    // Load streak leaderboard (stats tab)
+    profileAPI.getStreakLeaderboard(10).then((res) => {
+      if (isMounted && res.ok && res.data?.leaderboard) {
+        setStreakLeaderboard(res.data.leaderboard);
+      }
+    });
 
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let idleId: number | null = null;
@@ -698,6 +706,31 @@ const Profile = () => {
                     <span className="text-[9px] text-muted uppercase font-bold">{t('stat_days')}</span>
                  </div>
                </div>
+
+               {/* Streak Leaderboard */}
+               {streakLeaderboard.length > 0 && (
+                 <div className="bg-card/50 border border-border rounded-xl p-4">
+                   <div className="flex items-center gap-2 mb-3">
+                     <Flame size={16} className="text-orange-500" />
+                     <span className="text-xs font-black uppercase tracking-widest text-muted">{t('streak_leaderboard_title')}</span>
+                   </div>
+                   <div className="space-y-2 max-h-48 overflow-y-auto">
+                     {streakLeaderboard.map((entry) => (
+                       <div key={entry.rank} className="flex items-center gap-3 py-1.5 border-b border-border/30 last:border-0">
+                         <span className={`w-6 h-6 flex items-center justify-center rounded text-xs font-black ${
+                           entry.rank === 1 ? 'bg-accent-gold text-black' :
+                           entry.rank === 2 ? 'bg-gray-400 text-black' :
+                           entry.rank === 3 ? 'bg-orange-500 text-white' :
+                           'bg-white/5 text-muted'
+                         }`}>{entry.rank}</span>
+                         <img src={getStaticUrl(`/api/static/avatars/${entry.avatar}.png`)} alt="" className="w-7 h-7 rounded-lg object-cover" onError={(e) => { (e.target as HTMLImageElement).src = getStaticUrl(`/api/static/avatars/pressf.png`); }} />
+                         <span className="flex-1 text-xs font-medium truncate">{entry.title}</span>
+                         <span className="text-xs font-black text-accent-lime">{entry.streak}d</span>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               )}
 
                {/* Referral Section */}
                <ReferralSection className="mt-4" />

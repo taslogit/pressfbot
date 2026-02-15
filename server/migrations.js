@@ -599,6 +599,18 @@ const createTables = async (pool) => {
     await pool.query(`ALTER TABLE referral_events ADD COLUMN IF NOT EXISTS revenue_share_paid INTEGER DEFAULT 0`);
     await pool.query(`ALTER TABLE referral_events ADD COLUMN IF NOT EXISTS tier VARCHAR(20) DEFAULT 'bronze'`);
 
+    // Consumable boosts: active xp_boost_2x, etc.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_active_boosts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id BIGINT NOT NULL,
+        boost_type VARCHAR(50) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_boosts_user_expires ON user_active_boosts(user_id, expires_at)`);
+
     // Profile premium flag
     await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_premium BOOLEAN DEFAULT false`);
     await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS premium_expires_at TIMESTAMP`);

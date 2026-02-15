@@ -279,6 +279,11 @@ export const profileAPI = {
   getStreak: async () => {
     return apiRequest<{ streak: any }>('/api/profile/streak');
   },
+  getStreakLeaderboard: async (limit = 20, offset = 0) => {
+    return apiRequest<{ leaderboard: { rank: number; userId: number; streak: number; avatar: string; title: string }[] }>(
+      `/api/profile/streak-leaderboard?limit=${limit}&offset=${offset}`
+    );
+  },
   claimDailyLoginLoot: async () => {
     return apiRequest<{ claimed: boolean; xp: number }>('/api/profile/daily-login-loot', { method: 'POST' });
   },
@@ -492,6 +497,9 @@ export const witnessesAPI = {
 };
 
 export const tonAPI = {
+  getPlansSummary: async () => {
+    return apiRequest<{ hasInheritance: boolean; hasStorage: boolean }>('/api/ton/plans-summary');
+  },
   createInheritancePlan: async (payload: {
     recipients: { address: string; amount: number }[];
     tokenSymbol: string;
