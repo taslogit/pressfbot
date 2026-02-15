@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X } from 'lucide-react';
+import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X, Package } from 'lucide-react';
 import { useTonAddress } from '@tonconnect/ui-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { starsAPI, storeAPI, profileAPI } from '../utils/api';
@@ -10,7 +10,7 @@ import InfoSection from '../components/InfoSection';
 import { playSound } from '../utils/sound';
 import { tg } from '../utils/telegram';
 
-type TabId = 'stars' | 'xp' | 'ton';
+type TabId = 'stars' | 'xp' | 'ton' | 'my';
 
 const CATEGORY_LABELS: Record<string, string> = {
   boost: 'store_cat_boost',
@@ -42,23 +42,28 @@ const Store = () => {
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [itemType, setItemType] = useState<'stars' | 'xp' | 'ton' | null>(null);
+  const [myItems, setMyItems] = useState<any[]>([]);
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadData = (silent = false) => {
+    if (!silent) setLoading(true);
     Promise.all([
       starsAPI.getCatalog(),
       storeAPI.getCatalog(),
       starsAPI.getPremiumStatus(),
-      profileAPI.get()
-    ]).then(([starsRes, xpRes, premRes, profileRes]) => {
-      if (!isMounted) return;
+      profileAPI.get(),
+      storeAPI.getMyItems()
+    ]).then(([starsRes, xpRes, premRes, profileRes, myRes]) => {
       if (starsRes.ok && starsRes.data?.catalog) setStarsCatalog(starsRes.data.catalog);
       if (xpRes.ok && xpRes.data?.catalog) setXpCatalog(xpRes.data.catalog);
       if (premRes.ok && premRes.data) setPremiumStatus(premRes.data);
       if (profileRes.ok && profileRes.data?.profile) setProfile(profileRes.data.profile);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-    return () => { isMounted = false; };
+      if (myRes.ok && myRes.data?.items) setMyItems(myRes.data.items);
+      if (!silent) setLoading(false);
+    }).catch(() => { if (!silent) setLoading(false); });
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const userXP = profile?.spendableXp ?? profile?.experience ?? 0;
@@ -99,6 +104,8 @@ const Store = () => {
     return acc;
   }, {});
 
+  const ownedItemIds = new Set(myItems.map((i) => i.item_id));
+
   if (loading) {
     return (
       <div className="min-h-[40vh] flex items-center justify-center">
@@ -110,7 +117,8 @@ const Store = () => {
   const tabs: { id: TabId; label: string; icon: typeof Star }[] = [
     { id: 'stars', label: t('store_tab_stars'), icon: Star },
     { id: 'xp', label: t('store_tab_xp'), icon: Zap },
-    { id: 'ton', label: t('store_tab_ton'), icon: Wallet }
+    { id: 'ton', label: t('store_tab_ton'), icon: Wallet },
+    { id: 'my', label: t('store_tab_my'), icon: Package }
   ];
 
   return (
@@ -224,7 +232,12 @@ const Store = () => {
                           <Sparkles size={22} className="text-accent-pink" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <span className="font-bold text-primary block">{item.name}</span>
+                          <span className="font-bold text-primary block flex items-center gap-2">
+                            {item.name}
+                            {ownedItemIds.has(item.id) && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent-lime/20 text-accent-lime">✓</span>
+                            )}
+                          </span>
                           <span className="text-xs text-muted line-clamp-2">{item.description}</span>
                         </div>
                         <span className="text-accent-pink font-bold flex-shrink-0 text-sm">{costStr}</span>
@@ -277,6 +290,48 @@ const Store = () => {
             })}
           </motion.div>
         )}
+
+        {tab === 'my' && (
+          <motion.div
+            key="my"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="space-y-4"
+          >
+            <div className="text-xs text-muted mb-2">{t('store_my_hint')}</div>
+            {myItems.length === 0 ? (
+              <div className="text-center py-12 text-muted">
+                <Package size={48} className="mx-auto mb-3 opacity-50" />
+                <p className="text-sm">{t('store_my_empty')}</p>
+              </div>
+            ) : (
+              <div className="grid gap-2">
+                {myItems.map((p: any) => {
+                  const xpItem = xpCatalog.find((x: any) => x.id === p.item_id);
+                  const label = xpItem?.name || p.item_id;
+                  return (
+                    <div
+                      key={`${p.item_id}-${p.created_at}`}
+                      className="flex items-center gap-3 p-4 rounded-xl border border-border bg-black/40"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-accent-lime/20 flex items-center justify-center flex-shrink-0">
+                        <Package size={22} className="text-accent-lime" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-bold text-primary block">{label}</span>
+                        <span className="text-xs text-muted">
+                          {p.cost_xp ? `-${p.cost_xp} XP` : ''} {p.cost_rep ? `-${p.cost_rep} REP` : ''}
+                        </span>
+                      </div>
+                      <span className="text-accent-lime text-xs">✓</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Item detail modal */}
@@ -316,11 +371,15 @@ const Store = () => {
                     <span className="text-accent-pink font-bold">
                       {selectedItem.cost_rep ? `${selectedItem.cost_rep} REP` : `${selectedItem.cost_xp || 0} XP`}
                     </span>
-                    {(selectedItem.cost_xp > 0 && userXP < (selectedItem.cost_xp || 0)) && (
+                    {ownedItemIds.has(selectedItem.id) && (
+                      <span className="text-accent-lime text-xs">{t('store_owned')}</span>
+                    )}
+                    {(selectedItem.cost_xp > 0 && userXP < (selectedItem.cost_xp || 0)) && !ownedItemIds.has(selectedItem.id) && (
                       <span className="text-red-400 text-xs">{t('store_insufficient_xp')}</span>
                     )}
                   </>
                 )}
+                {!(itemType === 'xp' && ownedItemIds.has(selectedItem.id)) && (
                 <button
                   onClick={async () => {
                     playSound('click');
@@ -339,9 +398,11 @@ const Store = () => {
                         if (res.data.remainingXp != null) {
                           setProfile((p: any) => p ? { ...p, spendableXp: res.data.remainingXp } : p);
                         }
+                        loadData(true);
                         closeItemModal();
                       } else {
-                        tg.showPopup?.({ message: res.error || t('store_buy_failed') });
+                        const msg = res.code === 'ALREADY_OWNED' ? t('store_already_owned') : (res.error || t('store_buy_failed'));
+                        tg.showPopup?.({ message: msg });
                       }
                     }
                   }}
@@ -349,6 +410,7 @@ const Store = () => {
                 >
                   {t('store_buy')}
                 </button>
+                )}
               </div>
             </motion.div>
           </motion.div>
