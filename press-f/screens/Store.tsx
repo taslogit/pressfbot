@@ -59,51 +59,66 @@ const Store = () => {
       setLoading(true);
       setCatalogError(null);
     }
-    // Catalogs: use allSettled so one slow/failed request doesn't block the vitrine forever
-    const catalogTimeout = setTimeout(() => {
-      if (!silent) setLoading(false);
-    }, 12000); // Safety: show UI after 12s even if one request hangs
-    Promise.allSettled([starsAPI.getCatalog(opts), storeAPI.getCatalog(opts)]).then(([starsSettled, xpSettled]) => {
-      clearTimeout(catalogTimeout);
-      const starsRes = starsSettled.status === 'fulfilled' ? starsSettled.value : { ok: false };
-      const xpRes = xpSettled.status === 'fulfilled' ? xpSettled.value : { ok: false };
-      if (starsRes.ok && starsRes.data?.catalog) setStarsCatalog(starsRes.data.catalog);
-      if (xpRes.ok) {
-        const catalog = xpRes.data?.catalog ?? xpRes.data?.items ?? [];
-        setXpCatalog(Array.isArray(catalog) ? catalog : []);
-        setFlashSale(xpRes.data?.flashSale || null);
-      }
-      if (!starsRes.ok && !xpRes.ok) {
-        const msg = xpRes.error || starsRes.error || 'Network error';
-        setCatalogError(msg);
-      } else {
-        setCatalogError(null);
-      }
-      if (!silent) setLoading(false);
-    });
+    const doneLoading = () => { if (!silent) setLoading(false); };
+    const catalogTimeout = setTimeout(doneLoading, 15000);
 
-    // Auth-dependent data in parallel — don't block catalog
-    Promise.allSettled([
-      starsAPI.getPremiumStatus(opts),
-      profileAPI.get(opts),
-      storeAPI.getMyItems(opts)
-    ]).then(([prem, profileRes, myRes]) => {
-      const premVal = prem.status === 'fulfilled' ? prem.value : null;
-      const profileVal = profileRes.status === 'fulfilled' ? profileRes.value : null;
-      const myVal = myRes.status === 'fulfilled' ? myRes.value : null;
-      if (premVal?.ok && premVal.data) setPremiumStatus(premVal.data);
-      if (profileVal?.ok && profileVal.data?.profile) setProfile(profileVal.data.profile);
-      if (myVal?.ok) {
-        setMyItems(myVal.data?.items || []);
-        setFirstPurchaseEligible(myVal.data?.firstPurchaseEligible ?? false);
-        setAchievementDiscountPercent(myVal.data?.achievementDiscountPercent ?? 0);
-        setAchievementsCount(myVal.data?.achievementsCount ?? 0);
+    // Load catalogs sequentially to avoid 429 (rate limit). Main vitrine (XP) first, then stars.
+    const runCatalogs = async () => {
+      try {
+        const xpRes = await storeAPI.getCatalog(opts);
+        if (xpRes.ok) {
+          const catalog = xpRes.data?.catalog ?? xpRes.data?.items ?? [];
+          setXpCatalog(Array.isArray(catalog) ? catalog : []);
+          setFlashSale(xpRes.data?.flashSale || null);
+        }
+        await new Promise((r) => setTimeout(r, 400));
+        const starsRes = await starsAPI.getCatalog(opts);
+        if (starsRes.ok && starsRes.data?.catalog) setStarsCatalog(starsRes.data.catalog);
+
+        if (!xpRes.ok && !starsRes.ok) {
+          const msg = xpRes.error || starsRes.error || 'Network error';
+          setCatalogError(msg);
+        } else {
+          setCatalogError(null);
+        }
+      } finally {
+        clearTimeout(catalogTimeout);
+        doneLoading();
       }
-    });
+    };
+
+    runCatalogs();
+
+    // Auth-dependent data: start after a short delay to avoid bursting with catalog requests
+    const authDelay = setTimeout(() => {
+      Promise.allSettled([
+        starsAPI.getPremiumStatus(opts),
+        profileAPI.get(opts),
+        storeAPI.getMyItems(opts)
+      ]).then(([prem, profileRes, myRes]) => {
+        const premVal = prem.status === 'fulfilled' ? prem.value : null;
+        const profileVal = profileRes.status === 'fulfilled' ? profileRes.value : null;
+        const myVal = myRes.status === 'fulfilled' ? myRes.value : null;
+        if (premVal?.ok && premVal.data) setPremiumStatus(premVal.data);
+        if (profileVal?.ok && profileVal.data?.profile) setProfile(profileVal.data.profile);
+        if (myVal?.ok) {
+          setMyItems(myVal.data?.items || []);
+          setFirstPurchaseEligible(myVal.data?.firstPurchaseEligible ?? false);
+          setAchievementDiscountPercent(myVal.data?.achievementDiscountPercent ?? 0);
+          setAchievementsCount(myVal.data?.achievementsCount ?? 0);
+        }
+      });
+    }, 600);
+
+    return () => {
+      clearTimeout(catalogTimeout);
+      clearTimeout(authDelay);
+    };
   };
 
   useEffect(() => {
-    loadData();
+    const cleanup = loadData();
+    return () => { if (typeof cleanup === 'function') cleanup(); };
   }, []);
 
   const userXP = profile?.spendableXp ?? profile?.experience ?? 0;
@@ -188,10 +203,22 @@ const Store = () => {
       <div className="relative z-10">
       {catalogError && (
         <div className="mb-4 p-3 rounded-xl border border-red-500/50 bg-red-500/10 flex items-center justify-between gap-3">
-          <span className="text-xs text-red-200 flex-1">{catalogError}</span>
+          <span className="text-xs text-red-200 flex-1">
+            {catalogError.includes('429') || catalogError.toLowerCase().includes('too many')
+              ? (t('store_error_rate_limit') || 'Too many requests. Wait a moment and try again.')
+              : catalogError}
+          </span>
           <button
             type="button"
-            onClick={() => loadData()}
+            onClick={() => {
+              if (catalogError.includes('429') || catalogError.toLowerCase().includes('too many')) {
+                setCatalogError(null);
+                setLoading(true);
+                setTimeout(() => loadData(), 2500);
+              } else {
+                loadData();
+              }
+            }}
             className="shrink-0 px-3 py-1.5 rounded-lg bg-red-500/30 border border-red-500/50 text-red-200 text-xs font-bold uppercase hover:bg-red-500/50 transition-colors"
           >
             {t('api_error_retry') || 'Retry'}
