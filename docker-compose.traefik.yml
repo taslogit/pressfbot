@@ -53,8 +53,10 @@ services:
       BOT_INFO_IMAGE_URL: ${BOT_INFO_IMAGE_URL}
       DATABASE_URL: ${DATABASE_URL}
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - pressf-net
 
