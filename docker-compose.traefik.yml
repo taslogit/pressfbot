@@ -33,14 +33,14 @@ services:
     labels:
       - "traefik.enable=true"
       # Router for /bot endpoint (highest priority)
-      - "traefik.http.routers.pressf-backend-bot.rule=Host(`pressfbot.ru`) && PathPrefix(`/bot`)"
+      - "traefik.http.routers.pressf-backend-bot.rule=Host(`${DOMAIN}`) && PathPrefix(`/bot`)"
       - "traefik.http.routers.pressf-backend-bot.priority=20"
       - "traefik.http.routers.pressf-backend-bot.entrypoints=websecure"
       - "traefik.http.routers.pressf-backend-bot.tls=true"
       - "traefik.http.routers.pressf-backend-bot.tls.certresolver=le"
       - "traefik.http.routers.pressf-backend-bot.service=pressf-backend-service"
       # Router for /api and /static endpoints
-      - "traefik.http.routers.pressf-backend-api.rule=Host(`pressfbot.ru`) && (PathPrefix(`/api`) || PathPrefix(`/static`))"
+      - "traefik.http.routers.pressf-backend-api.rule=Host(`${DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/static`))"
       - "traefik.http.routers.pressf-backend-api.priority=10"
       - "traefik.http.routers.pressf-backend-api.entrypoints=websecure"
       - "traefik.http.routers.pressf-backend-api.tls=true"
@@ -67,13 +67,15 @@ services:
       dockerfile: Dockerfile.frontend
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.pressf-frontend.rule=Host(`pressfbot.ru`) && !PathPrefix(`/api`) && !PathPrefix(`/bot`) && !PathPrefix(`/static`)"
-      - "traefik.http.routers.pressf-frontend.priority=1"
+      - "traefik.http.routers.pressf-frontend.rule=Host(`pressfbot.ru`)"
+      - "traefik.http.routers.pressf-frontend.priority=0"
       - "traefik.http.routers.pressf-frontend.entrypoints=websecure"
       - "traefik.http.routers.pressf-frontend.tls=true"
       - "traefik.http.routers.pressf-frontend.tls.certresolver=le"
-      # Gzip compression for static assets (replaces CDN)
-      - "traefik.http.routers.pressf-frontend.middlewares=compress@file,secureHeaders@file"
+      - "traefik.http.routers.pressf-frontend.service=pressf-frontend-service"
+      - "traefik.http.services.pressf-frontend-service.loadbalancer.server.port=80"
+    ports:
+      - "8081:80"
     networks:
       - pressf-net
 
