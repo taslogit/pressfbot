@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { storage } from '../utils/storage';
-import { lettersAPI } from '../utils/api';
+import { lettersAPI, getStaticUrl } from '../utils/api';
 import { Letter } from '../types';
 import { FileText, Clock, Send, Search, Trash2, Edit, X, Key, Heart, Flame, Skull, EyeOff, Terminal, Video, Mic, Image as ImageIcon, MessageCircle, Star, Share2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -608,12 +608,31 @@ const Letters = () => {
                 {selectedLetter.attachments.length > 0 && (
                   <div className="mb-6">
                      <span className="text-[10px] text-muted uppercase font-bold block mb-2">{t('letter_attachments')}</span>
-                     <div className="flex gap-3 overflow-x-auto pb-2">
-                       {selectedLetter.attachments.map((att, i) => (
-                         <div key={i} className="w-16 h-16 bg-black/40 rounded-lg flex items-center justify-center border border-border text-muted shrink-0">
-                            {att.includes('mp4') ? <Video size={20} /> : att.includes('mp3') ? <Mic size={20} /> : <ImageIcon size={20} />}
-                         </div>
-                       ))}
+                     <div className="flex flex-col gap-3">
+                       {selectedLetter.attachments.map((url, i) => {
+                         const fullUrl = url.startsWith('http') ? url : getStaticUrl(url);
+                         const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+                         const isVid = /\.(mp4|mov)$/i.test(url);
+                         const isAud = /\.(mp3|webm|ogg|wav)$/i.test(url);
+                         return (
+                           <div key={i} className="rounded-lg overflow-hidden border border-border bg-black/40">
+                             {isImg && <img src={fullUrl} alt="" className="w-full max-h-48 object-contain" />}
+                             {isVid && <video src={fullUrl} controls className="w-full max-h-48" playsInline />}
+                             {isAud && (
+                               <div className="p-3 flex items-center gap-2">
+                                 <Mic size={20} className="text-accent-lime shrink-0" />
+                                 <audio src={fullUrl} controls className="flex-1 h-8" />
+                               </div>
+                             )}
+                             {!isImg && !isVid && !isAud && (
+                               <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="p-3 flex items-center gap-2 hover:bg-white/5">
+                                 {url.includes('mp4') ? <Video size={20} /> : url.includes('mp3') || url.includes('webm') ? <Mic size={20} /> : <ImageIcon size={20} />}
+                                 <span className="text-xs truncate">Attachment</span>
+                               </a>
+                             )}
+                           </div>
+                         );
+                       })}
                      </div>
                   </div>
                 )}

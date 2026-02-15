@@ -221,9 +221,10 @@ const Landing = () => {
         // Track analytics
         analytics.trackCheckIn(streak?.current || undefined);
         
-        // Determine bonus label for notification (lucky > milestone > reengagement > comeback)
-        let bonusLabel: 'lucky' | 'comeback' | 'reengagement' | 'milestone' | undefined;
+        // Determine bonus label for notification (lucky > pulseSync > milestone > reengagement > comeback)
+        let bonusLabel: 'lucky' | 'comeback' | 'reengagement' | 'milestone' | 'pulseSync' | undefined;
         if (bonuses?.lucky) bonusLabel = 'lucky';
+        else if (bonuses?.pulseSync) bonusLabel = 'pulseSync';
         else if (bonuses?.milestone) bonusLabel = 'milestone';
         else if (bonuses?.reengagement) bonusLabel = 'reengagement';
         else if (bonuses?.comeback) bonusLabel = 'comeback';

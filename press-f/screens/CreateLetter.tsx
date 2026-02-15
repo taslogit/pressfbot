@@ -11,6 +11,7 @@ import InfoSection from '../components/InfoSection';
 import { Letter } from '../types';
 import { encryptPayload, splitKey } from '../utils/security';
 import { uploadToIPFS } from '../services/cloud';
+import { lettersAPI } from '../utils/api';
 import XPNotification from '../components/XPNotification';
 import { calculateLevel } from '../utils/levelSystem';
 import { analytics } from '../utils/analytics';
@@ -18,8 +19,8 @@ import { analytics } from '../utils/analytics';
 type Attachment = {
   id: string;
   type: 'image' | 'video' | 'audio';
-  previewUrl: string; // Blob URL for preview
-  file?: File;
+  previewUrl: string;
+  file?: File | Blob;
 };
 
 type Preset = 'crypto' | 'love' | 'roast' | 'confession';
@@ -47,6 +48,8 @@ const CreateLetter = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const recordingInterval = useRef<number | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // Check for Draft on Mount
   useEffect(() => {
@@ -163,12 +166,28 @@ const CreateLetter = () => {
   };
 
   const performSave = async (encryptedContent: string, letterId: string) => {
-    const mockAttachmentUrls = attachments.map(att => {
-      if (att.type === 'image') return `https://source.unsplash.com/random/800x600?sig=${att.id}`;
-      if (att.type === 'video') return `https://www.w3schools.com/html/mov_bbb.mp4`; 
-      if (att.type === 'audio') return `mock_voice_message_${att.id}.mp3`;
-      return '';
-    });
+    let attachmentUrls: string[] = [];
+    const toUpload = attachments.filter(a => a.file);
+    if (toUpload.length > 0) {
+      try {
+        for (const att of toUpload) {
+          const res = await lettersAPI.uploadAttachment(letterId, att.file!);
+          if (!res.ok || !res.data?.url) {
+            tg.showPopup({ message: res.error || 'Upload failed' });
+            setEncryptionStep(0);
+            setIsSending(false);
+            return;
+          }
+          attachmentUrls.push(res.data.url);
+        }
+      } catch (e) {
+        console.error('Attachment upload failed:', e);
+        tg.showPopup({ message: 'Upload failed' });
+        setEncryptionStep(0);
+        setIsSending(false);
+        return;
+      }
+    }
 
     const letter: Letter = {
       id: letterId,
@@ -177,7 +196,7 @@ const CreateLetter = () => {
       recipients: recipients.split(',').map(r => r.trim()).filter(r => r),
       unlockDate: unlockDate || undefined,
       status: 'scheduled',
-      attachments: mockAttachmentUrls,
+      attachments: attachmentUrls,
       type: leakType,
       options: { burnOnRead }
     };
@@ -268,22 +287,41 @@ const CreateLetter = () => {
     e.target.value = '';
   };
 
-  const toggleRecording = () => {
+  const toggleRecording = async () => {
     if (isRecording) {
       if (recordingInterval.current) clearInterval(recordingInterval.current);
       setIsRecording(false);
-      setAttachments(prev => [...prev, {
-        id: Date.now().toString(),
-        type: 'audio',
-        previewUrl: '',
-        file: undefined
-      }]);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
     } else {
-      setIsRecording(true);
-      setRecordingTime(0);
-      recordingInterval.current = window.setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-      }, 1000);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+        const mr = new MediaRecorder(stream);
+        mediaRecorderRef.current = mr;
+        audioChunksRef.current = [];
+        mr.ondataavailable = (e) => { if (e.data.size) audioChunksRef.current.push(e.data); };
+        mr.onstop = () => {
+          stream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(audioChunksRef.current, { type: mime });
+          if (blob.size > 0) {
+            setAttachments(prev => [...prev, {
+              id: Date.now().toString(),
+              type: 'audio',
+              previewUrl: URL.createObjectURL(blob),
+              file: blob
+            }]);
+          }
+        };
+        mr.start();
+        setIsRecording(true);
+        setRecordingTime(0);
+        recordingInterval.current = window.setInterval(() => setRecordingTime(prev => prev + 1), 1000);
+      } catch (e) {
+        console.error('Mic access failed:', e);
+        tg.showPopup({ message: t('attach_voice') ? 'Microphone access required' : 'Нужен доступ к микрофону' });
+      }
     }
   };
 
@@ -382,7 +420,7 @@ const CreateLetter = () => {
              <div className="mt-4 text-[10px] text-muted opacity-50 text-left w-64 h-24 overflow-hidden font-mono">
                 {encryptionStep === 1 && `> ${t('log_aes_init')}\n> ${t('log_salt_gen')}`}
                 {encryptionStep === 2 && `> ${t('log_shards')}\n> ${t('log_distribute')}`}
-                {encryptionStep === 3 && `> ${t('log_ipfs_lookup')}\n> ${t('log_pinning')}`}
+                {encryptionStep === 3 && `> ${t('log_securing')}\n> ${t('log_commit')}`}
              </div>
           </motion.div>
         )}

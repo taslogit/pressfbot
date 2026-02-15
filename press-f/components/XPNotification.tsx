@@ -7,7 +7,7 @@ interface XPNotificationProps {
   xp: number;
   level?: number;
   levelUp?: boolean;
-  bonusLabel?: 'lucky' | 'comeback' | 'reengagement' | 'milestone' | 'daily' | 'guide' | null;
+  bonusLabel?: 'lucky' | 'comeback' | 'reengagement' | 'milestone' | 'pulseSync' | 'daily' | 'guide' | null;
   onComplete?: () => void;
 }
 

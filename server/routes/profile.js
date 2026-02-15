@@ -474,7 +474,35 @@ const createProfileRoutes = (pool) => {
       // RETENTION: Lucky Check-in — 1% chance +100 XP
       const luckyXP = Math.random() < 0.01 ? 100 : 0;
 
-      const totalBonusXP = comebackXP + reengagementXP + milestoneXP + luckyXP;
+      // Pulse Sync: bonus XP when referrer or referred checked in within 5 min
+      let pulseSyncXP = 0;
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const referrerResult = await client.query(
+        `SELECT re.referrer_id, us.last_check_in
+         FROM referral_events re
+         JOIN user_settings us ON us.user_id = re.referrer_id
+         WHERE re.referred_id = $1
+         ORDER BY re.created_at DESC
+         LIMIT 1`,
+        [userId]
+      );
+      if (referrerResult.rowCount > 0 && referrerResult.rows[0].last_check_in) {
+        if (new Date(referrerResult.rows[0].last_check_in) >= fiveMinAgo) {
+          pulseSyncXP = 15;
+        }
+      }
+      if (pulseSyncXP === 0) {
+        const referredResult = await client.query(
+          `SELECT 1 FROM referral_events re
+           JOIN user_settings us ON us.user_id = re.referred_id
+           WHERE re.referrer_id = $1 AND us.last_check_in >= $2
+           LIMIT 1`,
+          [userId, fiveMinAgo]
+        );
+        if (referredResult.rowCount > 0) pulseSyncXP = 15;
+      }
+
+      const totalBonusXP = comebackXP + reengagementXP + milestoneXP + luckyXP + pulseSyncXP;
 
       // Consumable: xp_boost_2x multiplier (Phase 6)
       const xpMultiplier = await getActiveXpMultiplier(client, userId);
@@ -557,6 +585,7 @@ const createProfileRoutes = (pool) => {
           reengagement: reengagementXP,
           milestone: milestoneXP,
           lucky: luckyXP,
+          pulseSync: pulseSyncXP,
           xpBoost: xpMultiplier > 1
         }
       });

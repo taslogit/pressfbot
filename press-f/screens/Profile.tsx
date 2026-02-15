@@ -62,7 +62,8 @@ const Profile = () => {
   const [showSendGiftModal, setShowSendGiftModal] = useState(false);
   const [giftsLoading, setGiftsLoading] = useState(false);
   const [streakLeaderboard, setStreakLeaderboard] = useState<{ rank: number; streak: number; avatar: string; title: string }[]>([]);
-  const [settings, setSettings] = useState<{ avatar_frame?: string }>({});
+  const [settings, setSettings] = useState<{ avatar_frame?: string; lastCheckIn?: number; deadManSwitchDays?: number; funeralTrack?: string }>({});
+  const [fCount, setFCount] = useState(0);
   const [ownedAvatarIds, setOwnedAvatarIds] = useState<Set<string>>(new Set([DEFAULT_AVATAR_ID]));
   const [ownedFrameIds, setOwnedFrameIds] = useState<Set<string>>(new Set(['default']));
   const [showFrameSelector, setShowFrameSelector] = useState(false);
@@ -264,7 +265,12 @@ const Profile = () => {
     }
   };
 
-  const currentFrame = settings.avatar_frame || 'default';
+  const currentFrame = settings?.avatar_frame || 'default';
+  const lastCheckIn = settings?.lastCheckIn ?? Date.now();
+  const deadManSwitchDays = settings?.deadManSwitchDays ?? 30;
+  const funeralTrackId = settings?.funeralTrack || 'astronomia';
+  const deadline = lastCheckIn + deadManSwitchDays * 24 * 60 * 60 * 1000;
+  const isDead = Date.now() > deadline;
   const displayedAvatars = availableAvatars.filter(a => ownedAvatarIds.has(a.id));
 
   const handleAvatarChange = async (avatarId: string) => {
@@ -668,8 +674,16 @@ const Profile = () => {
         </div>
 
         {/* Identity Card */}
-        <div className="bg-card/70 backdrop-blur-xl border border-border rounded-2xl p-6 shadow-2xl relative overflow-hidden mb-8 group gpu-accelerated">
+        <div className={`bg-card/70 backdrop-blur-xl border rounded-2xl p-6 shadow-2xl relative overflow-hidden mb-8 group gpu-accelerated ${isDead ? 'border-red-500/50 border-2' : 'border-border'}`}>
            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent skew-x-12 group-hover:via-white/10 transition-colors pointer-events-none" />
+           {isDead && (
+             <div className="absolute inset-0 bg-black/40 pointer-events-none z-10" />
+           )}
+           {isDead && (
+             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 font-black text-red-500/90 text-2xl tracking-[0.5em] drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">
+               R.I.P.
+             </div>
+           )}
            
            <div className="flex flex-col items-center">
               {/* Avatar Selector */}
@@ -678,12 +692,12 @@ const Profile = () => {
                    <motion.button
                      whileTap={{ scale: 0.95 }}
                      onClick={handleOpenAvatarSelector}
-                     className={`w-32 h-32 relative z-10 rounded-full overflow-hidden hover:opacity-90 transition-all ${AVATAR_FRAME_STYLES[currentFrame] || AVATAR_FRAME_STYLES.default}`}
+                     className={`w-32 h-32 relative z-10 rounded-full overflow-hidden hover:opacity-90 transition-all ${isDead ? 'border-2 border-red-500/50 opacity-70 grayscale' : ''} ${AVATAR_FRAME_STYLES[currentFrame] || AVATAR_FRAME_STYLES.default}`}
                    >
                    <img 
                      src={getStaticUrl(displayAvatar.url)} 
                      alt={displayAvatar.name}
-                     className="w-full h-full object-cover drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+                     className={`w-full h-full object-cover drop-shadow-[0_0_20px_rgba(0,0,0,0.5)] ${isDead ? 'opacity-80' : ''}`}
                    />
                    <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center">
                      <Edit2 size={16} className="opacity-0 hover:opacity-100 transition-opacity text-white" />
@@ -773,6 +787,19 @@ const Profile = () => {
                    </div>
                  )}
               </div>
+              {isDead && (
+                <div className="mt-4 flex flex-col items-center gap-3">
+                  <button
+                    onClick={() => { playSound('click'); setFCount(c => c + 1); }}
+                    className="px-6 py-2 bg-red-500/20 border-2 border-red-500/60 rounded-xl font-black text-red-400 text-xl tracking-widest hover:bg-red-500/30 transition-colors"
+                  >
+                    F — {fCount}
+                  </button>
+                  <p className="text-[10px] text-muted uppercase tracking-wider">
+                    {t('ghost_dj_track')}: {funeralTrackId}
+                  </p>
+                </div>
+              )}
            </div>
         </div>
 

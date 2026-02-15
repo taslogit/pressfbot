@@ -191,6 +191,21 @@ export const lettersAPI = {
       method: 'DELETE',
     });
   },
+  uploadAttachment: async (letterId: string, file: File | Blob, options?: RequestInit) => {
+    const sessionId = getSessionId();
+    const headers: HeadersInit = {};
+    if (sessionId) headers['X-Session-Id'] = sessionId;
+    const fd = new FormData();
+    fd.append('letterId', letterId);
+    fd.append('file', file instanceof Blob ? new File([file], 'recording.webm', { type: file.type }) : file);
+    const url = `${API_BASE.replace(/\/$/, '')}/api/letters/upload-attachment`;
+    const res = await fetch(url, { method: 'POST', headers, body: fd, ...options });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { ok: false as const, error: err?.error || res.statusText, code: err?.code };
+    }
+    return { ok: true as const, data: await res.json() };
+  },
 };
 
 // Duels API

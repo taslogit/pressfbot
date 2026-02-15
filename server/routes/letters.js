@@ -1,6 +1,9 @@
 // Letters API routes
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { z, validateBody } = require('../validation');
 const { normalizeLetter } = require('../services/lettersService');
@@ -37,7 +40,38 @@ const letterSchema = z.object({
   isFavorite: z.boolean().optional()
 });
 
+// Multer config for attachment uploads
+const staticPath = path.join(__dirname, '..', 'static');
+const attachmentsDir = path.join(staticPath, 'attachments');
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const letterId = req.body?.letterId || req.query?.letterId || 'temp';
+    const dir = path.join(attachmentsDir, String(letterId));
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || (file.mimetype?.includes('audio') ? '.webm' : file.mimetype?.includes('image') ? '.jpg' : '.mp4');
+    cb(null, `${uuidv4()}${ext}`);
+  }
+});
+const uploadMulter = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
+
 const createLettersRoutes = (pool, createLimiter, letterLimitCheck) => {
+  // POST /api/letters/upload-attachment - Upload file for letter
+  router.post('/upload-attachment', uploadMulter.single('file'), async (req, res) => {
+    try {
+      if (!req.userId) return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+      if (!req.file) return sendError(res, 400, 'NO_FILE', 'No file provided');
+      const letterId = req.body?.letterId || req.query?.letterId || 'temp';
+      const url = `/api/static/attachments/${letterId}/${req.file.filename}`;
+      return res.json({ ok: true, url });
+    } catch (err) {
+      logger.error('Upload attachment error', err);
+      return sendError(res, 500, 'UPLOAD_FAILED', 'Failed to upload attachment');
+    }
+  });
+
   // GET /api/letters - Get all letters for user
   router.get('/', async (req, res) => {
     try {
