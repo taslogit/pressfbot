@@ -595,7 +595,7 @@ export const translations = {
     help_witness: "# WITNESS PROTOCOL\n\nAre you alive or just gone? Anti self‑wipe layer.\n\n[WARN] When timer hits 0, witnesses decide if the leak triggers.\n[NOTE] Needs 2/3 votes.\n\n• Invite only trusted people.\n• Ping AFK and keep them online.\n• Kick them when needed, it's serious.",
     help_dj: "# DJ RIP (Rofl section)\n\nSoundtrack for Game Over. Exit in style.\n\n[NOTE] Plays when timer hits 0 and someone opens your profile.\n\n• Pick your vibe (upload in app).",
     help_resurrection: "# STAY ALIVE\n\nTap the skull if you’re alive so your stash stays yours.\n\n[WARN] Use only if you’re actually alive.\n\n• Tap the button.\n• Timer resets, streak stays.",
-    help_search: "# LOCAL YANDEX\n\nSearch letters, beefs, and stashes.\n\n[NOTE] Needs 2+ chars or it won’t start (feature, not a bug).\n\n• Tap a card to open it.\n• Empty? Nothing found (also a feature).",
+    help_search: "# LOCAL YANDEX\n\nSearch letters, beefs, and stashes.\n\n[NOTE] 2+ chars or nothing (feature, not bug).\n\n• Tap card to open.\n• Empty? Nothing found.",
     help_create_letter: "# NEW STASH\n\nDo it smart. Keep the important stuff important (or not).\n\n[NOTE] Drafts auto‑save.\n\n• Title + tags = who gets it.\n• Unlock date = when it lands.\n• Attachments: media + audio + whatever pops in your head.\n• Burn on read = one‑shot (we judge, but ok).",
     help_settings: "# SETTINGS\n\nPut the system in order.\n\n[NOTE] Notifications are configurable here.\n\n• Language: RU/EN.\n• Notifications: app + Telegram.\n• Wallet: connect/disconnect for TON.",
     wiki_title: "Wiki",
