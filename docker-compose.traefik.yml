@@ -12,7 +12,7 @@ services:
       - --entryPoints.web.address=:80
       - --entryPoints.websecure.address=:443
       - --certificatesResolvers.le.acme.tlsChallenge=true
-      - --certificatesResolvers.le.acme.email=${LETSENCRYPT_EMAIL}
+      - --certificatesResolvers.le.acme.email=${LETSENCRYPT_EMAIL:-admin@example.com}
       - --certificatesResolvers.le.acme.storage=/letsencrypt/acme.json
     ports:
       - "80:80"
@@ -74,8 +74,6 @@ services:
       - "traefik.http.routers.pressf-frontend.tls.certresolver=le"
       - "traefik.http.routers.pressf-frontend.service=pressf-frontend-service"
       - "traefik.http.services.pressf-frontend-service.loadbalancer.server.port=80"
-    ports:
-      - "8081:80"
     networks:
       - pressf-net
 
