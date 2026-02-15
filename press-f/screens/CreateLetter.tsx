@@ -353,7 +353,7 @@ const CreateLetter = () => {
   };
 
   return (
-    <div className="pb-24 relative min-h-screen">
+    <div className="pb-content-bottom relative min-h-screen">
       <EnvelopeAnimation isVisible={isSending} onComplete={handleAnimationComplete} />
       {xpNotification && (
         <XPNotification
@@ -434,7 +434,7 @@ const CreateLetter = () => {
                 />
              </div>
              
-             <div className="mt-4 text-[10px] text-muted opacity-50 text-left w-64 h-24 overflow-hidden font-mono">
+             <div className="mt-4 text-caption text-muted opacity-50 text-left w-64 h-24 overflow-hidden font-mono">
                 {encryptionStep === 1 && `> ${t('log_aes_init')}\n> ${t('log_salt_gen')}`}
                 {encryptionStep === 2 && `> ${t('log_shards')}\n> ${t('log_distribute')}`}
                 {encryptionStep === 3 && `> ${t('log_securing')}\n> ${t('log_commit')}`}
@@ -460,12 +460,12 @@ const CreateLetter = () => {
                 <Save size={20} className="text-accent-cyan" />
                 <div>
                   <h4 className="font-bold text-sm text-accent-cyan">{t('draft_found')}</h4>
-                  <p className="text-[10px] text-muted">{t('draft_desc')}</p>
+                  <p className="text-caption text-muted">{t('draft_desc')}</p>
                 </div>
               </div>
               <div className="flex gap-2">
-                <button onClick={handleRestoreDraft} className="px-3 py-1.5 bg-accent-cyan text-black text-[10px] font-bold rounded hover:bg-cyan-400 transition-colors">{t('restore_draft')}</button>
-                <button onClick={handleDiscardDraft} className="px-3 py-1.5 bg-card border border-border text-muted hover:text-red-400 text-[10px] font-bold rounded transition-colors">{t('discard_draft')}</button>
+                <button onClick={handleRestoreDraft} className="px-3 py-1.5 bg-accent-cyan text-black text-caption font-bold rounded hover:bg-cyan-400 transition-colors">{t('restore_draft')}</button>
+                <button onClick={handleDiscardDraft} className="px-3 py-1.5 bg-card border border-border text-muted hover:text-red-400 text-caption font-bold rounded transition-colors">{t('discard_draft')}</button>
               </div>
             </div>
           </motion.div>
@@ -515,11 +515,10 @@ const CreateLetter = () => {
         {/* Title Input */}
         <div>
           <label className="text-xs text-muted uppercase font-bold tracking-wider ml-1">{t('title_label')}</label>
-          <motion.input 
-            whileFocus={{ scale: 1.02, borderColor: '#00E0FF', boxShadow: '0 0 20px rgba(0, 224, 255, 0.4)' }}
+          <input
             value={title}
             onChange={e => setTitle(e.target.value)}
-            className="w-full bg-card border border-border rounded-xl p-4 text-primary outline-none transition-all placeholder:text-muted/50 font-bold"
+            className="w-full bg-card border border-border rounded-xl p-4 text-primary outline-none transition-colors placeholder:text-muted/50 font-bold focus:border-accent-cyan focus:ring-2 focus:ring-accent-cyan/30 focus:ring-offset-2 focus:ring-offset-bg"
             placeholder={t('placeholder_title')}
           />
         </div>
@@ -528,11 +527,10 @@ const CreateLetter = () => {
         <div className="relative">
           <label className="text-xs text-muted uppercase font-bold tracking-wider ml-1">{t('recipients_label')}</label>
           <div className="relative">
-             <motion.input 
-              whileFocus={{ scale: 1.02, borderColor: '#00E0FF', boxShadow: '0 0 20px rgba(0, 224, 255, 0.4)' }}
+             <input
               value={recipients}
               onChange={(e) => setRecipients(e.target.value)}
-              className={`w-full bg-card border border-border rounded-xl p-4 text-primary outline-none transition-all placeholder:text-muted/50`}
+              className="w-full bg-card border border-border rounded-xl p-4 text-primary outline-none transition-colors placeholder:text-muted/50 focus:border-accent-cyan focus:ring-2 focus:ring-accent-cyan/30 focus:ring-offset-2 focus:ring-offset-bg"
               placeholder={t('placeholder_recipients')}
             />
             <div className={`absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted/30`}>
@@ -544,11 +542,10 @@ const CreateLetter = () => {
         {/* Content Textarea */}
         <div>
           <label className="text-xs text-muted uppercase font-bold tracking-wider ml-1">{t('content_label')}</label>
-          <motion.textarea 
-            whileFocus={{ scale: 1.02, borderColor: '#00E0FF', boxShadow: '0 0 20px rgba(0, 224, 255, 0.4)' }}
+          <textarea
             value={content}
             onChange={e => setContent(e.target.value)}
-            className="w-full h-32 bg-card border border-border rounded-xl p-4 text-primary outline-none transition-all resize-none placeholder:text-muted/50 font-mono text-sm"
+            className="w-full h-32 bg-card border border-border rounded-xl p-4 text-primary outline-none transition-colors resize-none placeholder:text-muted/50 font-mono text-sm focus:border-accent-cyan focus:ring-2 focus:ring-accent-cyan/30 focus:ring-offset-2 focus:ring-offset-bg"
             placeholder={t('placeholder_content')}
           />
         </div>
@@ -557,12 +554,11 @@ const CreateLetter = () => {
         <div>
           <label className="text-xs text-muted uppercase font-bold tracking-wider ml-1">{t('unlock_date_label')}</label>
           <div className="relative">
-            <motion.input 
+            <input
               type="date"
-              whileFocus={{ scale: 1.02, borderColor: '#00E0FF', boxShadow: '0 0 20px rgba(0, 224, 255, 0.4)' }}
               value={unlockDate}
               onChange={e => setUnlockDate(e.target.value)}
-              className="w-full bg-card border border-border rounded-xl p-4 text-primary outline-none transition-all placeholder:text-muted/50 [color-scheme:dark]"
+              className="w-full bg-card border border-border rounded-xl p-4 text-primary outline-none transition-colors placeholder:text-muted/50 [color-scheme:dark] focus:border-accent-cyan focus:ring-2 focus:ring-accent-cyan/30 focus:ring-offset-2 focus:ring-offset-bg"
             />
             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted/30">
               <Calendar size={18} />
@@ -582,7 +578,7 @@ const CreateLetter = () => {
                  </div>
                  <div>
                     <p className={`text-sm font-bold ${burnOnRead ? 'text-red-500' : 'text-primary'}`}>{t('opt_burn')}</p>
-                    <p className="text-[10px] text-muted">{t('opt_burn_desc')}</p>
+                    <p className="text-caption text-muted">{t('opt_burn_desc')}</p>
                  </div>
               </div>
               <div 
@@ -616,14 +612,14 @@ const CreateLetter = () => {
         {/* Media Buttons */}
         <div className="flex gap-2">
           <button onClick={() => triggerFileInput('image')} className="flex-1 py-3 bg-card rounded-xl flex flex-col gap-1 justify-center items-center text-accent-cyan border border-border hover:bg-accent-cyan/10 transition-all active:scale-95">
-            <ImageIcon size={22} /><span className="text-[10px] font-bold uppercase">{t('attach_photo')}</span>
+            <ImageIcon size={22} /><span className="text-caption font-bold uppercase">{t('attach_photo')}</span>
           </button>
           <button onClick={() => triggerFileInput('video')} className="flex-1 py-3 bg-card rounded-xl flex flex-col gap-1 justify-center items-center text-accent-pink border border-border hover:bg-accent-pink/10 transition-all active:scale-95">
-            <Video size={22} /><span className="text-[10px] font-bold uppercase">{t('attach_video')}</span>
+            <Video size={22} /><span className="text-caption font-bold uppercase">{t('attach_video')}</span>
           </button>
           <button onClick={toggleRecording} className={`flex-1 py-3 rounded-xl flex flex-col gap-1 justify-center items-center border transition-all active:scale-95 ${isRecording ? 'bg-red-500/20 border-red-500 text-red-500 animate-pulse' : 'bg-card border-border text-accent-lime hover:bg-accent-lime/10'}`}>
             {isRecording ? <StopCircle size={22} /> : <Mic size={22} />}
-            <span className="text-[10px] font-bold uppercase whitespace-nowrap">{isRecording ? formatTime(recordingTime) : t('attach_voice')}</span>
+            <span className="text-caption font-bold uppercase whitespace-nowrap">{isRecording ? formatTime(recordingTime) : t('attach_voice')}</span>
           </button>
         </div>
 

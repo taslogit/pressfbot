@@ -187,17 +187,17 @@ const Settings = () => {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Globe2 size={16} className="text-accent-cyan" />
-                <div className="text-[10px] uppercase tracking-widest text-muted">{t('settings_language')}</div>
+                <div className="text-caption uppercase tracking-widest text-muted">{t('settings_language')}</div>
               </div>
-              <span className="text-[10px] uppercase tracking-widest text-muted">{language.toUpperCase()}</span>
+              <span className="text-caption uppercase tracking-widest text-muted">{language.toUpperCase()}</span>
             </div>
             <button
               onClick={toggleLanguage}
-              className="w-full py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border border-border text-muted hover:text-primary"
+              className="w-full py-2 rounded-lg text-caption font-black uppercase tracking-widest border border-border text-muted hover:text-primary"
             >
               {language.toUpperCase()}
             </button>
-            <div className="mt-2 text-[10px] text-muted">
+            <div className="mt-2 text-caption text-muted">
               {t('settings_language_hint')}
             </div>
           </div>
@@ -205,13 +205,13 @@ const Settings = () => {
           <div className="bg-black/30 border border-border rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <Bell size={16} className="text-accent-cyan" />
-              <div className="text-[10px] uppercase tracking-widest text-muted">{t('profile_notifications_title')}</div>
+              <div className="text-caption uppercase tracking-widest text-muted">{t('profile_notifications_title')}</div>
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between rounded-lg border border-border/60 bg-black/40 px-3 py-2">
                 <div>
                   <div className="text-sm font-bold">{t('profile_notifications_app')}</div>
-                  <div className="text-[10px] text-muted">{t('profile_notifications_app_desc')}</div>
+                  <div className="text-caption text-muted">{t('profile_notifications_app_desc')}</div>
                 </div>
                 <button
                   onClick={() => handleToggleNotifications('notificationsEnabled')}
@@ -223,7 +223,7 @@ const Settings = () => {
               <div className="flex items-center justify-between rounded-lg border border-border/60 bg-black/40 px-3 py-2">
                 <div>
                   <div className="text-sm font-bold">{t('profile_notifications_tg')}</div>
-                  <div className="text-[10px] text-muted">{t('profile_notifications_tg_desc')}</div>
+                  <div className="text-caption text-muted">{t('profile_notifications_tg_desc')}</div>
                 </div>
                 <button
                   onClick={() => handleToggleNotifications('telegramNotificationsEnabled')}
@@ -234,13 +234,13 @@ const Settings = () => {
               </div>
             </div>
             <div className="mt-4">
-              <div className="text-[10px] text-muted uppercase tracking-widest mb-2">{t('profile_notifications_frequency')}</div>
+              <div className="text-caption text-muted uppercase tracking-widest mb-2">{t('profile_notifications_frequency')}</div>
               <div className="grid grid-cols-3 gap-2">
                 {[15, 60, 180, 720, 1440].map((m) => (
                   <button
                     key={m}
                     onClick={() => handleReminderInterval(m)}
-                    className={`py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
+                    className={`py-2 rounded-lg text-caption font-black uppercase tracking-widest border ${
                       settings.checkinReminderIntervalMinutes === m
                         ? 'border-accent-cyan text-accent-cyan'
                         : 'border-border text-muted'
@@ -250,28 +250,28 @@ const Settings = () => {
                   </button>
                 ))}
               </div>
-              <div className="mt-2 text-[10px] text-muted">
+              <div className="mt-2 text-caption text-muted">
                 {t('profile_notifications_frequency_hint')}
               </div>
             </div>
             <div className="mt-4">
-              <div className="text-[10px] text-muted uppercase tracking-widest mb-2">{t('profile_notifications_mode_desc')}</div>
+              <div className="text-caption text-muted uppercase tracking-widest mb-2">{t('profile_notifications_mode_desc')}</div>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => applyNotificationsPreset('quiet')}
-                  className="py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border border-border text-muted hover:text-primary"
+                  className="py-2 rounded-lg text-caption font-black uppercase tracking-widest border border-border text-muted hover:text-primary"
                 >
                   {t('profile_notifications_mode_quiet')}
                 </button>
                 <button
                   onClick={() => applyNotificationsPreset('balanced')}
-                  className="py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border border-border text-muted hover:text-primary"
+                  className="py-2 rounded-lg text-caption font-black uppercase tracking-widest border border-border text-muted hover:text-primary"
                 >
                   {t('profile_notifications_mode_balanced')}
                 </button>
                 <button
                   onClick={() => applyNotificationsPreset('hardcore')}
-                  className="py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border border-border text-muted hover:text-primary"
+                  className="py-2 rounded-lg text-caption font-black uppercase tracking-widest border border-border text-muted hover:text-primary"
                 >
                   {t('profile_notifications_mode_hardcore')}
                 </button>
@@ -282,25 +282,25 @@ const Settings = () => {
           <div className="bg-black/30 border border-border rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <Wallet size={16} className="text-accent-cyan" />
-              <div className="text-[10px] uppercase tracking-widest text-muted">{t('settings_wallet')}</div>
+              <div className="text-caption uppercase tracking-widest text-muted">{t('settings_wallet')}</div>
             </div>
             <div className="flex items-center justify-between">
               <TonConnectButton />
               {wallet && (
                 <button
                   onClick={disconnectWallet}
-                  className="text-[10px] uppercase tracking-widest px-2 py-1 rounded-lg border border-border text-muted hover:text-primary"
+                  className="text-caption uppercase tracking-widest px-2 py-1 rounded-lg border border-border text-muted hover:text-primary"
                 >
                   {t('settings_wallet_disconnect')}
                 </button>
               )}
             </div>
-            <div className="mt-2 text-[10px] text-muted">
+            <div className="mt-2 text-caption text-muted">
               {wallet
                 ? `${t('settings_wallet_connected')}: ${shortAddress}`
                 : t('settings_wallet_not_connected')}
             </div>
-            <div className="mt-1 text-[10px] text-muted">
+            <div className="mt-1 text-caption text-muted">
               {t('settings_wallet_hint')}
             </div>
           </div>
@@ -310,11 +310,11 @@ const Settings = () => {
               onClick={() => setStoreOpen((v) => !v)}
               className="w-full flex items-center justify-between mb-2"
             >
-              <div className="flex items-center gap-2 text-[10px] text-muted uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-caption text-muted uppercase tracking-widest">
                 <Sparkles size={14} className="text-accent-lime" />
                 {t('settings_store_title')}
               </div>
-              <span className="text-[10px] text-muted uppercase">{storeOpen ? t('ton_ops_hide') : t('ton_ops_show')}</span>
+              <span className="text-caption text-muted uppercase">{storeOpen ? t('ton_ops_hide') : t('ton_ops_show')}</span>
             </button>
             <AnimatePresence>
               {storeOpen && (
@@ -325,7 +325,7 @@ const Settings = () => {
                   className="overflow-hidden mb-4 space-y-2"
                 >
                   <div className="bg-black/30 border border-border rounded-xl p-3">
-                    <div className="text-[10px] text-muted uppercase tracking-widest mb-2">{t('settings_premium_status')}</div>
+                    <div className="text-caption text-muted uppercase tracking-widest mb-2">{t('settings_premium_status')}</div>
                     {premiumStatus ? (
                       <div className="text-xs">
                         {premiumStatus.isPremium ? (
@@ -338,11 +338,11 @@ const Settings = () => {
                         )}
                       </div>
                     ) : (
-                      <div className="text-[10px] text-muted">{t('settings_loading')}</div>
+                      <div className="text-caption text-muted">{t('settings_loading')}</div>
                     )}
                   </div>
                   <div className="bg-black/30 border border-border rounded-xl p-3">
-                    <div className="text-[10px] text-muted uppercase tracking-widest mb-2">{t('settings_xp_store')}</div>
+                    <div className="text-caption text-muted uppercase tracking-widest mb-2">{t('settings_xp_store')}</div>
                     <div className="text-xs text-muted">
                       {storeCatalog.length > 0
                         ? t('settings_store_items_count', { count: storeCatalog.length })
@@ -357,11 +357,11 @@ const Settings = () => {
               onClick={() => setIsTonOpsOpen((v) => !v)}
               className="w-full flex items-center justify-between"
             >
-              <div className="flex items-center gap-2 text-[10px] text-muted uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-caption text-muted uppercase tracking-widest">
                 <Sparkles size={14} className="text-accent-cyan" />
                 {t('ton_ops_title')}
               </div>
-              <span className="text-[10px] text-muted uppercase">{isTonOpsOpen ? t('ton_ops_hide') : t('ton_ops_show')}</span>
+              <span className="text-caption text-muted uppercase">{isTonOpsOpen ? t('ton_ops_hide') : t('ton_ops_show')}</span>
             </button>
             <AnimatePresence>
               {isTonOpsOpen && (
@@ -372,7 +372,7 @@ const Settings = () => {
                   className="overflow-hidden mt-3 space-y-4"
                 >
                   <div className="bg-black/30 border border-border rounded-xl p-3">
-                    <div className="text-[10px] text-muted uppercase tracking-widest mb-2">{t('ton_inheritance_title')}</div>
+                    <div className="text-caption text-muted uppercase tracking-widest mb-2">{t('ton_inheritance_title')}</div>
                     {inheritanceRecipients.map((r, idx) => (
                       <div key={idx} className="grid grid-cols-[1fr_90px_24px] gap-2 mb-2">
                         <input
@@ -398,7 +398,7 @@ const Settings = () => {
                     <div className="flex gap-2 mb-2">
                       <button
                         onClick={addRecipient}
-                        className="text-[10px] uppercase tracking-widest px-2 py-1 rounded border border-border text-muted hover:text-primary"
+                        className="text-caption uppercase tracking-widest px-2 py-1 rounded border border-border text-muted hover:text-primary"
                       >
                         {t('ton_add_recipient')}
                       </button>
@@ -417,14 +417,14 @@ const Settings = () => {
                     </div>
                     <button
                       onClick={submitInheritance}
-                      className="w-full py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border border-accent-cyan text-accent-cyan hover:bg-accent-cyan/10"
+                      className="w-full py-2 text-caption font-black uppercase tracking-widest rounded-lg border border-accent-cyan text-accent-cyan hover:bg-accent-cyan/10"
                     >
                       {t('ton_create_inheritance')}
                     </button>
                   </div>
 
                   <div className="bg-black/30 border border-border rounded-xl p-3">
-                    <div className="text-[10px] text-muted uppercase tracking-widest mb-2">{t('ton_storage_title')}</div>
+                    <div className="text-caption text-muted uppercase tracking-widest mb-2">{t('ton_storage_title')}</div>
                     <div className="grid grid-cols-2 gap-2 mb-2">
                       <input
                         value={storageLetterId}
@@ -446,20 +446,20 @@ const Settings = () => {
                         placeholder={t('ton_provider_ph')}
                         className="bg-input border border-border rounded-lg px-2 py-2 text-xs"
                       />
-                      <div className="text-[10px] text-muted flex items-center">
+                      <div className="text-caption text-muted flex items-center">
                         {t('ton_storage_hint')}
                       </div>
                     </div>
                     <button
                       onClick={submitStorage}
-                      className="w-full py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border border-accent-cyan text-accent-cyan hover:bg-accent-cyan/10"
+                      className="w-full py-2 text-caption font-black uppercase tracking-widest rounded-lg border border-accent-cyan text-accent-cyan hover:bg-accent-cyan/10"
                     >
                       {t('ton_create_storage')}
                     </button>
                   </div>
 
                   <div className="bg-black/30 border border-border rounded-xl p-3">
-                    <div className="text-[10px] text-muted uppercase tracking-widest mb-2">{t('ton_escrow_title')}</div>
+                    <div className="text-caption text-muted uppercase tracking-widest mb-2">{t('ton_escrow_title')}</div>
                     <div className="grid grid-cols-2 gap-2 mb-2">
                       <input
                         value={escrowDuelId}
@@ -490,7 +490,7 @@ const Settings = () => {
                     </div>
                     <button
                       onClick={submitEscrow}
-                      className="w-full py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border border-accent-cyan text-accent-cyan hover:bg-accent-cyan/10"
+                      className="w-full py-2 text-caption font-black uppercase tracking-widest rounded-lg border border-accent-cyan text-accent-cyan hover:bg-accent-cyan/10"
                     >
                       {t('ton_create_escrow')}
                     </button>
@@ -503,11 +503,11 @@ const Settings = () => {
               onClick={() => setWikiOpen((v) => !v)}
               className="w-full flex items-center justify-between mt-4"
             >
-              <div className="flex items-center gap-2 text-[10px] text-muted uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-caption text-muted uppercase tracking-widest">
                 <BookOpen size={14} className="text-accent-cyan" />
                 {t('wiki_title')}
               </div>
-              <span className="text-[10px] text-muted uppercase">{wikiOpen ? t('ton_ops_hide') : t('ton_ops_show')}</span>
+              <span className="text-caption text-muted uppercase">{wikiOpen ? t('ton_ops_hide') : t('ton_ops_show')}</span>
             </button>
             <AnimatePresence>
               {wikiOpen && (
@@ -517,7 +517,7 @@ const Settings = () => {
                   exit={{ height: 0, opacity: 0 }}
                   className="overflow-hidden mt-3 space-y-2"
                 >
-                  <div className="text-[10px] text-muted mb-2">{t('wiki_intro')}</div>
+                  <div className="text-caption text-muted mb-2">{t('wiki_intro')}</div>
                   {[
                     { key: 'checkin', topic: 'wiki_topic_checkin', content: 'wiki_checkin' },
                     { key: 'xp', topic: 'wiki_topic_xp', content: 'wiki_xp' },

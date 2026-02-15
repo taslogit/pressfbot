@@ -113,7 +113,7 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
         const inner = (
           <div className={`my-3 p-3 rounded-tr-xl rounded-bl-xl border-l-2 border-r ${colors} relative overflow-hidden`}>
             <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,25,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-0 pointer-events-none bg-[length:100%_4px,3px_100%]" />
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-90 mb-1 relative z-10">
+            <div className="flex items-center gap-2 text-caption font-black uppercase tracking-widest opacity-90 mb-1 relative z-10">
                <Icon size={12} /> {Label}
             </div>
             <div className="text-xs font-medium leading-relaxed relative z-10 opacity-90">
@@ -232,7 +232,7 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
                       <Terminal size={16} />
                     </div>
                     <div>
-                        <div className="text-[9px] font-mono text-muted uppercase tracking-widest leading-none mb-1">DATA_FILE</div>
+                        <div className="text-caption font-mono text-muted uppercase tracking-widest leading-none mb-1">DATA_FILE</div>
                         <h3 className="font-black text-sm uppercase tracking-wider text-white leading-none">
                           {title}
                         </h3>
@@ -254,7 +254,7 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
                 <div className="px-5 py-3 border-t border-white/5 bg-[#0a0a0c] shrink-0">
                   <button
                     onClick={handleDismiss}
-                    className="text-[10px] uppercase tracking-widest text-muted hover:text-accent-cyan"
+                    className="text-caption uppercase tracking-widest text-muted hover:text-accent-cyan"
                   >
                     {t('dont_show_again')}
                   </button>

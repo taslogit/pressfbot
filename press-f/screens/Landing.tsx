@@ -341,7 +341,7 @@ const Landing = () => {
       >
         <div>
            <motion.h1 
-             className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-accent-lime via-white to-accent-cyan drop-shadow-[0_0_15px_rgba(180,255,0,0.6)]"
+             className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-accent-lime via-white to-accent-cyan drop-shadow-[0_0_15px_rgba(180,255,0,0.6)] motion-reduce:animate-none"
              animate={{
                opacity: [1, 0.8, 1, 1, 0.5, 1, 0.9, 1],
                textShadow: [
@@ -381,7 +381,7 @@ const Landing = () => {
 
       {/* Quick value + actions */}
       <div className="bg-card/60 border border-border rounded-xl p-4 text-xs text-muted">
-        <div className="text-[10px] uppercase tracking-widest mb-2 text-muted">{t('home_value_title')}</div>
+        <div className="text-caption uppercase tracking-widest mb-2 text-muted">{t('home_value_title')}</div>
         <div className="space-y-1">
           <div>• {t('home_value_line1')}</div>
           <div>• {t('home_value_line2')}</div>
@@ -390,13 +390,13 @@ const Landing = () => {
         <div className="grid grid-cols-2 gap-2 mt-3">
           <button
             onClick={() => { playSound('click'); navigate('/create-letter'); }}
-            className="px-2 py-2 rounded-lg border border-accent-lime/40 text-accent-lime bg-accent-lime/10 hover:bg-accent-lime/20 transition-all font-bold tracking-widest text-[10px] uppercase"
+            className="px-2 py-2 rounded-lg border border-accent-lime/40 text-accent-lime bg-accent-lime/10 hover:bg-accent-lime/20 transition-all font-bold tracking-widest text-caption uppercase"
           >
             {t('home_cta_create')}
           </button>
           <button
             onClick={() => setShowGuide(true)}
-            className="px-2 py-2 rounded-lg border border-border text-muted hover:text-primary transition-all font-bold tracking-widest text-[10px] uppercase"
+            className="px-2 py-2 rounded-lg border border-border text-muted hover:text-primary transition-all font-bold tracking-widest text-caption uppercase"
           >
             {t('home_cta_guide')}
           </button>
@@ -404,7 +404,7 @@ const Landing = () => {
         {showSharePulse && (
           <button
             onClick={handleSharePulse}
-            className="mt-3 w-full px-3 py-2 rounded-lg border border-accent-cyan/40 text-accent-cyan bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-all font-bold tracking-widest text-[10px] uppercase"
+            className="mt-3 w-full px-3 py-2 rounded-lg border border-accent-cyan/40 text-accent-cyan bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-all font-bold tracking-widest text-caption uppercase"
           >
             {t('share_pulse')}
           </button>
@@ -414,17 +414,17 @@ const Landing = () => {
       {/* Streak share */}
       <div className="bg-card/60 border border-border rounded-xl p-4 text-xs text-muted">
         <div className="flex items-center justify-between mb-2">
-          <div className="text-[10px] uppercase tracking-widest text-muted">{t('home_streak_title')}</div>
-          <span className={`text-[10px] uppercase tracking-widest ${isOverdue ? 'text-red-400' : 'text-accent-lime'}`}>
+          <div className="text-caption uppercase tracking-widest text-muted">{t('home_streak_title')}</div>
+          <span className={`text-caption uppercase tracking-widest ${isOverdue ? 'text-red-400' : 'text-accent-lime'}`}>
             {t('home_streak_days', { days: Math.max(daysRemaining, 0) })}
           </span>
         </div>
-        <div className="text-[10px] text-muted mb-3">
+        <div className="text-caption text-muted mb-3">
           {t('home_streak_next', { next: triggerDate })}
         </div>
         <button
           onClick={handleSharePulse}
-          className="w-full px-3 py-2 rounded-lg border border-accent-cyan/40 text-accent-cyan bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-all font-bold tracking-widest text-[10px] uppercase"
+          className="w-full px-3 py-2 rounded-lg border border-accent-cyan/40 text-accent-cyan bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-all font-bold tracking-widest text-caption uppercase"
         >
           {t('share_pulse')}
         </button>
@@ -462,7 +462,7 @@ const Landing = () => {
                className={`relative w-52 h-52 rounded-full border-[6px] ${isUrgent ? 'border-red-500/50' : 'border-accent-lime/50'} bg-black/40 backdrop-blur-xl flex flex-col items-center justify-center shadow-2xl overflow-hidden`}
             >
                 {/* Rotating Dashed Ring */}
-                <div className={`absolute inset-0 border-2 border-dashed ${isUrgent ? 'border-red-500/30' : 'border-accent-lime/30'} rounded-full animate-spin-slow motion-reduce:animate-none`} />
+                <div className={`absolute inset-0 border-2 border-dashed ${isUrgent ? 'border-red-500/30' : 'border-accent-lime/30'} rounded-full animate-spin-slow motion-reduce:animate-none`} aria-hidden="true" />
 
                 {/* Animated Background Scanline */}
                 <div className="absolute inset-0 bg-[linear-gradient(transparent_0%,rgba(255,255,255,0.05)_50%,transparent_100%)] bg-[length:100%_200%] animate-scan motion-reduce:animate-none pointer-events-none" />
@@ -485,7 +485,7 @@ const Landing = () => {
                     <span className={`text-5xl font-black tracking-tighter leading-none ${isUrgent ? 'text-red-500' : 'text-white'}`}>
                         {daysRemaining}
                     </span>
-                    <span className="text-[10px] font-bold uppercase text-muted tracking-[0.3em] mt-1">
+                    <span className="text-caption font-bold uppercase text-muted tracking-[0.3em] mt-1">
                         {t('days_left')}
                     </span>
                 </div>
@@ -533,17 +533,17 @@ const Landing = () => {
                  </button>
               ))}
            </div>
-           <p className="text-[9px] text-center text-muted uppercase mt-2 opacity-50 font-bold">{t('timer_setting')}</p>
+           <p className="text-caption text-center text-muted uppercase mt-2 opacity-50 font-bold">{t('timer_setting')}</p>
         </div>
 
         {/* Info Grid */}
         <div className="grid grid-cols-2 gap-4 w-full mt-4 border-t border-border/30 pt-4">
              <div className="bg-card/30 p-2 rounded-lg text-center">
-                 <p className="text-[9px] text-muted uppercase font-bold mb-1">{t('last_scan')}</p>
+                 <p className="text-caption text-muted uppercase font-bold mb-1">{t('last_scan')}</p>
                  <p className="text-xs font-mono font-bold text-white">{lastScanDate}</p>
              </div>
              <div className="bg-card/30 p-2 rounded-lg text-center">
-                 <p className="text-[9px] text-muted uppercase font-bold mb-1">{t('next_trigger')}</p>
+                 <p className="text-caption text-muted uppercase font-bold mb-1">{t('next_trigger')}</p>
                  <p className="text-xs font-mono font-bold text-red-400">{triggerDate.split('.')[0] + '.' + triggerDate.split('.')[1]}</p>
              </div>
         </div>
@@ -580,7 +580,7 @@ const Landing = () => {
               <span className="text-sm font-bold text-primary truncate block">
                 {letterOpeningSoon.title}
               </span>
-              <span className="text-[10px] text-muted">
+              <span className="text-caption text-muted">
                 {t('widget_letter_soon_days', { 
                   days: letterOpeningSoon.daysLeft, 
                   recipient: (letterOpeningSoon.recipients[0] || '?').replace(/^@/, '') 
@@ -612,7 +612,7 @@ const Landing = () => {
               <span className="text-sm font-bold text-primary truncate block">
                 {duelsResolvingToday[0]?.title} vs {duelsResolvingToday[0]?.opponent || '?'}
               </span>
-              <span className="text-[10px] text-orange-400/80">
+              <span className="text-caption text-orange-400/80">
                 {beefHoursLeft !== null && beefHoursLeft > 0
                   ? t('widget_duel_resolves_in_h', { h: beefHoursLeft })
                   : t('widget_duel_resolves_soon')}
@@ -652,12 +652,12 @@ const Landing = () => {
       {/* System Log Widget */}
       <div className="relative z-10">
          <div className="flex justify-between items-end mb-2 px-1">
-           <h3 className="text-[10px] font-bold text-muted uppercase tracking-wider flex items-center gap-1">
+           <h3 className="text-caption font-bold text-muted uppercase tracking-wider flex items-center gap-1">
              <Terminal size={12} /> {t('system_log_title')}
            </h3>
            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
          </div>
-         <div className="bg-black/40 border border-border font-mono text-[10px] p-3 rounded-xl h-12 flex items-center overflow-hidden relative">
+         <div className="bg-black/40 border border-border font-mono text-caption p-3 rounded-xl h-12 flex items-center overflow-hidden relative">
             <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-500/50" />
             <AnimatePresence mode="wait">
               <motion.span 
@@ -689,7 +689,7 @@ const Landing = () => {
               </div>
               <div>
                 <p className="text-xs font-bold text-primary">{t('widget_drafts')}</p>
-                <p className="text-[10px] text-muted">{t('view_letter')}</p>
+                <p className="text-caption text-muted">{t('view_letter')}</p>
               </div>
             </motion.div>
 
@@ -704,7 +704,7 @@ const Landing = () => {
               </div>
               <div>
                 <p className="text-xs font-bold text-primary">{t('widget_duels')}</p>
-                <p className="text-[10px] text-muted">{t('active_bets')}</p>
+                <p className="text-caption text-muted">{t('active_bets')}</p>
               </div>
             </motion.div>
             
@@ -719,7 +719,7 @@ const Landing = () => {
               </div>
               <div>
                 <p className="text-xs font-bold text-primary">{t('widget_witness')}</p>
-                <p className="text-[10px] text-muted">{t('witness_protocol')}</p>
+                <p className="text-caption text-muted">{t('witness_protocol')}</p>
               </div>
             </motion.div>
 
@@ -733,7 +733,7 @@ const Landing = () => {
               </div>
               <div>
                 <p className="text-xs font-bold text-primary">{t('widget_store')}</p>
-                <p className="text-[10px] text-muted">{t('widget_store_desc')}</p>
+                <p className="text-caption text-muted">{t('widget_store_desc')}</p>
               </div>
             </motion.div>
 
@@ -747,7 +747,7 @@ const Landing = () => {
               </div>
               <div>
                 <p className="text-xs font-bold text-primary">{t('wiki_title')}</p>
-                <p className="text-[10px] text-muted">{t('wiki_intro')}</p>
+                <p className="text-caption text-muted">{t('wiki_intro')}</p>
               </div>
             </motion.div>
 
@@ -761,7 +761,7 @@ const Landing = () => {
               </div>
               <div>
                 <p className="text-xs font-bold text-primary">{t('settings_title')}</p>
-                <p className="text-[10px] text-muted">{t('widget_settings_desc')}</p>
+                <p className="text-caption text-muted">{t('widget_settings_desc')}</p>
               </div>
             </motion.div>
 

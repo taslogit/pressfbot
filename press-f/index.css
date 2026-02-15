@@ -4,7 +4,7 @@
   --color-bg: #0f0d16;
   --color-card: #1a1720;
   --color-primary: #ffffff;
-  --color-muted: #9ca3af;
+  --color-muted: #b0b8c2;
   --color-border: rgba(255, 255, 255, 0.1);
   --color-input: rgba(255, 255, 255, 0.05);
   --color-accent-lime: #B4FF00;
@@ -15,6 +15,26 @@
   --animate-spin-slow: spin 20s linear infinite;
   --animate-float: float 6s ease-in-out infinite;
   --animate-scan: scan 4s linear infinite;
+  /* Typography scale (min 11px for readable UI) */
+  --font-size-caption: 0.6875rem;
+  --font-size-body: 0.875rem;
+  --font-size-subtitle: 1rem;
+  --font-size-title: 1.125rem;
+  --font-size-display: 1.75rem;
+  /* Layout */
+  --spacing-content-bottom: 5rem;
+}
+
+/* Light theme — без смены стилистики, те же акценты */
+.light {
+  --color-bg: #f4f4f6;
+  --color-card: #ffffff;
+  --color-primary: #0f0d16;
+  --color-text-primary: #0f0d16;
+  --color-muted: #5c6370;
+  --color-text-muted: #5c6370;
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-input: rgba(0, 0, 0, 0.04);
 }
 
 @keyframes float {
@@ -34,3 +54,12 @@ html, body, #root {
   padding: 0;
 }
 body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+/* Reduced motion: только бесконечные/долгие анимации делаем мгновенными */
+@media (prefers-reduced-motion: reduce) {
+  [class*="animate-spin-slow"],
+  [class*="animate-pulse"]:not([class*="motion-reduce:animate-none"]) {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+  }
+}

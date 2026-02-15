@@ -17,7 +17,7 @@ type Tab = 'all' | 'draft' | 'scheduled' | 'sent';
 
 const getStatusColor = (status: Letter['status']) => {
   switch (status) {
-    case 'draft': return 'text-yellow-400 border-yellow-400 bg-yellow-400/10';
+    case 'draft': return 'text-accent-gold border-accent-gold bg-accent-gold/10';
     case 'scheduled': return 'text-accent-cyan border-accent-cyan bg-accent-cyan/10';
     case 'sent': return 'text-green-500 border-green-500 bg-green-500/10';
   }
@@ -96,7 +96,7 @@ const LetterCard = React.memo(
       <div className={`absolute left-0 top-0 bottom-0 w-1 ${
           letter.status === 'sent' ? 'bg-green-500' : 
           letter.status === 'scheduled' ? 'bg-accent-cyan' : 
-          'bg-yellow-400'
+          'bg-accent-gold'
       }`} />
 
       <div className="p-4 pl-5">
@@ -117,7 +117,7 @@ const LetterCard = React.memo(
                 {letter.options?.burnOnRead && (
                     <EyeOff size={14} className="text-red-500 animate-pulse" />
                 )}
-                <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${getStatusColor(letter.status)}`}>
+                <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-caption font-black uppercase tracking-wider border ${getStatusColor(letter.status)}`}>
                   {/* Icons rendered conditionally to save space */}
                   {letter.status === 'draft' && <FileText size={10} />}
                   {letter.status === 'scheduled' && <Clock size={10} />}
@@ -131,7 +131,7 @@ const LetterCard = React.memo(
             {letter.content && !isEncrypted(letter.content) ? letter.content.substring(0, 60) + "..." : "Encrypted Content..."}
           </p>
 
-          <div className="flex justify-between items-center text-[10px] text-muted font-mono uppercase">
+          <div className="flex justify-between items-center text-caption text-muted font-mono uppercase">
             <div className="flex gap-2">
                {letter.recipients.length > 0 && <span>@{letter.recipients.length} RECIPIENTS</span>}
                {letter.unlockDate && <span className="text-accent-cyan">{letter.unlockDate}</span>}
@@ -441,7 +441,7 @@ const Letters = () => {
         <div className="flex gap-2 mb-3">
           <button
             onClick={() => setFavoriteFilter('all')}
-            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
+            className={`flex-1 py-2 rounded-lg text-caption font-black uppercase tracking-widest border ${
               favoriteFilter === 'all' ? 'border-accent-lime text-accent-lime' : 'border-border text-muted'
             }`}
           >
@@ -449,7 +449,7 @@ const Letters = () => {
           </button>
           <button
             onClick={() => setFavoriteFilter('favorites')}
-            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
+            className={`flex-1 py-2 rounded-lg text-caption font-black uppercase tracking-widest border ${
               favoriteFilter === 'favorites' ? 'border-accent-lime text-accent-lime' : 'border-border text-muted'
             }`}
           >
@@ -463,7 +463,7 @@ const Letters = () => {
              <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border-b-2 ${
+              className={`px-4 py-1.5 rounded-sm text-caption font-black uppercase tracking-widest whitespace-nowrap transition-all border-b-2 ${
                 activeTab === tab 
                   ? 'border-accent-lime text-accent-lime bg-accent-lime/10' 
                   : 'border-transparent text-muted hover:text-primary'
@@ -482,7 +482,7 @@ const Letters = () => {
         {/* Filters - Types */}
         <div className="flex gap-2 overflow-x-auto pb-4 mb-2 scrollbar-hide pl-1 touch-pan-x">
              <button onClick={() => setActiveType('all')} className={`w-8 h-8 rounded-full border flex items-center justify-center shrink-0 ${activeType === 'all' ? 'border-primary bg-white/20' : 'border-border bg-black/40'}`}>
-                <span className="text-[10px] font-bold">{t('filter_all')}</span>
+                <span className="text-caption font-bold">{t('filter_all')}</span>
              </button>
              {[
                 { id: 'crypto', icon: Key, color: 'text-accent-gold' },
@@ -561,7 +561,7 @@ const Letters = () => {
                   <div>
                       <div className="flex items-center gap-2 mb-2">
                         {getTypeIcon(selectedLetter.type)}
-                        <span className="text-[10px] font-mono text-accent-lime uppercase">DECRYPTED_LOG</span>
+                        <span className="text-caption font-mono text-accent-lime uppercase">DECRYPTED_LOG</span>
                       </div>
                       <h2 className="text-xl font-black text-primary leading-tight">
                         <DecryptedText text={selectedLetter.title} />
@@ -575,7 +575,7 @@ const Letters = () => {
                 {/* Meta Data */}
                 <div className="grid grid-cols-2 gap-2 mb-6 font-mono text-xs">
                   <div className="bg-white/5 p-3 rounded border border-white/5">
-                    <span className="text-[9px] text-muted uppercase block mb-1">TARGETS</span>
+                    <span className="text-caption text-muted uppercase block mb-1">TARGETS</span>
                     <div className="flex flex-wrap gap-1">
                       {selectedRecipients.map((r, i) => (
                         <span key={i} className="text-accent-cyan">{r}</span>
@@ -583,14 +583,14 @@ const Letters = () => {
                     </div>
                   </div>
                    <div className="bg-white/5 p-3 rounded border border-white/5">
-                    <span className="text-[9px] text-muted uppercase block mb-1">UNLOCK PROTOCOL</span>
+                    <span className="text-caption text-muted uppercase block mb-1">UNLOCK PROTOCOL</span>
                     <span className="text-accent-pink">{selectedUnlock}</span>
                   </div>
                 </div>
 
                 {selectedLetter.status !== 'draft' && isSelectedUnlocked && (
                   <div className="mb-5 border border-accent-gold/30 bg-accent-gold/10 rounded-xl p-3">
-                    <div className="text-[10px] uppercase tracking-widest text-accent-gold mb-1">
+                    <div className="text-caption uppercase tracking-widest text-accent-gold mb-1">
                       {t('letter_unlocked_title')}
                     </div>
                     <div className="text-xs text-muted">
@@ -616,7 +616,7 @@ const Letters = () => {
                 {/* Attachments */}
                 {selectedLetter.attachments.length > 0 && (
                   <div className="mb-6">
-                     <span className="text-[10px] text-muted uppercase font-bold block mb-2">{t('letter_attachments')}</span>
+                     <span className="text-caption text-muted uppercase font-bold block mb-2">{t('letter_attachments')}</span>
                      <div className="flex flex-col gap-3">
                        {selectedLetter.attachments.map((url, i) => {
                          const fullUrl = url.startsWith('http') ? url : getStaticUrl(url);
@@ -735,11 +735,11 @@ const Letters = () => {
                               <div className="flex justify-between items-center">
                                 <div>
                                   <div className="text-sm font-bold text-primary">{v.title}</div>
-                                  <div className="text-[10px] text-muted">{v.createdAt}</div>
+                                  <div className="text-caption text-muted">{v.createdAt}</div>
                                 </div>
                                 <button
                                   onClick={() => restoreVersion(selectedLetter.id, v.id)}
-                                  className="px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest border border-accent-cyan text-accent-cyan hover:bg-accent-cyan/10"
+                                  className="px-3 py-1 rounded text-caption font-black uppercase tracking-widest border border-accent-cyan text-accent-cyan hover:bg-accent-cyan/10"
                                 >
                                   Restore
                                 </button>

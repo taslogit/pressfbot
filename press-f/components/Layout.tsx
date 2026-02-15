@@ -35,7 +35,7 @@ const Layout: React.FC<Props> = ({ children }) => {
   ];
 
   return (
-    <div className="min-h-screen pb-20 bg-bg text-primary font-sans selection:bg-accent-pink selection:text-white transition-colors duration-300">
+    <div className="min-h-screen pb-content-bottom bg-bg text-primary font-sans selection:bg-accent-pink selection:text-white transition-colors duration-300">
       <OfflineIndicator />
       <main className="p-4 max-w-md mx-auto relative z-10" id="main-content">
         {children}
@@ -62,8 +62,8 @@ const Layout: React.FC<Props> = ({ children }) => {
                   />
                 </div>
                 
-                <span className={`text-[9px] mt-1 font-bold tracking-wide transition-all duration-300 ${
-                  isActive ? `text-primary opacity-100` : 'text-muted opacity-50'
+                <span className={`text-caption mt-1 font-bold tracking-wide transition-all duration-300 ${
+                  isActive ? `text-primary opacity-100` : 'text-muted opacity-70'
                 }`}>
                   {item.label}
                 </span>

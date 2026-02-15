@@ -91,6 +91,7 @@ export const splitKey = (key: string, parts: number, threshold: number): string[
   return shards;
 };
 
+/** Simple non-cryptographic hash for display/visual use only (e.g. short IDs). Do not use for verification or security. */
 export const generateHash = (content: string): string => {
   let hash = 0;
   for (let i = 0; i < content.length; i++) {

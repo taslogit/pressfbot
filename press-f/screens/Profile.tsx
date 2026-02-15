@@ -381,11 +381,11 @@ const Profile = () => {
                         
                         <div className="grid grid-cols-2 gap-2 mb-6">
                             <div className="bg-white/5 p-2 rounded">
-                                <p className="text-[10px] text-muted">REP</p>
+                                <p className="text-caption text-muted">REP</p>
                                 <p className="font-bold text-white">{profile.reputation}</p>
                             </div>
                             <div className="bg-white/5 p-2 rounded">
-                                <p className="text-[10px] text-muted">KARMA</p>
+                                <p className="text-caption text-muted">KARMA</p>
                                 <p className="font-bold text-white">{profile.karma > 50 ? 'SAINT' : 'MENACE'}</p>
                             </div>
                         </div>
@@ -468,7 +468,7 @@ const Profile = () => {
                                 </svg>
                               </div>
                             )}
-                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[8px] font-bold px-1 py-0.5 text-center">
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-caption font-bold px-1 py-0.5 text-center">
                               {avatar.id === DEFAULT_AVATAR_ID
                                 ? (t('avatar_label_pressf') || 'Default')
                                 : (() => {
@@ -546,8 +546,8 @@ const Profile = () => {
                       }`}
                     >
                       <div className={`w-12 h-12 rounded-full bg-black/60 ${AVATAR_FRAME_STYLES[frameId] || ''}`} />
-                      <span className="text-[10px] font-bold uppercase">{t(`profile_frame_${frameId}`) || frameId}</span>
-                      {!owned && <span className="text-[9px] text-muted">{t('profile_frame_buy_store') || 'In Store'}</span>}
+                      <span className="text-caption font-bold uppercase">{t(`profile_frame_${frameId}`) || frameId}</span>
+                      {!owned && <span className="text-caption text-muted">{t('profile_frame_buy_store') || 'In Store'}</span>}
                     </motion.button>
                   );
                 })}
@@ -596,13 +596,13 @@ const Profile = () => {
               {t('profile_notifications_log')}
             </div>
             <div className="flex items-center gap-2">
-              <span className={`text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border ${
+              <span className={`text-caption uppercase tracking-widest px-2 py-0.5 rounded-full border ${
                 unreadCount > 0 ? 'border-accent-cyan/40 text-accent-cyan' : 'border-border text-muted'
               }`}>
                 {unreadCount > 0 ? t('notifications_has_new') : t('notifications_no_new')}
               </span>
               {unreadCount > 0 && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full border border-accent-cyan/40 text-accent-cyan">
+                <span className="text-caption px-2 py-0.5 rounded-full border border-accent-cyan/40 text-accent-cyan">
                   {unreadCount}
                 </span>
               )}
@@ -621,7 +621,7 @@ const Profile = () => {
                   <button
                     onClick={markAllNotificationsRead}
                     disabled={unreadCount === 0}
-                    className={`text-[10px] uppercase tracking-widest px-2 py-1 rounded-lg border ${
+                    className={`text-caption uppercase tracking-widest px-2 py-1 rounded-lg border ${
                       unreadCount === 0
                         ? 'border-border text-muted cursor-not-allowed'
                         : 'border-accent-cyan/40 text-accent-cyan'
@@ -645,8 +645,8 @@ const Profile = () => {
                         }`}
                       >
                         <div className="text-sm font-bold text-primary">{e.title || e.event_type}</div>
-                        <div className="text-[10px] text-muted">{e.message}</div>
-                        <div className="text-[10px] text-muted/60">{e.created_at}</div>
+                        <div className="text-caption text-muted">{e.message}</div>
+                        <div className="text-caption text-muted/60">{e.created_at}</div>
                       </button>
                     ))}
                   </div>
@@ -667,8 +667,8 @@ const Profile = () => {
                   <div className="text-sm font-bold text-primary">
                     {item.type === 'duel_win' ? t('share_duel_win') : item.type === 'letter_unlock' ? t('share_letter') : t('share_pulse')}
                   </div>
-                  {item.title && <div className="text-[10px] text-muted">{item.title}</div>}
-                  {item.opponent && <div className="text-[10px] text-muted">vs {item.opponent}</div>}
+                  {item.title && <div className="text-caption text-muted">{item.title}</div>}
+                  {item.opponent && <div className="text-caption text-muted">vs {item.opponent}</div>}
                 </div>
               ))}
             </div>
@@ -722,7 +722,7 @@ const Profile = () => {
                     initial={showLevelUpAnimation ? { scale: 0, rotate: -180 } : { scale: 1 }}
                     animate={{ scale: 1, rotate: 0 }}
                     transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                    className={`bg-purple-500/20 text-purple-400 text-[10px] font-black uppercase px-2 py-0.5 rounded border border-purple-500/50 inline-block ${
+                    className={`bg-purple-500/20 text-purple-400 text-caption font-black uppercase px-2 py-0.5 rounded border border-purple-500/50 inline-block ${
                       showLevelUpAnimation ? 'shadow-[0_0_30px_rgba(168,85,247,0.8)]' : ''
                     }`}
                   >
@@ -732,8 +732,8 @@ const Profile = () => {
                   {/* XP Progress Bar */}
                   <div className="w-full max-w-xs mx-auto">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-[9px] text-muted uppercase tracking-wider">XP</span>
-                      <span className="text-[9px] text-muted font-bold">
+                      <span className="text-caption text-muted uppercase tracking-wider">XP</span>
+                      <span className="text-caption text-muted font-bold">
                         {currentXP} / {xpForLevel(currentLevel + 1)}
                       </span>
                     </div>
@@ -746,7 +746,7 @@ const Profile = () => {
                         className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-purple-500 to-accent-cyan h-full shadow-[0_0_10px_rgba(168,85,247,0.8)]"
                       />
                     </div>
-                    <div className="text-[8px] text-muted mt-1 text-center">
+                    <div className="text-caption text-muted mt-1 text-center">
                       {t('profile_xp_to_next', { xp: levelProgress.next - levelProgress.current })}
                     </div>
                   </div>
@@ -772,7 +772,7 @@ const Profile = () => {
                      />
                      <button 
                        onClick={handleSave}
-                       className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-purple-500 text-white px-4 py-1 rounded-full text-[10px] font-bold shadow-lg flex items-center gap-1 hover:bg-purple-600 transition-colors"
+                       className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-purple-500 text-white px-4 py-1 rounded-full text-caption font-bold shadow-lg flex items-center gap-1 hover:bg-purple-600 transition-colors"
                      >
                        <Save size={10} /> {t('profile_save')}
                      </button>
@@ -783,7 +783,7 @@ const Profile = () => {
                      className="bg-input/30 border border-transparent hover:border-border rounded-xl p-3 text-center cursor-pointer group/bio transition-all"
                    >
                       <p className="text-sm italic opacity-80 leading-relaxed">"{profile.bio}"</p>
-                      <span className="text-[9px] text-muted opacity-0 group-hover/bio:opacity-100 transition-opacity absolute bottom-1 right-2 flex items-center gap-1">
+                      <span className="text-caption text-muted opacity-0 group-hover/bio:opacity-100 transition-opacity absolute bottom-1 right-2 flex items-center gap-1">
                         <Edit2 size={8} /> {t('profile_edit')}
                       </span>
                    </div>
@@ -819,7 +819,7 @@ const Profile = () => {
                         >
                           {isFuneralPlaying ? <Pause size={16} /> : <Music size={16} />}
                         </button>
-                        <p className="text-[10px] text-muted uppercase tracking-wider">
+                        <p className="text-caption text-muted uppercase tracking-wider">
                           {track?.name || funeralTrackId}
                         </p>
                         <audio
@@ -871,7 +871,7 @@ const Profile = () => {
                {/* Karma Bar */}
                <div className="bg-card/50 border border-border rounded-xl p-4 shadow-lg">
                  <div className="flex justify-between items-end mb-2">
-                   <span className="text-[10px] uppercase font-bold text-muted">{t('karma_label')}</span>
+                   <span className="text-caption uppercase font-bold text-muted">{t('karma_label')}</span>
                    <span className={`text-xl font-black ${profile.karma > 50 ? 'text-accent-lime' : 'text-red-500'}`}>{profile.karma}</span>
                  </div>
                  <div className="h-4 bg-black/50 rounded-full overflow-hidden relative">
@@ -890,22 +890,22 @@ const Profile = () => {
                  <div className="bg-card/50 border border-border rounded-xl p-4 flex flex-col items-center justify-center shadow-lg">
                     <Shield size={20} className="text-accent-cyan mb-2" />
                     <span className="text-2xl font-black">{profile.reputation}</span>
-                    <span className="text-[9px] text-muted uppercase font-bold">{t('profile_reputation')}</span>
+                    <span className="text-caption text-muted uppercase font-bold">{t('profile_reputation')}</span>
                  </div>
                  <div className="bg-card/50 border border-border rounded-xl p-4 flex flex-col items-center justify-center shadow-lg">
                     <Target size={20} className="text-orange-500 mb-2" />
                     <span className="text-2xl font-black">{profile.stats?.beefsWon || 0}</span>
-                    <span className="text-[9px] text-muted uppercase font-bold">{t('stat_beefs')}</span>
+                    <span className="text-caption text-muted uppercase font-bold">{t('stat_beefs')}</span>
                  </div>
                  <div className="bg-card/50 border border-border rounded-xl p-4 flex flex-col items-center justify-center shadow-lg">
                     <Sparkles size={20} className="text-accent-pink mb-2" />
                     <span className="text-2xl font-black">{profile.stats?.leaksDropped || 0}</span>
-                    <span className="text-[9px] text-muted uppercase font-bold">{t('stat_leaks')}</span>
+                    <span className="text-caption text-muted uppercase font-bold">{t('stat_leaks')}</span>
                  </div>
                  <div className="bg-card/50 border border-border rounded-xl p-4 flex flex-col items-center justify-center shadow-lg">
                     <Activity size={20} className="text-accent-lime mb-2" />
                     <span className="text-2xl font-black">{profile.stats?.daysAlive || 0}</span>
-                    <span className="text-[9px] text-muted uppercase font-bold">{t('stat_days')}</span>
+                    <span className="text-caption text-muted uppercase font-bold">{t('stat_days')}</span>
                  </div>
                </div>
 
@@ -967,7 +967,7 @@ const Profile = () => {
                              <h3 className={`font-black text-sm uppercase tracking-wider ${perk.isActive ? 'text-white' : 'text-muted'}`}>
                                {t(perk.key as any)}
                              </h3>
-                             <p className="text-[10px] text-muted mt-1 max-w-[200px]">
+                             <p className="text-caption text-muted mt-1 max-w-[200px]">
                                {t((perk.key + '_desc') as any)}
                              </p>
                            </div>
@@ -996,7 +996,7 @@ const Profile = () => {
                    </h3>
                    <button
                      onClick={() => setShowSendGiftModal(true)}
-                     className="text-[10px] uppercase tracking-wider text-accent-pink hover:text-accent-cyan transition-colors"
+                     className="text-caption uppercase tracking-wider text-accent-pink hover:text-accent-cyan transition-colors"
                    >
                      {t('send_gift') || 'Send Gift'}
                    </button>
@@ -1019,13 +1019,13 @@ const Profile = () => {
                          }`}
                        >
                          <span className="text-3xl filter drop-shadow-md">{gift.icon}</span>
-                         <p className="text-[9px] font-bold leading-tight text-center px-1">{gift.name}</p>
+                         <p className="text-caption font-bold leading-tight text-center px-1">{gift.name}</p>
                          {!gift.isClaimed && (
                            <div className="absolute top-1 right-1 w-2 h-2 bg-accent-pink rounded-full animate-pulse" />
                          )}
                          {gift.isClaimed && (
                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                             <span className="text-[8px] text-muted">✓</span>
+                             <span className="text-caption text-muted">✓</span>
                            </div>
                          )}
                        </motion.div>
@@ -1044,7 +1044,7 @@ const Profile = () => {
                      {sentGifts.slice(0, 6).map(gift => (
                        <div key={gift.id} className="aspect-square rounded-xl border flex flex-col items-center justify-center gap-2 relative overflow-hidden bg-card/30 border-border opacity-60">
                          <span className="text-3xl filter drop-shadow-md">{gift.icon}</span>
-                         <p className="text-[9px] font-bold leading-tight text-center px-1">{gift.name}</p>
+                         <p className="text-caption font-bold leading-tight text-center px-1">{gift.name}</p>
                          {gift.isClaimed && (
                            <div className="absolute top-1 right-1 w-2 h-2 bg-accent-lime rounded-full" />
                          )}

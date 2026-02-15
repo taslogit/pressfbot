@@ -189,7 +189,7 @@ const Squads = () => {
                 <div className="flex bg-card/60 backdrop-blur-md rounded-xl p-1 mb-6 border border-border shadow-xl">
                     <button 
                         onClick={() => { playSound('click'); setActiveTab('pact'); }}
-                        className={`flex-1 py-3 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all relative ${
+                        className={`flex-1 py-3 rounded-lg text-caption font-black uppercase tracking-wider transition-all relative ${
                         activeTab === 'pact' ? 'text-blue-500 bg-white/5 shadow-[0_0_15px_rgba(0,0,0,0.5)]' : 'text-muted hover:text-primary'
                         }`}
                     >
@@ -197,7 +197,7 @@ const Squads = () => {
                     </button>
                     <button 
                         onClick={() => { playSound('click'); setActiveTab('leaderboard'); }}
-                        className={`flex-1 py-3 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all relative ${
+                        className={`flex-1 py-3 rounded-lg text-caption font-black uppercase tracking-wider transition-all relative ${
                         activeTab === 'leaderboard' ? 'text-accent-gold bg-white/5 shadow-[0_0_15px_rgba(0,0,0,0.5)]' : 'text-muted hover:text-primary'
                         }`}
                     >
@@ -248,7 +248,7 @@ const Squads = () => {
                                     
                                     <div className="p-5 relative z-10">
                                         <div className="flex justify-between items-start mb-1">
-                                            <span className="text-[9px] text-blue-400 font-mono uppercase tracking-widest border border-blue-500/30 px-1.5 py-0.5 rounded">
+                                            <span className="text-caption text-blue-400 font-mono uppercase tracking-widest border border-blue-500/30 px-1.5 py-0.5 rounded">
                                                 UNIT: {squad.id.slice(0,6).toUpperCase()}
                                             </span>
                                             <div className="flex gap-2">
@@ -268,7 +268,7 @@ const Squads = () => {
                                         {/* Integrity Monitor */}
                                         <div className="bg-black/40 rounded-xl p-3 border border-blue-500/20">
                                             <div className="flex justify-between items-end mb-2">
-                                                <span className="text-[10px] uppercase font-bold text-muted">{t('squad_health')}</span>
+                                                <span className="text-caption uppercase font-bold text-muted">{t('squad_health')}</span>
                                                 <span className={`text-xl font-mono font-bold ${squad.pactHealth > 50 ? 'text-blue-400' : 'text-red-500'}`}>
                                                     {squad.pactHealth}%
                                                 </span>
@@ -295,7 +295,7 @@ const Squads = () => {
                                             </h4>
                                             <button 
                                                 onClick={() => setIsPactLocked(!isPactLocked)} 
-                                                className="text-[10px] text-red-400 underline decoration-dotted hover:text-red-300"
+                                                className="text-caption text-red-400 underline decoration-dotted hover:text-red-300"
                                             >
                                                 {isPactLocked ? t('loot_reveal') : 'HIDE'}
                                             </button>
@@ -303,7 +303,7 @@ const Squads = () => {
                                          
                                          {isPactLocked ? (
                                              <div onClick={() => setIsPactLocked(false)} className="h-12 bg-black/40 rounded border border-red-500/20 flex items-center justify-center cursor-pointer hover:bg-black/60 transition-colors">
-                                                 <span className="text-[10px] font-mono text-red-500/50 animate-pulse">
+                                                 <span className="text-caption font-mono text-red-500/50 animate-pulse">
                                                      ENCRYPTED :: TAP TO ACCESS
                                                  </span>
                                              </div>
@@ -316,7 +316,7 @@ const Squads = () => {
                                                     placeholder={t('pact_payload_ph')}
                                                     className="w-full bg-black/40 border border-red-900/50 rounded-lg p-3 text-xs text-red-200 placeholder:text-red-500/30 outline-none focus:border-red-500 transition-colors font-mono min-h-[80px]"
                                                   />
-                                                  <div className="absolute bottom-2 right-2 text-[8px] text-red-500 font-mono opacity-50">
+                                                  <div className="absolute bottom-2 right-2 text-caption text-red-500 font-mono opacity-50">
                                                       AUTO-SAVE ENABLED
                                                   </div>
                                              </div>
@@ -326,7 +326,7 @@ const Squads = () => {
 
                                 {/* Members Grid */}
                                 <div className="grid grid-cols-1 gap-2">
-                                    <h4 className="text-[10px] font-bold text-muted uppercase tracking-wider ml-1 mt-2">
+                                    <h4 className="text-caption font-bold text-muted uppercase tracking-wider ml-1 mt-2">
                                         OPERATORS ({squad.members.length})
                                     </h4>
                                     
@@ -351,7 +351,7 @@ const Squads = () => {
                                                     </div>
                                                     <div>
                                                         <div className="font-bold text-sm text-white">{member.name}</div>
-                                                        <div className={`text-[9px] font-black uppercase ${getStatusColor(member.status)}`}>
+                                                        <div className={`text-caption font-black uppercase ${getStatusColor(member.status)}`}>
                                                             {t(`member_status_${member.status}` as any)}
                                                         </div>
                                                     </div>
@@ -376,7 +376,7 @@ const Squads = () => {
                                         className="bg-blue-500/5 border border-blue-500/20 border-dashed rounded-xl p-3 flex items-center justify-center gap-2 hover:bg-blue-500/10 transition-colors group"
                                     >
                                         <Plus size={16} className="text-blue-400 group-hover:scale-110 transition-transform" />
-                                        <span className="text-[10px] font-bold text-blue-400 uppercase">{t('add_member')}</span>
+                                        <span className="text-caption font-bold text-blue-400 uppercase">{t('add_member')}</span>
                                     </button>
                                 </div>
                             </div>
@@ -395,12 +395,12 @@ const Squads = () => {
                                  <div className="h-8 w-px bg-accent-gold/30" />
                                  <div>
                                      <div className="font-bold text-white text-sm">YOU</div>
-                                     <div className="text-[9px] text-accent-gold/70 font-mono uppercase tracking-wider">Top 15%</div>
+                                     <div className="text-caption text-accent-gold/70 font-mono uppercase tracking-wider">Top 15%</div>
                                  </div>
                              </div>
                              <div className="text-right relative z-10">
                                  <div className="font-black text-white text-lg">15 {t('days_left')}</div>
-                                 <div className="text-[9px] text-muted uppercase">{t('stat_days')}</div>
+                                 <div className="text-caption text-muted uppercase">{t('stat_days')}</div>
                              </div>
                          </div>
 
@@ -421,7 +421,7 @@ const Squads = () => {
                                              {entry.name}
                                              {entry.status === 'dead' && <Skull size={12} className="text-red-500" />}
                                          </div>
-                                         <div className="flex items-center gap-1 text-[9px] text-muted">
+                                         <div className="flex items-center gap-1 text-caption text-muted">
                                              {entry.trend === 'up' && <TrendingUp size={10} className="text-green-500" />}
                                              {entry.trend === 'down' && <TrendingDown size={10} className="text-red-500" />}
                                              {entry.trend === 'same' && <Minus size={10} />}
@@ -431,7 +431,7 @@ const Squads = () => {
                                  </div>
                                  <div className="text-right">
                                      <span className="font-mono font-bold text-accent-cyan">{entry.score}</span>
-                                     <span className="text-[8px] block text-muted uppercase">SCORE</span>
+                                     <span className="text-caption block text-muted uppercase">SCORE</span>
                                  </div>
                              </div>
                          ))}

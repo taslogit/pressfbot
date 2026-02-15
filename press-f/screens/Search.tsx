@@ -80,7 +80,7 @@ const SearchScreen = () => {
                   className="w-full text-left bg-black/40 border border-border rounded-xl p-3"
                 >
                   <div className="text-sm font-bold text-primary">{l.title}</div>
-                  <div className="text-[10px] text-muted">{l.status}</div>
+                  <div className="text-caption text-muted">{l.status}</div>
                 </button>
               ))}
             </div>
@@ -102,7 +102,7 @@ const SearchScreen = () => {
                   className="w-full text-left bg-black/40 border border-border rounded-xl p-3"
                 >
                   <div className="text-sm font-bold text-primary">{d.title}</div>
-                  <div className="text-[10px] text-muted">{d.status}</div>
+                  <div className="text-caption text-muted">{d.status}</div>
                 </button>
               ))}
             </div>

@@ -143,7 +143,7 @@ const Tournaments: React.FC = () => {
                   </div>
                 </div>
                 {tournament.isRegistered && (
-                  <div className="flex items-center gap-1 text-[10px] text-accent-lime">
+                  <div className="flex items-center gap-1 text-caption text-accent-lime">
                     <CheckCircle size={12} />
                     {t('registered') || 'Registered'}
                   </div>
@@ -151,7 +151,7 @@ const Tournaments: React.FC = () => {
               </div>
 
               {/* Info */}
-              <div className="grid grid-cols-2 gap-2 text-[10px]">
+              <div className="grid grid-cols-2 gap-2 text-caption">
                 <div className="flex items-center gap-1 text-muted">
                   <Users size={12} />
                   {tournament.participantCount || 0}/{tournament.maxParticipants}
@@ -170,7 +170,7 @@ const Tournaments: React.FC = () => {
 
               {/* Status & Actions */}
               <div className="flex items-center justify-between pt-2 border-t border-border/30">
-                <div className="flex items-center gap-1 text-[10px] text-muted">
+                <div className="flex items-center gap-1 text-caption text-muted">
                   {tournament.status === 'registration' && (
                     <>
                       <Clock size={12} />

@@ -135,7 +135,7 @@ const ReferralSection: React.FC<Props> = ({ className = '' }) => {
                   {t('next_milestone') || 'Следующий milestone'}
                 </div>
               </div>
-              <div className="text-[10px] text-muted mb-2">
+              <div className="text-caption text-muted mb-2">
                 {referralInfo.referralsCount} / {referralInfo.nextMilestone.count} {t('referrals') || 'рефералов'}
               </div>
               <div className="h-1.5 bg-black/50 rounded-full overflow-hidden mb-2">
@@ -146,7 +146,7 @@ const ReferralSection: React.FC<Props> = ({ className = '' }) => {
                   className="h-full bg-gradient-to-r from-purple-500 to-accent-cyan"
                 />
               </div>
-              <div className="flex items-center gap-2 text-[10px]">
+              <div className="flex items-center gap-2 text-caption">
                 <Gift size={12} className="text-accent-gold" />
                 <span className="text-muted">
                   {t('reward') || 'Награда'}: +{referralInfo.nextMilestone.reward} REP
@@ -167,7 +167,7 @@ const ReferralSection: React.FC<Props> = ({ className = '' }) => {
               </div>
               <div className="space-y-1 max-h-32 overflow-y-auto">
                 {referralInfo.referrals.slice(0, 5).map((ref, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-[10px] bg-black/20 px-2 py-1 rounded">
+                  <div key={idx} className="flex items-center justify-between text-caption bg-black/20 px-2 py-1 rounded">
                     <span>User #{ref.userId.toString().slice(-4)}</span>
                     <span className="text-muted/60">
                       {new Date(ref.joinedAt).toLocaleDateString()}

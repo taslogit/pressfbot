@@ -156,12 +156,12 @@ const SendGiftModal: React.FC<Props> = ({ isOpen, onClose, recipientId, recipien
                       <span className="text-2xl">{gift.icon}</span>
                       <div className="flex-1">
                         <div className="text-xs font-bold text-white">{gift.name}</div>
-                        <div className="text-[10px] text-accent-gold font-black">
+                        <div className="text-caption text-accent-gold font-black">
                           {gift.cost} REP
                         </div>
                       </div>
                     </div>
-                    <div className="text-[9px] text-muted mt-1">
+                    <div className="text-caption text-muted mt-1">
                       {gift.effect.description}
                     </div>
                   </motion.button>

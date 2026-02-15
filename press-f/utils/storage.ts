@@ -127,7 +127,6 @@ export const storage = {
     if (existingIndex > -1) letters[existingIndex] = letter;
     else letters.push(letter);
     safeSave(KEYS.LETTERS, letters);
-    storage.checkQuestTrigger('create_letter');
   },
   // Async version (API with fallback to localStorage)
   saveLetterAsync: async (letter: Letter): Promise<{ xp?: number } | void> => {
@@ -191,7 +190,6 @@ export const storage = {
       const duels = storage.getDuels();
       duels.push(duel);
       safeSave(KEYS.DUELS, duels);
-      storage.checkQuestTrigger('create_duel');
       return { xp: result.data.xp };
     }
     storage.saveDuel(duel);
@@ -294,7 +292,6 @@ export const storage = {
     const current = storage.getSettings();
     safeSave(KEYS.SETTINGS, { ...current, ...partial });
     if (partial.lastCheckIn) {
-        storage.checkQuestTrigger('check_in');
         storage.updateAchievements('ach_survivor', 1);
     }
   },
@@ -324,7 +321,6 @@ export const storage = {
     safeSave(KEYS.SETTINGS, updated);
     
     if (partial.lastCheckIn) {
-        storage.checkQuestTrigger('check_in');
         storage.updateAchievements('ach_survivor', 1);
     }
   },
@@ -334,7 +330,6 @@ export const storage = {
     const list = storage.getWitnesses();
     list.push(witness);
     safeSave(KEYS.WITNESSES, list);
-    storage.checkQuestTrigger('create_squad'); 
   },
   confirmWitness: (id: string) => {
     const list = storage.getWitnesses().map(w => w.id === id ? { ...w, status: 'confirmed' as const } : w);
@@ -360,7 +355,6 @@ export const storage = {
       };
       
       safeSave(KEYS.SQUAD, newSquad);
-      storage.checkQuestTrigger('create_squad');
       return newSquad;
   },
   updateSquad: (squad: Squad) => {
@@ -446,7 +440,6 @@ export const storage = {
   // Sync version (localStorage only - backward compatible)
   saveUserProfile: (profile: UserProfile) => {
     safeSave(KEYS.PROFILE, profile);
-    storage.checkQuestTrigger('update_profile');
   },
   updateUserProfile: (partial: Partial<UserProfile>) => {
     const current = storage.getUserProfile();
@@ -458,7 +451,6 @@ export const storage = {
     await profileAPI.update(profile);
     // Also save to localStorage
     safeSave(KEYS.PROFILE, profile);
-    storage.checkQuestTrigger('update_profile');
   },
   updateUserProfileAsync: async (partial: Partial<UserProfile>) => {
     // Try API first
@@ -488,8 +480,7 @@ export const storage = {
      }
   },
 
-  // Old quests system removed - use Daily Quests API instead
-  // No-op for backward compatibility (call sites not yet removed)
+  /** No-op: legacy quest trigger (Daily Quests use API). Kept for compatibility. */
   checkQuestTrigger: (_action: string) => {},
 
   isInfoDismissed: (id: string) => {

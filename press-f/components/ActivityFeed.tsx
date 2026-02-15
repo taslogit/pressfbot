@@ -177,7 +177,7 @@ const ActivityFeed: React.FC = () => {
               <div className="text-xs text-white leading-relaxed">
                 {getActivityText(activity)}
               </div>
-              <div className="text-[10px] text-muted mt-1">
+              <div className="text-caption text-muted mt-1">
                 {getTimeAgo(activity.createdAt)}
               </div>
             </div>

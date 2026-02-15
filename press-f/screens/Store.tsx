@@ -179,19 +179,19 @@ const Store = () => {
         <div className="bg-black/40 border border-accent-lime/30 rounded-lg p-3 text-center">
           <Star size={16} className="text-accent-lime mx-auto mb-1" />
           <span className="text-accent-lime font-bold text-sm block">{starsBalance} ⭐</span>
-          <span className="text-[10px] text-muted">Stars</span>
+          <span className="text-caption text-muted">Stars</span>
         </div>
         <div className="bg-black/40 border border-accent-pink/30 rounded-lg p-3 text-center">
           <Zap size={16} className="text-accent-pink mx-auto mb-1" />
           <span className="text-accent-pink font-bold text-sm block">{userXP}</span>
-          <span className="text-[10px] text-muted">XP</span>
+          <span className="text-caption text-muted">XP</span>
         </div>
         <div className="bg-black/40 border border-accent-cyan/30 rounded-lg p-3 text-center">
           <Wallet size={16} className={walletConnected ? 'text-accent-cyan' : 'text-muted'} />
           <span className={`font-bold text-sm block ${walletConnected ? 'text-accent-cyan' : 'text-muted'}`}>
             {walletConnected ? '✓' : '—'}
           </span>
-          <span className="text-[10px] text-muted">{t('store_wallet')}</span>
+          <span className="text-caption text-muted">{t('store_wallet')}</span>
         </div>
       </div>
 
@@ -346,10 +346,10 @@ const Store = () => {
                           <span className="font-bold text-primary block flex items-center gap-2">
                             {getItemLabel(item.id, item.name)}
                             {ownedItemIds.has(item.id) && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent-lime/20 text-accent-lime">✓</span>
+                              <span className="text-caption px-1.5 py-0.5 rounded bg-accent-lime/20 text-accent-lime">✓</span>
                             )}
                             {isFlash && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/30 text-orange-400">−50%</span>
+                              <span className="text-caption px-1.5 py-0.5 rounded bg-orange-500/30 text-orange-400">−50%</span>
                             )}
                           </span>
                           <span className="text-xs text-muted line-clamp-2">{(() => { const tk = t(`store_item_${item.id}_desc` as any); return tk !== `store_item_${item.id}_desc` ? tk : item.description; })()}</span>
@@ -389,7 +389,7 @@ const Store = () => {
                     <span className="font-bold text-primary block">{t(titleKey)}</span>
                     <p className="text-xs text-muted mt-1">{t(descKey)}</p>
                     <div className="flex items-center gap-2 mt-2">
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-accent-cyan/20 text-accent-cyan">TON</span>
+                      <span className="text-caption px-2 py-0.5 rounded bg-accent-cyan/20 text-accent-cyan">TON</span>
                       <span className="text-xs text-muted">{t('store_from')} {item.priceTon} TON</span>
                     </div>
                   </div>
@@ -493,7 +493,7 @@ const Store = () => {
                           <>
                             {cost}{suffix}
                             {(isFlash || isFirst) && (
-                              <span className="text-[10px] ml-1 text-accent-lime">
+                              <span className="text-caption ml-1 text-accent-lime">
                                 ({isFlash ? '−50%' : '−20%'})
                               </span>
                             )}
