@@ -97,9 +97,9 @@ export const storage = {
   // Sync version (localStorage only - backward compatible)
   getLetters: (): Letter[] => safeParse(KEYS.LETTERS, []),
   // Async version (API with fallback to localStorage)
-  getLettersAsync: async (params?: Record<string, string | number | boolean | undefined>): Promise<Letter[]> => {
+  getLettersAsync: async (params?: Record<string, string | number | boolean | undefined>, options?: RequestInit): Promise<Letter[]> => {
     // Try API first
-    const result = await lettersAPI.getAll(params);
+    const result = await lettersAPI.getAll(params, options);
     if (result.ok && result.data?.letters) {
       const apiLetters = result.data.letters.map((l: any) => ({
         id: l.id,
@@ -164,8 +164,8 @@ export const storage = {
     duels.push(duel);
     safeSave(KEYS.DUELS, duels);
   },
-  getDuelsAsync: async (params?: Record<string, string | number | boolean | undefined>): Promise<Duel[]> => {
-    const result = await duelsAPI.getAll(params);
+  getDuelsAsync: async (params?: Record<string, string | number | boolean | undefined>, options?: RequestInit): Promise<Duel[]> => {
+    const result = await duelsAPI.getAll(params, options);
     if (result.ok && result.data?.duels) {
       const duels = result.data.duels.map((d: any) => ({
         id: d.id,

@@ -16,6 +16,7 @@ import { playSound } from '../utils/sound';
 import XPNotification from '../components/XPNotification';
 import { calculateLevel } from '../utils/levelSystem';
 import { duelsAPI } from '../utils/api';
+import { useApiAbort } from '../hooks/useApiAbort';
 
 type DuelTab = 'mine' | 'hype' | 'shame';
 
@@ -33,6 +34,7 @@ const readDuelsFilters = () => {
 const Duels = () => {
   const saved = readDuelsFilters();
   const navigate = useNavigate();
+  const getSignal = useApiAbort();
   const [duels, setDuels] = React.useState<Duel[]>([]);
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<DuelTab>(saved?.activeTab || 'mine');
@@ -98,9 +100,10 @@ const Duels = () => {
       if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current);
       skeletonTimerRef.current = setTimeout(() => setShowSkeleton(true), 300);
       
+      const opts = { signal: getSignal() };
       // Use hype API for hype tab, regular API for others
       const loadPromise = activeTab === 'hype'
-        ? duelsAPI.getHype(buildQueryParams()).then(result => {
+        ? duelsAPI.getHype(buildQueryParams(), opts).then(result => {
             if (result.ok && result.data?.duels) {
               return result.data.duels.map((d: any) => ({
                 id: d.id,
@@ -119,7 +122,7 @@ const Duels = () => {
             }
             return [];
           })
-        : storage.getDuelsAsync(buildQueryParams());
+        : storage.getDuelsAsync(buildQueryParams(), opts);
       
       loadPromise.then((apiDuels) => {
         if (isMounted) {

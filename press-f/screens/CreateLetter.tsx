@@ -137,23 +137,23 @@ const CreateLetter = () => {
         // Start Security Protocol
         setEncryptionStep(1); // Encrypting...
         
-        // 1. Simulate Encryption
-        const mockKey = "0x" + Math.random().toString(16).substr(2);
-        await encryptPayload(content, mockKey);
+        // 1. Real AES-256-GCM encryption (content never sent as plaintext)
+        const letterId = crypto.randomUUID?.() || `letter_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        const encryptedContent = await encryptPayload(content, letterId);
         
-        // 2. Simulate Key Splitting (Shamir)
+        // 2. Key splitting animation (Shamir UI only)
         setEncryptionStep(2);
-        const shards = splitKey(mockKey, 3, 2);
-        await new Promise(r => setTimeout(r, 1500)); // Let animation play
+        splitKey(letterId.slice(0, 16), 3, 2);
+        await new Promise(r => setTimeout(r, 1500));
 
-        // 3. Upload to IPFS
+        // 3. IPFS upload animation (stub)
         setEncryptionStep(3);
-        await uploadToIPFS(content);
+        await uploadToIPFS(encryptedContent);
         
         // 4. Finalize
         setTimeout(() => {
-            setIsSending(true); // Trigger Envelope Animation
-            performSave();
+            setIsSending(true);
+            performSave(encryptedContent, letterId);
         }, 1000);
     } catch (e) {
         console.error("Save failed:", e);
@@ -162,7 +162,7 @@ const CreateLetter = () => {
     }
   };
 
-  const performSave = async () => {
+  const performSave = async (encryptedContent: string, letterId: string) => {
     const mockAttachmentUrls = attachments.map(att => {
       if (att.type === 'image') return `https://source.unsplash.com/random/800x600?sig=${att.id}`;
       if (att.type === 'video') return `https://www.w3schools.com/html/mov_bbb.mp4`; 
@@ -171,9 +171,9 @@ const CreateLetter = () => {
     });
 
     const letter: Letter = {
-      id: Date.now().toString(),
+      id: letterId,
       title: title || t('new_letter'),
-      content,
+      content: encryptedContent,
       recipients: recipients.split(',').map(r => r.trim()).filter(r => r),
       unlockDate: unlockDate || undefined,
       status: 'scheduled',

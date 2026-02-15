@@ -15,6 +15,7 @@ import confetti from 'canvas-confetti';
 import ReferralSection from '../components/ReferralSection';
 import SendGiftModal from '../components/SendGiftModal';
 import { giftsAPI } from '../utils/api';
+import { useApiAbort } from '../hooks/useApiAbort';
 
 // Default avatar is pressf from server (free for everyone)
 const DEFAULT_AVATAR_ID = 'pressf';
@@ -41,6 +42,7 @@ const getIcon = (name: string, props: any) => {
 const Profile = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const getSignal = useApiAbort();
   const [profile, setProfile] = useState(() => storage.getUserProfile());
   const [isEditing, setIsEditing] = useState(false);
   const [tempBio, setTempBio] = useState(() => storage.getUserProfile().bio);
@@ -75,7 +77,8 @@ const Profile = () => {
 
   useEffect(() => {
     let isMounted = true;
-    profileAPI.get().then((res) => {
+    const opts = { signal: getSignal() };
+    profileAPI.get(opts).then((res) => {
       if (!isMounted || !res.ok) return;
       if (res.data?.profile) {
         const apiProfile = res.data.profile;
@@ -94,7 +97,7 @@ const Profile = () => {
     loadGifts();
 
     // Load streak leaderboard (stats tab)
-    profileAPI.getStreakLeaderboard(10).then((res) => {
+    profileAPI.getStreakLeaderboard(10, 0, opts).then((res) => {
       if (isMounted && res.ok && res.data?.leaderboard) {
         setStreakLeaderboard(res.data.leaderboard);
       }
@@ -104,7 +107,7 @@ const Profile = () => {
     let idleId: number | null = null;
     const loadNotifications = () => {
       setNotificationsLoading(true);
-      notificationsAPI.list().then((result) => {
+      notificationsAPI.list(opts).then((result) => {
         if (!isMounted) return;
         if (result.ok && result.data?.events) {
           setNotificationEvents(result.data.events);

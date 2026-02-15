@@ -50,8 +50,18 @@ const errorHandler = (err, req, res, next) => {
     );
   }
 
-  // Handle database errors
-  if (err.code && err.code.startsWith('23')) { // PostgreSQL constraint violations
+  // Handle database errors (PostgreSQL constraint violations)
+  if (err.code && err.code.startsWith('23')) {
+    if (err.code === '23505') {
+      logger.warn('Unique constraint violation', errorDetails);
+      return sendError(
+        res,
+        409,
+        'DUPLICATE_ENTRY',
+        'Resource already exists',
+        process.env.NODE_ENV === 'production' ? null : { field: err.detail }
+      );
+    }
     logger.error('Database constraint error', errorDetails);
     return sendError(
       res,
@@ -59,17 +69,6 @@ const errorHandler = (err, req, res, next) => {
       'DATABASE_CONSTRAINT_ERROR',
       'Database constraint violation',
       process.env.NODE_ENV === 'production' ? null : { code: err.code }
-    );
-  }
-
-  if (err.code === '23505') { // Unique violation
-    logger.warn('Unique constraint violation', errorDetails);
-    return sendError(
-      res,
-      409,
-      'DUPLICATE_ENTRY',
-      'Resource already exists',
-      process.env.NODE_ENV === 'production' ? null : { field: err.detail }
     );
   }
 

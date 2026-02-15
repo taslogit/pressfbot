@@ -9,6 +9,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
 import { tg } from '../utils/telegram';
+import { useApiAbort } from '../hooks/useApiAbort';
+import { isEncrypted, decryptPayload } from '../utils/security';
 
 type Tab = 'all' | 'draft' | 'scheduled' | 'sent';
 
@@ -30,8 +32,21 @@ const getTypeIcon = (type?: string) => {
   }
 };
 
-// Decryption Effect Component
-const DecryptedText = ({ text }: { text: string }) => {
+// Wrapper: decrypts if AES_GCM, then shows reveal animation
+const DecryptedLetterContent = ({ content, letterId }: { content?: string | null; letterId: string }) => {
+  const [plain, setPlain] = useState<string>('');
+  useEffect(() => {
+    if (!content) setPlain('');
+    else if (isEncrypted(content)) {
+      decryptPayload(content, letterId).then(setPlain);
+    } else setPlain(content);
+  }, [content, letterId]);
+  return <DecryptedText text={plain} />;
+};
+
+// Decryption Effect Component (reveal animation)
+const DecryptedText = ({ text }: { text?: string | null }) => {
+    const safeText = text ?? '';
     const [display, setDisplay] = useState('');
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*";
 
@@ -40,12 +55,12 @@ const DecryptedText = ({ text }: { text: string }) => {
         let intervalId: ReturnType<typeof setInterval> | null = null;
         
         intervalId = setInterval(() => {
-            setDisplay(text.split('').map((char, index) => {
+            setDisplay(safeText.split('').map((char, index) => {
                 if (index < iteration) return char;
                 return chars[Math.floor(Math.random() * chars.length)];
             }).join(''));
 
-            if (iteration >= text.length && intervalId) {
+            if (iteration >= safeText.length && intervalId) {
               clearInterval(intervalId);
               intervalId = null;
             }
@@ -55,7 +70,7 @@ const DecryptedText = ({ text }: { text: string }) => {
         return () => {
           if (intervalId) clearInterval(intervalId);
         };
-    }, [text]);
+    }, [safeText]);
 
     return <span>{display}</span>;
 };
@@ -112,7 +127,7 @@ const LetterCard = React.memo(
           </div>
 
           <p className="text-xs text-muted line-clamp-2 opacity-70 font-mono mb-3 border-l-2 border-border/30 pl-2">
-            {letter.content ? letter.content.substring(0, 60) + "..." : "Encrypted Content..."}
+            {letter.content && !isEncrypted(letter.content) ? letter.content.substring(0, 60) + "..." : "Encrypted Content..."}
           </p>
 
           <div className="flex justify-between items-center text-[10px] text-muted font-mono uppercase">
@@ -144,6 +159,7 @@ const Letters = () => {
   
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const getSignal = useApiAbort();
 
   useEffect(() => {
     setLetters(storage.getLetters());
@@ -162,7 +178,7 @@ const Letters = () => {
         q: searchQuery.trim() || undefined,
         isFavorite: favoriteFilter === 'favorites' ? true : undefined
       };
-      storage.getLettersAsync(params).then((apiLetters) => {
+      storage.getLettersAsync(params, { signal: getSignal() }).then((apiLetters) => {
         if (isMounted) setLetters(apiLetters);
       }).finally(() => {
         if (isMounted) setLoading(false);
@@ -184,7 +200,11 @@ const Letters = () => {
     storage.updateLetterAsync(letter.id, { isFavorite: updated.isFavorite });
   }, []);
 
-  const exportLetterMarkdown = (letter: Letter) => {
+  const exportLetterMarkdown = async (letter: Letter) => {
+    let contentToExport = letter.content || '';
+    if (isEncrypted(contentToExport)) {
+      contentToExport = await decryptPayload(contentToExport, letter.id);
+    }
     const recipients = letter.recipients.length ? letter.recipients.join(', ') : 'N/A';
     const unlock = letter.unlockDate || 'N/A';
     const body = [
@@ -197,7 +217,7 @@ const Letters = () => {
       ``,
       `---`,
       ``,
-      `${letter.content || ''}`
+      contentToExport
     ].join('\n');
     const blob = new Blob([body], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -580,7 +600,7 @@ const Letters = () => {
                 <div className="bg-black/40 p-4 rounded-xl border border-accent-lime/20 mb-6 relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-1 bg-accent-lime/50" />
                   <p className="whitespace-pre-wrap text-sm leading-relaxed opacity-90 font-mono text-green-100/80">
-                    <DecryptedText text={selectedLetter.content} />
+                    <DecryptedLetterContent content={selectedLetter.content} letterId={selectedLetter.id} />
                   </p>
                 </div>
 

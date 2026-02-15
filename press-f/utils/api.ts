@@ -159,8 +159,8 @@ export async function verifyInitDataOnServer(initData: string) {
 
 // Letters API
 export const lettersAPI = {
-  getAll: async (params?: QueryParams) => {
-    return apiRequest<{ letters: any[] }>(`/api/letters${toQueryString(params)}`);
+  getAll: async (params?: QueryParams, options?: RequestInit) => {
+    return apiRequest<{ letters: any[] }>(`/api/letters${toQueryString(params)}`, options);
   },
   getHistory: async (id: string) => {
     return apiRequest<{ versions: any[] }>(`/api/letters/${id}/history`);
@@ -195,11 +195,11 @@ export const lettersAPI = {
 
 // Duels API
 export const duelsAPI = {
-  getAll: async (params?: QueryParams) => {
-    return apiRequest<{ duels: any[] }>(`/api/duels${toQueryString(params)}`);
+  getAll: async (params?: QueryParams, options?: RequestInit) => {
+    return apiRequest<{ duels: any[] }>(`/api/duels${toQueryString(params)}`, options);
   },
-  getHype: async (params?: QueryParams) => {
-    return apiRequest<{ duels: any[] }>(`/api/duels/hype${toQueryString(params)}`);
+  getHype: async (params?: QueryParams, options?: RequestInit) => {
+    return apiRequest<{ duels: any[] }>(`/api/duels/hype${toQueryString(params)}`, options);
   },
   getOne: async (id: string) => {
     return apiRequest<{ duel: any }>(`/api/duels/${id}`);
@@ -257,8 +257,8 @@ export const legacyAPI = {
 
 // Profile API
 export const profileAPI = {
-  get: async () => {
-    return apiRequest<{ profile: any; settings: any }>('/api/profile');
+  get: async (options?: RequestInit) => {
+    return apiRequest<{ profile: any; settings: any }>('/api/profile', options);
   },
   update: async (profile: Partial<any>) => {
     return apiRequest('/api/profile', {
@@ -279,9 +279,10 @@ export const profileAPI = {
   getStreak: async () => {
     return apiRequest<{ streak: any }>('/api/profile/streak');
   },
-  getStreakLeaderboard: async (limit = 20, offset = 0) => {
+  getStreakLeaderboard: async (limit = 20, offset = 0, options?: RequestInit) => {
     return apiRequest<{ leaderboard: { rank: number; userId: number; streak: number; avatar: string; title: string }[] }>(
-      `/api/profile/streak-leaderboard?limit=${limit}&offset=${offset}`
+      `/api/profile/streak-leaderboard?limit=${limit}&offset=${offset}`,
+      options
     );
   },
   claimDailyLoginLoot: async () => {
@@ -316,8 +317,8 @@ export const searchAPI = {
 };
 
 export const notificationsAPI = {
-  list: async () => {
-    return apiRequest<{ events: any[] }>('/api/notifications');
+  list: async (options?: RequestInit) => {
+    return apiRequest<{ events: any[] }>('/api/notifications', options);
   },
   markRead: async (ids?: string[]) => {
     return apiRequest('/api/notifications/mark-read', {
@@ -543,8 +544,8 @@ export const tonAPI = {
 
 // ─── Stars / Monetization API ──────────────────────
 export const starsAPI = {
-  getCatalog: async () => {
-    return apiRequest<{ catalog: any[] }>('/api/stars/catalog');
+  getCatalog: async (options?: RequestInit) => {
+    return apiRequest<{ catalog: any[] }>('/api/stars/catalog', options);
   },
   createInvoice: async (itemId: string, recipientId?: string) => {
     return apiRequest<{ invoiceLink: string; itemId: string; stars: number }>('/api/stars/invoice', {
@@ -552,8 +553,8 @@ export const starsAPI = {
       body: JSON.stringify({ itemId, recipientId })
     });
   },
-  getPremiumStatus: async () => {
-    return apiRequest<{ isPremium: boolean; expiresAt: string | null; starsBalance: number }>('/api/stars/premium-status');
+  getPremiumStatus: async (options?: RequestInit) => {
+    return apiRequest<{ isPremium: boolean; expiresAt: string | null; starsBalance: number }>('/api/stars/premium-status', options);
   },
   getPurchases: async () => {
     return apiRequest<{ purchases: any[] }>('/api/stars/purchases');
@@ -562,11 +563,11 @@ export const starsAPI = {
 
 // ─── XP/REP Store API ──────────────────────────────
 export const storeAPI = {
-  getCatalog: async () => {
-    return apiRequest<{ catalog: any[] }>('/api/store/catalog');
+  getCatalog: async (options?: RequestInit) => {
+    return apiRequest<{ catalog: any[] }>('/api/store/catalog', options);
   },
-  getMyItems: async () => {
-    return apiRequest<{ items: any[]; firstPurchaseEligible?: boolean; achievementDiscountPercent?: number; achievementsCount?: number }>('/api/store/my-items');
+  getMyItems: async (options?: RequestInit) => {
+    return apiRequest<{ items: any[]; firstPurchaseEligible?: boolean; achievementDiscountPercent?: number; achievementsCount?: number }>('/api/store/my-items', options);
   },
   buyItem: async (itemId: string) => {
     return apiRequest<{ item: any; remainingXp: number }>('/api/store/buy', {

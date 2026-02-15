@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -6,6 +5,7 @@ import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X, Package, Box }
 import { useTonAddress } from '@tonconnect/ui-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { starsAPI, storeAPI, profileAPI, getStaticUrl } from '../utils/api';
+import { useApiAbort } from '../hooks/useApiAbort';
 import InfoSection from '../components/InfoSection';
 import { playSound } from '../utils/sound';
 import { tg } from '../utils/telegram';
@@ -35,6 +35,7 @@ const Store = () => {
   const navigate = useNavigate();
   const address = useTonAddress();
   const walletConnected = !!address;
+  const getSignal = useApiAbort();
 
   const [tab, setTab] = useState<TabId>('xp');
   const [starsCatalog, setStarsCatalog] = useState<any[]>([]);
@@ -52,9 +53,10 @@ const Store = () => {
   const [mysteryBoxLoading, setMysteryBoxLoading] = useState(false);
 
   const loadData = (silent = false) => {
+    const opts = { signal: getSignal() };
     if (!silent) setLoading(true);
     // Progressive: catalogs first (public, fast) — show vitrine immediately
-    Promise.all([starsAPI.getCatalog(), storeAPI.getCatalog()]).then(([starsRes, xpRes]) => {
+    Promise.all([starsAPI.getCatalog(opts), storeAPI.getCatalog(opts)]).then(([starsRes, xpRes]) => {
       if (starsRes.ok && starsRes.data?.catalog) setStarsCatalog(starsRes.data.catalog);
       if (xpRes.ok) {
         setXpCatalog(xpRes.data?.catalog || []);
@@ -65,9 +67,9 @@ const Store = () => {
 
     // Auth-dependent data in parallel (profile, my-items, premium) — no-block catalog
     Promise.all([
-      starsAPI.getPremiumStatus(),
-      profileAPI.get(),
-      storeAPI.getMyItems()
+      starsAPI.getPremiumStatus(opts),
+      profileAPI.get(opts),
+      storeAPI.getMyItems(opts)
     ]).then(([premRes, profileRes, myRes]) => {
       if (premRes.ok && premRes.data) setPremiumStatus(premRes.data);
       if (profileRes.ok && profileRes.data?.profile) setProfile(profileRes.data.profile);
@@ -224,8 +226,8 @@ const Store = () => {
                     <Gift size={22} className="text-accent-lime" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className="font-bold text-primary block">{item.title}</span>
-                    <span className="text-xs text-muted line-clamp-2">{item.description}</span>
+                    <span className="font-bold text-primary block">{t(`store_stars_${item.id}` as any) || item.title}</span>
+                    <span className="text-xs text-muted line-clamp-2">{t(`store_stars_${item.id}_desc` as any) || item.description}</span>
                   </div>
                   <span className="text-accent-lime font-bold flex-shrink-0">{item.stars} ⭐</span>
                 </motion.button>
@@ -332,7 +334,7 @@ const Store = () => {
                         )}
                         <div className="flex-1 min-w-0">
                           <span className="font-bold text-primary block flex items-center gap-2">
-                            {item.name}
+                            {t(`store_item_${item.id}` as any) || item.name}
                             {ownedItemIds.has(item.id) && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent-lime/20 text-accent-lime">✓</span>
                             )}
@@ -340,7 +342,7 @@ const Store = () => {
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/30 text-orange-400">−50%</span>
                             )}
                           </span>
-                          <span className="text-xs text-muted line-clamp-2">{item.description}</span>
+                          <span className="text-xs text-muted line-clamp-2">{t(`store_item_${item.id}_desc` as any) || item.description}</span>
                         </div>
                         <span className="text-accent-pink font-bold flex-shrink-0 text-sm">{costStr}</span>
                       </motion.button>
@@ -378,7 +380,7 @@ const Store = () => {
                     <p className="text-xs text-muted mt-1">{t(descKey)}</p>
                     <div className="flex items-center gap-2 mt-2">
                       <span className="text-[10px] px-2 py-0.5 rounded bg-accent-cyan/20 text-accent-cyan">TON</span>
-                      <span className="text-xs text-muted">от {item.priceTon} TON</span>
+                      <span className="text-xs text-muted">{t('store_from')} {item.priceTon} TON</span>
                     </div>
                   </div>
                   <button
@@ -410,8 +412,7 @@ const Store = () => {
             ) : (
               <div className="grid gap-2">
                 {myItems.map((p: any) => {
-                  const xpItem = xpCatalog.find((x: any) => x.id === p.item_id);
-                  const label = xpItem?.name || p.item_id;
+                  const label = t(`store_item_${p.item_id}` as any) || xpCatalog.find((x: any) => x.id === p.item_id)?.name || p.item_id;
                   return (
                     <div
                       key={`${p.item_id}-${p.created_at}`}
@@ -455,14 +456,14 @@ const Store = () => {
             >
               <div className="flex justify-between items-start mb-4">
                 <h3 className="text-lg font-bold text-primary">
-                  {itemType === 'xp' ? selectedItem.name : selectedItem.title}
+                  {itemType === 'xp' ? (t(`store_item_${selectedItem.id}` as any) || selectedItem.name) : (t(`store_stars_${selectedItem.id}` as any) || selectedItem.title)}
                 </h3>
                 <button onClick={closeItemModal} className="p-1 text-muted hover:text-primary">
                   <X size={24} />
                 </button>
               </div>
               <p className="text-sm text-muted mb-4">
-                {itemType === 'xp' ? selectedItem.description : selectedItem.description}
+                {itemType === 'xp' ? (t(`store_item_${selectedItem.id}_desc` as any) || selectedItem.description) : (t(`store_stars_${selectedItem.id}_desc` as any) || selectedItem.description)}
               </p>
               <div className="flex items-center justify-between">
                 {itemType === 'stars' && (

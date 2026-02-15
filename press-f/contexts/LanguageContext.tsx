@@ -12,7 +12,13 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<Language>(storage.getSettings().language);
+  const [language, setLanguageState] = useState<Language>(() => {
+    const settings = storage.getSettings();
+    const hasExplicit = typeof window !== 'undefined' && localStorage.getItem('lastmeme_settings');
+    if (hasExplicit) return settings.language;
+    const tgLang = (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.language_code) || '';
+    return tgLang.startsWith('ru') ? 'ru' : settings.language;
+  });
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
