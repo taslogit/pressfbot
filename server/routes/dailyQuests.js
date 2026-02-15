@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { getXPReward } = require('../utils/xpSystem');
+const { getActiveXpMultiplier } = require('../utils/boosts');
 const { cache } = require('../utils/cache');
 
 // Quest types and their configurations
@@ -179,12 +180,16 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
         [quest.reward, userId]
       );
 
-      // Award XP (in transaction)
-      const xpReward = getXPReward('daily_quest');
+      // Award XP (in transaction, with xp_boost_2x multiplier)
+      let xpReward = getXPReward('daily_quest');
+      if (xpReward > 0) {
+        const multiplier = await getActiveXpMultiplier(client, userId);
+        xpReward = Math.floor(xpReward * multiplier);
+      }
       if (xpReward > 0) {
         await client.query(
           `UPDATE profiles 
-           SET experience = experience + $1, total_xp_earned = total_xp_earned + $1, updated_at = now()
+           SET experience = experience + $1, total_xp_earned = total_xp_earned + $1, spendable_xp = COALESCE(spendable_xp, 0) + $1, updated_at = now()
            WHERE user_id = $2`,
           [xpReward, userId]
         );

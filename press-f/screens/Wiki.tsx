@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, ChevronRight, Skull, Zap, ShoppingBag, FileText, Swords, Users, Package, ShieldCheck } from 'lucide-react';
+import { BookOpen, ChevronRight, Skull, Zap, ShoppingBag, FileText, Swords, Users, Package, ShieldCheck, User } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
 import { playSound } from '../utils/sound';
@@ -8,6 +8,7 @@ import { playSound } from '../utils/sound';
 const WIKI_TOPICS = [
   { key: 'checkin', topic: 'wiki_topic_checkin', content: 'wiki_checkin', icon: Skull },
   { key: 'xp', topic: 'wiki_topic_xp', content: 'wiki_xp', icon: Zap },
+  { key: 'avatars', topic: 'wiki_topic_avatars', content: 'wiki_avatars', icon: User },
   { key: 'store', topic: 'wiki_topic_store', content: 'wiki_store', icon: ShoppingBag },
   { key: 'letters', topic: 'wiki_topic_letters', content: 'wiki_letters', icon: FileText },
   { key: 'duels', topic: 'wiki_topic_duels', content: 'wiki_duels', icon: Swords },

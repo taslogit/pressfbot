@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ShieldCheck, Skull, Zap, Info, ChevronRight, Moon, Sun, Hourglass, Activity, Target, Terminal, FileText, Swords, Users, RefreshCw, Lock, Share2, Signal, BookOpen, ShoppingBag } from 'lucide-react';
+import { Plus, ShieldCheck, Skull, Zap, Info, ChevronRight, Moon, Sun, Hourglass, Activity, Target, Terminal, FileText, Swords, Users, RefreshCw, Lock, Share2, Signal, BookOpen, ShoppingBag, Settings } from 'lucide-react';
 import { useDeadManSwitch } from '../hooks/useDeadManSwitch';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -46,6 +46,7 @@ const Landing = () => {
   const [nextUnlockDate, setNextUnlockDate] = useState<string | null>(null);
   const [letterOpeningSoon, setLetterOpeningSoon] = useState<{ title: string; recipients: string[]; unlockDate: string; daysLeft: number } | null>(null);
   const [hasInheritancePlan, setHasInheritancePlan] = useState(false);
+  const [beefHoursLeft, setBeefHoursLeft] = useState<number | null>(null);
   
   // Quest State removed - use Daily Quests instead
 
@@ -92,6 +93,14 @@ const Landing = () => {
           return dlStr === todayStr;
         });
         setDuelsResolvingToday(resolving);
+        // Compute hours until first duel deadline
+        if (resolving.length > 0 && resolving[0].deadline) {
+          const dl = new Date(resolving[0].deadline);
+          const ms = dl.getTime() - Date.now();
+          setBeefHoursLeft(ms > 0 ? Math.max(1, Math.ceil(ms / (1000 * 60 * 60))) : null);
+        } else {
+          setBeefHoursLeft(null);
+        }
       }
     }).catch((error) => {
       console.error('Error loading duels:', error);
@@ -147,13 +156,23 @@ const Landing = () => {
         }
     }, 4000);
 
+    // Beef countdown: update every minute
+    const beefInterval = setInterval(() => {
+      if (isMounted && duelsResolvingToday.length > 0 && duelsResolvingToday[0]?.deadline) {
+        const dl = new Date(duelsResolvingToday[0].deadline);
+        const ms = dl.getTime() - Date.now();
+        setBeefHoursLeft(ms > 0 ? Math.max(1, Math.ceil(ms / (1000 * 60 * 60))) : null);
+      }
+    }, 60000);
+
     // Old quests system removed - Daily Quests are loaded via DailyQuests component
 
     return () => {
       isMounted = false;
       clearInterval(interval);
+      clearInterval(beefInterval);
     };
-  }, [justCheckedIn]);
+  }, [justCheckedIn, duelsResolvingToday]);
 
   const handleCloseGuide = async (completed?: boolean) => {
     setShowGuide(false);
@@ -587,9 +606,12 @@ const Landing = () => {
               <span className="text-sm font-bold text-primary truncate block">
                 {duelsResolvingToday[0]?.title} vs {duelsResolvingToday[0]?.opponent || '?'}
               </span>
-              {duelsResolvingToday.length > 1 && (
-                <span className="text-[10px] text-muted">+{duelsResolvingToday.length - 1} {t('widget_duel_dday_more')}</span>
-              )}
+              <span className="text-[10px] text-orange-400/80">
+                {beefHoursLeft !== null && beefHoursLeft > 0
+                  ? t('widget_duel_resolves_in_h', { h: beefHoursLeft })
+                  : t('widget_duel_resolves_soon')}
+                {duelsResolvingToday.length > 1 && ` • +${duelsResolvingToday.length - 1} ${t('widget_duel_dday_more')}`}
+              </span>
             </div>
           </button>
         </motion.div>
@@ -712,14 +734,28 @@ const Landing = () => {
             <motion.div 
               whileTap={{ scale: 0.98 }}
               onClick={() => { playSound('click'); navigate('/wiki'); }}
-              className="bg-card/60 backdrop-blur-md border border-border rounded-2xl p-4 flex flex-col justify-between h-28 hover:border-accent-cyan/50 transition-colors cursor-pointer group col-span-2"
+              className="bg-card/60 backdrop-blur-md border border-border rounded-2xl p-4 flex flex-col justify-between h-28 hover:border-accent-cyan/50 transition-colors cursor-pointer group"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex justify-between items-start">
                  <BookOpen size={20} className="text-accent-cyan group-hover:drop-shadow-[0_0_8px_rgba(0,224,255,0.6)]" />
-                 <div className="text-left">
-                   <p className="text-xs font-bold text-primary">{t('wiki_title')}</p>
-                   <p className="text-[10px] text-muted">{t('wiki_intro')}</p>
-                 </div>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-primary">{t('wiki_title')}</p>
+                <p className="text-[10px] text-muted">{t('wiki_intro')}</p>
+              </div>
+            </motion.div>
+
+            <motion.div 
+              whileTap={{ scale: 0.98 }}
+              onClick={() => { playSound('click'); navigate('/settings'); }}
+              className="bg-card/60 backdrop-blur-md border border-border rounded-2xl p-4 flex flex-col justify-between h-28 hover:border-amber-500/50 transition-colors cursor-pointer group"
+            >
+              <div className="flex justify-between items-start">
+                 <Settings size={20} className="text-amber-500 group-hover:drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-primary">{t('settings_title')}</p>
+                <p className="text-[10px] text-muted">{t('widget_settings_desc')}</p>
               </div>
             </motion.div>
 

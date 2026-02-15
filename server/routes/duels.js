@@ -7,6 +7,7 @@ const { normalizeDuel } = require('../services/duelsService');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { getXPReward } = require('../utils/xpSystem');
+const { getActiveXpMultiplier } = require('../utils/boosts');
 const { sanitizeInput } = require('../utils/sanitize');
 const VALID_DUEL_STATUSES = ['pending', 'active', 'completed', 'shame'];
 const VALID_DUEL_SORT = ['created_at', 'deadline', 'title', 'status'];
@@ -276,8 +277,12 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck) => {
         ]
       );
 
-      // Award XP for creating duel
-      const xpReward = getXPReward('create_duel');
+      // Award XP for creating duel (with xp_boost_2x multiplier)
+      let xpReward = getXPReward('create_duel');
+      if (xpReward > 0) {
+        const multiplier = await getActiveXpMultiplier(pool, userId);
+        xpReward = Math.floor(xpReward * multiplier);
+      }
       if (xpReward > 0) {
         try {
           await pool.query(

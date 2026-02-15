@@ -7,6 +7,7 @@ const { normalizeLetter } = require('../services/lettersService');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { getXPReward } = require('../utils/xpSystem');
+const { getActiveXpMultiplier } = require('../utils/boosts');
 const { sanitizeInput } = require('../utils/sanitize');
 const VALID_LETTER_STATUSES = ['draft', 'scheduled', 'sent'];
 const VALID_LETTER_TYPES = ['generic', 'crypto', 'love', 'roast', 'confession'];
@@ -382,8 +383,12 @@ const createLettersRoutes = (pool, createLimiter, letterLimitCheck) => {
         ]
       );
 
-      // Award XP for creating letter
-      const xpReward = getXPReward('create_letter');
+      // Award XP for creating letter (with xp_boost_2x multiplier)
+      let xpReward = getXPReward('create_letter');
+      if (xpReward > 0) {
+        const multiplier = await getActiveXpMultiplier(pool, userId);
+        xpReward = Math.floor(xpReward * multiplier);
+      }
       if (xpReward > 0) {
         try {
           await pool.query(
