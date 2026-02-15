@@ -132,6 +132,10 @@ async function apiRequest<T>(
   }
 }
 
+/** Full URL for static assets (avatars, images) - use when API is on different origin */
+export const getStaticUrl = (path: string): string =>
+  path.startsWith('http') ? path : `${API_BASE.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`;
+
 type QueryParams = Record<string, string | number | boolean | undefined | null>;
 
 function toQueryString(params?: QueryParams): string {

@@ -5,7 +5,7 @@ import { Edit2, Save, Fingerprint, Target, Sparkles, Shield, Zap, Hourglass, Bra
 import { useNavigate } from 'react-router-dom';
 import { tg } from '../utils/telegram';
 import { storage } from '../utils/storage';
-import { notificationsAPI, avatarsAPI, profileAPI } from '../utils/api';
+import { notificationsAPI, avatarsAPI, profileAPI, getStaticUrl } from '../utils/api';
 import { UserProfile } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
@@ -206,16 +206,19 @@ const Profile = () => {
     playSound('click');
     setAvatarLoading(true);
     try {
-      // Update via API
       const result = await profileAPI.update({ avatar: avatarId });
       if (result.ok) {
         const updated = { ...profile, avatar: avatarId };
-        storage.saveUserProfile(updated); // Also save locally
+        storage.saveUserProfile(updated);
         setProfile(updated);
         setShowAvatarSelector(false);
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       } else {
-        throw new Error('Failed to update avatar');
+        const msg = result.error || result.code === 'AVATAR_NOT_FOUND'
+          ? (t('avatar_not_found_hint') || 'Avatar not found on server. Try choosing another.')
+          : (t('avatar_update_failed') || 'Failed to update avatar');
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        tg.showPopup({ message: msg });
       }
     } catch (error) {
       console.error('Failed to update avatar:', error);
@@ -295,7 +298,7 @@ const Profile = () => {
                     <div className="text-center">
                         <div className="w-32 h-32 mx-auto mb-4 relative rounded-full overflow-hidden">
                             <img 
-                              src={displayAvatar.url} 
+                              src={getStaticUrl(displayAvatar.url)} 
                               alt={displayAvatar.name}
                               className="w-full h-full object-cover drop-shadow-[0_0_15px_rgba(0,224,255,0.5)]"
                             />
@@ -381,7 +384,7 @@ const Profile = () => {
                             } ${avatarLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
                             <img 
-                              src={avatar.url} 
+                              src={getStaticUrl(avatar.url)} 
                               alt={avatar.name}
                               className="w-full h-full object-cover"
                             />
@@ -538,7 +541,7 @@ const Profile = () => {
                    className="w-32 h-32 relative z-10 rounded-full overflow-hidden border-2 border-purple-500/30 hover:border-purple-500/60 transition-all"
                  >
                    <img 
-                     src={displayAvatar.url} 
+                     src={getStaticUrl(displayAvatar.url)} 
                      alt={displayAvatar.name}
                      className="w-full h-full object-cover drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]"
                    />

@@ -36,11 +36,11 @@ const OnboardingGuide: React.FC<Props> = ({ isVisible, onClose }) => {
     },
     {
       id: 'beefs',
-      icon: <Swords size={64} className="text-accent-pink" />,
+      icon: <Swords size={64} className="text-orange-500" />,
       title: 'guide_step_beefs_title',
       desc: 'guide_step_beefs_desc',
-      color: 'border-accent-pink text-accent-pink',
-      bg: 'bg-accent-pink/10'
+      color: 'border-orange-500 text-orange-500',
+      bg: 'bg-orange-500/10'
     },
     {
       id: 'drops',

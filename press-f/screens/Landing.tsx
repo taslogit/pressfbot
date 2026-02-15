@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, ShieldCheck, Skull, Zap, Info, ChevronRight, Moon, Sun, Hourglass, Activity, Target, Terminal, FileText, Swords, Users, RefreshCw, Lock, Share2, Signal } from 'lucide-react';
@@ -56,8 +56,6 @@ const Landing = () => {
     }
   }, [isDead, navigate]);
 
-  // MainButton "CHECK IN" listener - Landing must listen for pressf:checkin from App
-  const handleCheckInRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     let isMounted = true;
@@ -229,13 +227,6 @@ const Landing = () => {
       setJustCheckedIn(true);
     }
   };
-  handleCheckInRef.current = handleCheckIn;
-
-  useEffect(() => {
-    const handler = () => handleCheckInRef.current();
-    window.addEventListener('pressf:checkin', handler);
-    return () => window.removeEventListener('pressf:checkin', handler);
-  }, []);
 
   const handleSharePulse = () => {
     const username = tg.initDataUnsafe?.user?.username;
@@ -324,16 +315,22 @@ const Landing = () => {
           <div>• {t('home_value_line2')}</div>
           <div>• {t('home_value_line3')}</div>
         </div>
-        <div className="grid grid-cols-2 gap-2 mt-3">
+        <div className="grid grid-cols-3 gap-2 mt-3">
           <button
-            onClick={() => navigate('/create-letter')}
-            className="px-3 py-2 rounded-lg border border-accent-lime/40 text-accent-lime bg-accent-lime/10 hover:bg-accent-lime/20 transition-all font-bold tracking-widest text-[10px] uppercase"
+            onClick={() => { playSound('click'); navigate('/create-letter'); }}
+            className="px-2 py-2 rounded-lg border border-accent-lime/40 text-accent-lime bg-accent-lime/10 hover:bg-accent-lime/20 transition-all font-bold tracking-widest text-[10px] uppercase"
           >
             {t('home_cta_create')}
           </button>
           <button
+            onClick={() => { playSound('click'); navigate('/store'); }}
+            className="px-2 py-2 rounded-lg border border-accent-cyan/40 text-accent-cyan bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-all font-bold tracking-widest text-[10px] uppercase"
+          >
+            {t('nav_store')}
+          </button>
+          <button
             onClick={() => setShowGuide(true)}
-            className="px-3 py-2 rounded-lg border border-border text-muted hover:text-primary transition-all font-bold tracking-widest text-[10px] uppercase"
+            className="px-2 py-2 rounded-lg border border-border text-muted hover:text-primary transition-all font-bold tracking-widest text-[10px] uppercase"
           >
             {t('home_cta_guide')}
           </button>

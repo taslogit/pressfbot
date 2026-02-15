@@ -18,6 +18,7 @@ const Profile = lazy(() => import('./screens/Profile'));
 const Settings = lazy(() => import('./screens/Settings'));
 const SharePost = lazy(() => import('./screens/SharePost'));
 const Notifications = lazy(() => import('./screens/Notifications'));
+const Store = lazy(() => import('./screens/Store'));
 import { tg, initTelegramApp } from './utils/telegram';
 import { useTelegramSession } from './hooks/useTelegramSession';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -100,18 +101,8 @@ const TelegramHandler = () => {
 
     try {
       if (path === '/') {
-        // Home: "CHECK IN" button
-        tg.MainButton.setText('CHECK IN');
-        tg.MainButton.show();
-        const handleCheckIn = () => {
-          // Trigger check-in via custom event (Landing listens for it)
-          window.dispatchEvent(new CustomEvent('pressf:checkin'));
-        };
-        tg.MainButton.onClick(handleCheckIn);
-        return () => {
-          tg.MainButton.offClick(handleCheckIn);
-          tg.MainButton.hide();
-        };
+        // Home: no MainButton — check-in via skull button
+        tg.MainButton.hide();
       } else if (path === '/create-letter') {
         // CreateLetter: "SEND" button  
         tg.MainButton.setText('SEND');
@@ -182,6 +173,7 @@ const App = () => {
                         <Route path="/witness-approval" element={<WitnessApproval />} />
                         <Route path="/squads" element={<Squads />} />
                         <Route path="/profile" element={<Profile />} />
+                        <Route path="/store" element={<Store />} />
                         <Route path="/settings" element={<Settings />} />
                         <Route path="/share" element={<SharePost />} />
                         <Route path="/notifications" element={<Notifications />} />
