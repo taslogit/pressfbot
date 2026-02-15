@@ -5,7 +5,7 @@ import { Edit2, Save, Fingerprint, Target, Sparkles, Shield, Zap, Hourglass, Bra
 import { useNavigate } from 'react-router-dom';
 import { tg } from '../utils/telegram';
 import { storage } from '../utils/storage';
-import { notificationsAPI, avatarsAPI, profileAPI, getStaticUrl } from '../utils/api';
+import { notificationsAPI, avatarsAPI, profileAPI, storeAPI, getStaticUrl } from '../utils/api';
 import { UserProfile } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
@@ -16,8 +16,17 @@ import ReferralSection from '../components/ReferralSection';
 import SendGiftModal from '../components/SendGiftModal';
 import { giftsAPI } from '../utils/api';
 
-// Default avatar is pressf.jpg from server
+// Default avatar is pressf from server (free for everyone)
 const DEFAULT_AVATAR_ID = 'pressf';
+
+// Avatar frame styles (applied to avatar border)
+const AVATAR_FRAME_STYLES: Record<string, string> = {
+  default: 'border-2 border-purple-500/30',
+  fire: 'border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.6)]',
+  diamond: 'border-2 border-cyan-400 shadow-[0_0_25px_rgba(34,211,238,0.5)]',
+  neon: 'border-2 border-accent-cyan shadow-[0_0_20px_rgba(0,224,255,0.7)]',
+  gold: 'border-2 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)]'
+};
 
 // Icon Helper
 const getIcon = (name: string, props: any) => {
@@ -51,6 +60,11 @@ const Profile = () => {
   const [showSendGiftModal, setShowSendGiftModal] = useState(false);
   const [giftsLoading, setGiftsLoading] = useState(false);
   const [streakLeaderboard, setStreakLeaderboard] = useState<{ rank: number; streak: number; avatar: string; title: string }[]>([]);
+  const [settings, setSettings] = useState<{ avatar_frame?: string }>({});
+  const [ownedAvatarIds, setOwnedAvatarIds] = useState<Set<string>>(new Set([DEFAULT_AVATAR_ID]));
+  const [ownedFrameIds, setOwnedFrameIds] = useState<Set<string>>(new Set(['default']));
+  const [showFrameSelector, setShowFrameSelector] = useState(false);
+  const [frameLoading, setFrameLoading] = useState(false);
   
   // Calculate level from experience (needed before state initialization)
   const currentXP = profile.experience || 0;
@@ -61,10 +75,15 @@ const Profile = () => {
 
   useEffect(() => {
     let isMounted = true;
-    storage.getUserProfileAsync().then((apiProfile) => {
-      if (isMounted) {
-        setProfile(apiProfile);
-        setTempBio(apiProfile.bio);
+    profileAPI.get().then((res) => {
+      if (!isMounted || !res.ok) return;
+      if (res.data?.profile) {
+        const apiProfile = res.data.profile;
+        setProfile({ ...storage.getUserProfile(), ...apiProfile, avatar: apiProfile.avatar || 'pressf' });
+        setTempBio(apiProfile.bio || 'No bio yet.');
+      }
+      if (res.data?.settings) {
+        setSettings(res.data.settings);
       }
     });
     setShareHistory(storage.getShareHistory());
@@ -194,21 +213,56 @@ const Profile = () => {
     }
   };
 
-  // Lazy load avatars when selector opens
+  // Lazy load avatars + owned items when selector opens
   const handleOpenAvatarSelector = async () => {
     setShowAvatarSelector(true);
-    // Load avatars only when selector is opened
-    if (availableAvatars.length === 0) {
-      try {
-        const result = await avatarsAPI.getAll();
-        if (result.ok && result.data?.avatars) {
-          setAvailableAvatars(result.data.avatars);
-        }
-      } catch (error) {
-        console.error('Failed to load avatars:', error);
+    try {
+      const [avatarsRes, myItemsRes] = await Promise.all([
+        availableAvatars.length === 0 ? avatarsAPI.getAll() : Promise.resolve({ ok: false }),
+        storeAPI.getMyItems()
+      ]);
+      if (avatarsRes?.ok && avatarsRes.data?.avatars) {
+        setAvailableAvatars(avatarsRes.data.avatars);
       }
+      if (myItemsRes?.ok && myItemsRes.data) {
+        setOwnedAvatarIds(new Set(myItemsRes.data.ownedAvatarIds || [DEFAULT_AVATAR_ID]));
+        setOwnedFrameIds(new Set(myItemsRes.data.ownedFrameIds || ['default']));
+      }
+    } catch (error) {
+      console.error('Failed to load avatar data:', error);
     }
   };
+
+  const handleFrameChange = async (frameId: string) => {
+    if (!ownedFrameIds.has(frameId)) return;
+    playSound('click');
+    setFrameLoading(true);
+    try {
+      const res = await profileAPI.updateSettings({ avatarFrame: frameId });
+      if (res.ok) {
+        setSettings(s => ({ ...s, avatar_frame: frameId }));
+        setShowFrameSelector(false);
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      } else {
+        tg.showPopup?.({ message: res.error || 'Failed to update frame' });
+      }
+    } catch (e) {
+      tg.showPopup?.({ message: 'Failed to update frame' });
+    } finally {
+      setFrameLoading(false);
+    }
+  };
+
+  const handleOpenFrameSelector = async () => {
+    setShowFrameSelector(true);
+    const myRes = await storeAPI.getMyItems();
+    if (myRes?.ok && myRes.data?.ownedFrameIds) {
+      setOwnedFrameIds(new Set(myRes.data.ownedFrameIds));
+    }
+  };
+
+  const currentFrame = settings.avatar_frame || 'default';
+  const displayedAvatars = availableAvatars.filter(a => ownedAvatarIds.has(a.id));
 
   const handleAvatarChange = async (avatarId: string) => {
     playSound('click');
@@ -370,14 +424,14 @@ const Profile = () => {
               </div>
 
               <div className="space-y-4">
-                {/* Server Avatars */}
-                {availableAvatars.length > 0 ? (
+                {/* Owned Avatars Only */}
+                {displayedAvatars.length > 0 ? (
                   <div>
                     <h4 className="text-xs uppercase tracking-wider text-muted mb-3">
                       {t('select_avatar') || 'Select Avatar'}
                     </h4>
                     <div className="grid grid-cols-3 gap-3">
-                      {availableAvatars.map((avatar) => {
+                      {displayedAvatars.map((avatar) => {
                         const isSelected = profile.avatar === avatar.id || (!profile.avatar && avatar.id === DEFAULT_AVATAR_ID);
                         return (
                           <motion.button
@@ -412,13 +466,83 @@ const Profile = () => {
                         );
                       })}
                     </div>
+                    <button
+                      onClick={() => { playSound('click'); setShowAvatarSelector(false); navigate('/store'); }}
+                      className="mt-4 w-full py-2 rounded-xl border border-dashed border-accent-cyan/50 text-accent-cyan hover:bg-accent-cyan/10 text-xs font-bold uppercase"
+                    >
+                      {t('profile_buy_avatars_store') || 'Buy more in Store'}
+                    </button>
                   </div>
                 ) : (
-                  <div className="text-center text-muted text-sm py-8">
-                    {t('loading_avatars') || 'Loading avatars...'}
+                  <div className="text-center py-8">
+                    <p className="text-muted text-sm mb-4">{t('loading_avatars') || 'Loading avatars...'}</p>
+                    <button
+                      onClick={() => { playSound('click'); setShowAvatarSelector(false); navigate('/store'); }}
+                      className="py-2 px-4 rounded-xl border border-accent-cyan/50 text-accent-cyan hover:bg-accent-cyan/10 text-xs font-bold uppercase"
+                    >
+                      {t('profile_buy_avatars_store') || 'Buy avatars in Store'}
+                    </button>
                   </div>
                 )}
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Frame Selector Modal */}
+      <AnimatePresence>
+        {showFrameSelector && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
+            onClick={() => setShowFrameSelector(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.8, y: 20 }}
+              className="bg-card border border-purple-500/50 rounded-2xl p-6 max-w-sm w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-black uppercase tracking-wider text-purple-400">
+                  {t('profile_select_frame') || 'Select Frame'}
+                </h3>
+                <button onClick={() => setShowFrameSelector(false)} className="text-muted hover:text-primary">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {(['default', 'fire', 'diamond', 'neon', 'gold'] as const).map((frameId) => {
+                  const owned = ownedFrameIds.has(frameId);
+                  const isSelected = currentFrame === frameId;
+                  return (
+                    <motion.button
+                      key={frameId}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => owned && handleFrameChange(frameId)}
+                      disabled={!owned || frameLoading}
+                      className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 overflow-hidden ${
+                        !owned ? 'opacity-50 cursor-not-allowed border-border' :
+                        isSelected ? 'border-accent-cyan shadow-[0_0_15px_rgba(0,224,255,0.5)]' : 'border-border hover:border-accent-cyan/50'
+                      }`}
+                    >
+                      <div className={`w-12 h-12 rounded-full bg-black/60 ${AVATAR_FRAME_STYLES[frameId] || ''}`} />
+                      <span className="text-[10px] font-bold uppercase">{t(`profile_frame_${frameId}`) || frameId}</span>
+                      {!owned && <span className="text-[9px] text-muted">{t('profile_frame_buy_store') || 'In Store'}</span>}
+                    </motion.button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => { playSound('click'); setShowFrameSelector(false); navigate('/store'); }}
+                className="mt-4 w-full py-2 rounded-xl border border-dashed border-accent-cyan/50 text-accent-cyan hover:bg-accent-cyan/10 text-xs font-bold uppercase"
+              >
+                {t('profile_buy_frames_store') || 'Buy frames in Store'}
+              </button>
             </motion.div>
           </motion.div>
         )}
@@ -543,11 +667,12 @@ const Profile = () => {
            <div className="flex flex-col items-center">
               {/* Avatar Selector */}
               <div className="relative mb-4">
-                 <motion.button
-                   whileTap={{ scale: 0.95 }}
-                   onClick={handleOpenAvatarSelector}
-                   className="w-32 h-32 relative z-10 rounded-full overflow-hidden border-2 border-purple-500/30 hover:border-purple-500/60 transition-all"
-                 >
+                 <div className="relative inline-block">
+                   <motion.button
+                     whileTap={{ scale: 0.95 }}
+                     onClick={handleOpenAvatarSelector}
+                     className={`w-32 h-32 relative z-10 rounded-full overflow-hidden hover:opacity-90 transition-all ${AVATAR_FRAME_STYLES[currentFrame] || AVATAR_FRAME_STYLES.default}`}
+                   >
                    <img 
                      src={getStaticUrl(displayAvatar.url)} 
                      alt={displayAvatar.name}
@@ -557,6 +682,15 @@ const Profile = () => {
                      <Edit2 size={16} className="opacity-0 hover:opacity-100 transition-opacity text-white" />
                    </div>
                  </motion.button>
+                   <motion.button
+                     whileTap={{ scale: 0.95 }}
+                     onClick={handleOpenFrameSelector}
+                     className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted hover:text-accent-cyan hover:border-accent-cyan/50 text-xs font-bold"
+                     title={t('profile_select_frame') || 'Frame'}
+                   >
+                     ◫
+                   </motion.button>
+                 </div>
               </div>
 
               <div className="text-center mb-4 mt-4 space-y-2">

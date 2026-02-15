@@ -26,6 +26,7 @@ const profileUpdateSchema = z.object({
   }).optional()
 });
 
+const VALID_AVATAR_FRAMES = ['default', 'fire', 'diamond', 'neon', 'gold'];
 const settingsUpdateSchema = z.object({
   deadManSwitchDays: z.number().int().optional(),
   funeralTrack: z.string().optional(),
@@ -34,7 +35,8 @@ const settingsUpdateSchema = z.object({
   soundEnabled: z.boolean().optional(),
   notificationsEnabled: z.boolean().optional(),
   telegramNotificationsEnabled: z.boolean().optional(),
-  checkinReminderIntervalMinutes: z.number().int().min(5).max(1440).optional()
+  checkinReminderIntervalMinutes: z.number().int().min(5).max(1440).optional(),
+  avatarFrame: z.enum(VALID_AVATAR_FRAMES).optional()
 });
 
 const createProfileRoutes = (pool) => {
@@ -77,6 +79,7 @@ const createProfileRoutes = (pool) => {
           us.longest_streak,
           us.last_streak_date,
           us.streak_free_skip,
+          us.avatar_frame,
           us.created_at as settings_created_at,
           us.updated_at as settings_updated_at
          FROM profiles p
@@ -108,6 +111,7 @@ const createProfileRoutes = (pool) => {
         delete profileData.longest_streak;
         delete profileData.last_streak_date;
         delete profileData.streak_free_skip;
+        delete profileData.avatar_frame;
         delete profileData.settings_created_at;
         delete profileData.settings_updated_at;
         
@@ -142,6 +146,7 @@ const createProfileRoutes = (pool) => {
             lastStreakDate: row.last_streak_date,
             freeSkips: row.streak_free_skip || 0
           };
+          settings.avatar_frame = row.avatar_frame || 'default';
         }
       }
 
@@ -259,6 +264,16 @@ const createProfileRoutes = (pool) => {
             if (!avatarExists) {
               logger.warn('Avatar not found on server', { avatar, userId });
               return sendError(res, 400, 'AVATAR_NOT_FOUND', 'Selected avatar does not exist on server');
+            }
+            // Check ownership: pressf is free, others require purchase
+            if (avatar !== 'pressf') {
+              const owned = await pool.query(
+                'SELECT 1 FROM store_purchases WHERE user_id = $1 AND item_id = $2',
+                [userId, `avatar_${avatar}`]
+              );
+              if (owned.rowCount === 0) {
+                return sendError(res, 403, 'AVATAR_NOT_OWNED', 'You must purchase this avatar in the Store first');
+              }
             }
           }
           
@@ -573,7 +588,8 @@ const createProfileRoutes = (pool) => {
         soundEnabled,
         notificationsEnabled,
         telegramNotificationsEnabled,
-        checkinReminderIntervalMinutes
+        checkinReminderIntervalMinutes,
+        avatarFrame
       } = req.body;
 
       // Check if settings exist
@@ -612,7 +628,8 @@ const createProfileRoutes = (pool) => {
           sound_enabled: 'sound_enabled',
           notifications_enabled: 'notifications_enabled',
           telegram_notifications_enabled: 'telegram_notifications_enabled',
-          checkin_reminder_interval_minutes: 'checkin_reminder_interval_minutes'
+          checkin_reminder_interval_minutes: 'checkin_reminder_interval_minutes',
+          avatar_frame: 'avatar_frame'
         };
 
         const updateFields = [];
@@ -650,6 +667,20 @@ const createProfileRoutes = (pool) => {
         if (checkinReminderIntervalMinutes !== undefined && allowedFields.checkin_reminder_interval_minutes) {
           updateFields.push(`checkin_reminder_interval_minutes = $${paramIndex++}`);
           updateValues.push(checkinReminderIntervalMinutes);
+        }
+        if (avatarFrame !== undefined && allowedFields.avatar_frame) {
+          // Validate frame ownership: default is free, others require purchase
+          if (avatarFrame !== 'default') {
+            const ownedFrame = await pool.query(
+              'SELECT 1 FROM store_purchases WHERE user_id = $1 AND item_id = $2',
+              [userId, `avatar_frame_${avatarFrame}`]
+            );
+            if (ownedFrame.rowCount === 0) {
+              return sendError(res, 403, 'FRAME_NOT_OWNED', 'You must purchase this frame in the Store first');
+            }
+          }
+          updateFields.push(`avatar_frame = $${paramIndex++}`);
+          updateValues.push(avatarFrame);
         }
 
         if (updateFields.length > 0) {

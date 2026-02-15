@@ -115,6 +115,74 @@ const XP_STORE = {
     type: 'permanent'
   },
 
+  // ─── Avatars (pressf is default/free, not in catalog) ─────
+  avatar_skull: {
+    name: 'Skull Avatar',
+    description: 'Skull icon avatar',
+    cost_xp: 80,
+    cost_rep: 0,
+    category: 'avatar',
+    type: 'permanent'
+  },
+  avatar_ghost: {
+    name: 'Ghost Avatar',
+    description: 'Ghost icon avatar',
+    cost_xp: 80,
+    cost_rep: 0,
+    category: 'avatar',
+    type: 'permanent'
+  },
+  avatar_robot: {
+    name: 'Robot Avatar',
+    description: 'Robot icon avatar',
+    cost_xp: 100,
+    cost_rep: 0,
+    category: 'avatar',
+    type: 'permanent'
+  },
+  avatar_crown: {
+    name: 'Crown Avatar',
+    description: 'Crown icon avatar',
+    cost_xp: 120,
+    cost_rep: 0,
+    category: 'avatar',
+    type: 'permanent'
+  },
+
+  // ─── Avatar Frames (default is free, not in catalog) ─────
+  avatar_frame_fire: {
+    name: 'Fire Frame',
+    description: 'Fiery glow around your avatar',
+    cost_xp: 100,
+    cost_rep: 0,
+    category: 'avatar_frame',
+    type: 'permanent'
+  },
+  avatar_frame_diamond: {
+    name: 'Diamond Frame',
+    description: 'Sparkling diamond border',
+    cost_xp: 150,
+    cost_rep: 0,
+    category: 'avatar_frame',
+    type: 'permanent'
+  },
+  avatar_frame_neon: {
+    name: 'Neon Frame',
+    description: 'Neon cyan glow border',
+    cost_xp: 200,
+    cost_rep: 0,
+    category: 'avatar_frame',
+    type: 'permanent'
+  },
+  avatar_frame_gold: {
+    name: 'Gold Frame',
+    description: 'Golden prestige border',
+    cost_xp: 250,
+    cost_rep: 0,
+    category: 'avatar_frame',
+    type: 'permanent'
+  },
+
   // ─── Social ───────────────────────
   squad_banner: {
     name: 'Custom Squad Banner',
@@ -176,9 +244,22 @@ const createStoreRoutes = (pool) => {
       const achievementCount = typeof achievements === 'object' ? Object.keys(achievements).length : 0;
       const achievementDiscountPercent = Math.min(achievementCount, 10);
 
+      // Derive owned avatar IDs and frame IDs for Profile/Store UI
+      const ownedAvatarIds = new Set(['pressf']);
+      const ownedFrameIds = new Set(['default']);
+      purchasesResult.rows.forEach((r) => {
+        if (r.item_id?.startsWith('avatar_') && !r.item_id.includes('frame')) {
+          ownedAvatarIds.add(r.item_id.replace('avatar_', ''));
+        } else if (r.item_id?.startsWith('avatar_frame_')) {
+          ownedFrameIds.add(r.item_id.replace('avatar_frame_', ''));
+        }
+      });
+
       return res.json({
         ok: true,
         items: purchasesResult.rows,
+        ownedAvatarIds: [...ownedAvatarIds],
+        ownedFrameIds: [...ownedFrameIds],
         firstPurchaseEligible: purchasesResult.rows.length === 0,
         achievementDiscountPercent,
         achievementsCount: achievementCount

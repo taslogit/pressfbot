@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X, Package, Box } from 'lucide-react';
 import { useTonAddress } from '@tonconnect/ui-react';
 import { useTranslation } from '../contexts/LanguageContext';
-import { starsAPI, storeAPI, profileAPI } from '../utils/api';
+import { starsAPI, storeAPI, profileAPI, getStaticUrl } from '../utils/api';
 import InfoSection from '../components/InfoSection';
 import { playSound } from '../utils/sound';
 import { tg } from '../utils/telegram';
@@ -19,6 +19,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   badge: 'store_cat_badge',
   social: 'store_cat_social',
   duel: 'store_cat_duel',
+  avatar: 'store_cat_avatar',
+  avatar_frame: 'store_cat_avatar_frame',
   other: 'store_cat_other'
 };
 
@@ -298,9 +300,25 @@ const Store = () => {
                         onClick={() => openItemModal(item, 'xp')}
                         className="w-full flex items-center gap-3 p-4 rounded-xl border border-border bg-black/40 hover:border-accent-pink/50 text-left"
                       >
-                        <div className="w-12 h-12 rounded-xl bg-accent-pink/20 flex items-center justify-center flex-shrink-0">
-                          <Sparkles size={22} className="text-accent-pink" />
-                        </div>
+                        {category === 'avatar' ? (
+                          <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 border border-border bg-black/60">
+                            <img src={getStaticUrl(`/api/static/avatars/${item.id.replace('avatar_', '')}.svg`)} alt={item.name} className="w-full h-full object-cover" />
+                          </div>
+                        ) : category === 'avatar_frame' ? (
+                          <div className={`w-12 h-12 rounded-xl flex-shrink-0 bg-black/60 flex items-center justify-center ${
+                            item.id === 'avatar_frame_fire' ? 'border-2 border-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.5)]' :
+                            item.id === 'avatar_frame_diamond' ? 'border-2 border-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)]' :
+                            item.id === 'avatar_frame_neon' ? 'border-2 border-accent-cyan shadow-[0_0_10px_rgba(0,224,255,0.5)]' :
+                            item.id === 'avatar_frame_gold' ? 'border-2 border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]' :
+                            'border-2 border-purple-500/30'
+                          }`}>
+                            ◫
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 rounded-xl bg-accent-pink/20 flex items-center justify-center flex-shrink-0">
+                            <Sparkles size={22} className="text-accent-pink" />
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <span className="font-bold text-primary block flex items-center gap-2">
                             {item.name}
