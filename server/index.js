@@ -510,6 +510,9 @@ app.use('/api/witnesses', authMiddleware, getLimiter, createWitnessesRoutes(pool
 app.use('/api/stars', authMiddleware, getLimiter, createStarsRoutes(pool, bot));
 app.use('/api/store', authMiddleware, getLimiter, createStoreRoutes(pool));
 app.get('/api/limits', authMiddleware, getLimiter, createLimitsRoute(pool));
+app.post('/api/analytics', getLimiter, (req, res) => {
+  res.status(204).end();
+});
 
 // Global search across letters, duels, legacy (with rate limiting and pagination)
 app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {

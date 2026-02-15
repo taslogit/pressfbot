@@ -30,14 +30,14 @@ services:
     labels:
       - "traefik.enable=true"
       # Router for /bot endpoint (highest priority)
-      - "traefik.http.routers.pressf-backend-bot.rule=Host(`${DOMAIN}`) && PathPrefix(`/bot`)"
+      - "traefik.http.routers.pressf-backend-bot.rule=Host(`pressfbot.ru`) && PathPrefix(`/bot`)"
       - "traefik.http.routers.pressf-backend-bot.priority=20"
       - "traefik.http.routers.pressf-backend-bot.entrypoints=websecure"
       - "traefik.http.routers.pressf-backend-bot.tls=true"
       - "traefik.http.routers.pressf-backend-bot.tls.certresolver=le"
       - "traefik.http.routers.pressf-backend-bot.service=pressf-backend-service"
       # Router for /api and /static endpoints
-      - "traefik.http.routers.pressf-backend-api.rule=Host(`${DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/static`))"
+      - "traefik.http.routers.pressf-backend-api.rule=Host(`pressfbot.ru`) && (PathPrefix(`/api`) || PathPrefix(`/static`))"
       - "traefik.http.routers.pressf-backend-api.priority=10"
       - "traefik.http.routers.pressf-backend-api.entrypoints=websecure"
       - "traefik.http.routers.pressf-backend-api.tls=true"

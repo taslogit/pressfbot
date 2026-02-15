@@ -489,7 +489,8 @@ export const storage = {
   },
 
   // Old quests system removed - use Daily Quests API instead
-  // getQuests, checkQuestTrigger, claimQuestReward removed
+  // No-op for backward compatibility (call sites not yet removed)
+  checkQuestTrigger: (_action: string) => {},
 
   isInfoDismissed: (id: string) => {
       const list = safeParse<string[]>(KEYS.INFO_DISMISSED, []);
