@@ -15,6 +15,7 @@ import { lettersAPI } from '../utils/api';
 import XPNotification from '../components/XPNotification';
 import { calculateLevel } from '../utils/levelSystem';
 import { analytics } from '../utils/analytics';
+import { useApiAbort } from '../hooks/useApiAbort';
 
 type Attachment = {
   id: string;
@@ -28,6 +29,7 @@ type Preset = 'crypto' | 'love' | 'roast' | 'confession';
 const CreateLetter = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const getSignal = useApiAbort();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [recipients, setRecipients] = useState('');
@@ -53,19 +55,18 @@ const CreateLetter = () => {
 
   // Check for Draft on Mount
   useEffect(() => {
-    const draft = storage.getDraft();
-    if (draft && (draft.title || draft.content || (draft.recipients && draft.recipients.length > 0))) {
+    const draft = storage.getDraft() as Partial<Letter> & { attachmentsMeta?: { id: string; type: string }[] };
+    if (draft && (draft.title || draft.content || (draft.recipients && draft.recipients.length > 0) || (draft.attachmentsMeta && draft.attachmentsMeta.length > 0))) {
       setHasDraft(true);
-      if(draft.type) setLeakType(draft.type as Preset);
-      if(draft.options?.burnOnRead) setBurnOnRead(draft.options.burnOnRead);
+      if (draft.type) setLeakType(draft.type as Preset);
+      if (draft.options?.burnOnRead) setBurnOnRead(draft.options.burnOnRead);
     }
   }, []);
 
-  // Auto-Save Effect
+  // Auto-Save Effect (includes attachment metadata — files can't be serialized, user re-adds on restore)
   useEffect(() => {
-    // Only save if there is content to save and we are NOT in the middle of restoring or sending
-    if ((title || content || recipients || unlockDate) && !isSending && encryptionStep === 0) {
-      const draftData: Partial<Letter> = {
+    if ((title || content || recipients || unlockDate || attachments.length > 0) && !isSending && encryptionStep === 0) {
+      const draftData: Partial<Letter> & { attachmentsMeta?: { id: string; type: string }[] } = {
         title,
         content,
         recipients: recipients.split(',').map(r => r.trim()).filter(r => r),
@@ -73,16 +74,16 @@ const CreateLetter = () => {
         type: leakType,
         options: { burnOnRead }
       };
-      
-      const timeoutId = setTimeout(() => {
-        storage.saveDraft(draftData);
-      }, 500);
+      if (attachments.length > 0) {
+        draftData.attachmentsMeta = attachments.map(a => ({ id: a.id, type: a.type }));
+      }
+      const timeoutId = setTimeout(() => storage.saveDraft(draftData), 500);
       return () => clearTimeout(timeoutId);
     }
-  }, [title, content, recipients, unlockDate, leakType, burnOnRead, isSending, encryptionStep]);
+  }, [title, content, recipients, unlockDate, leakType, burnOnRead, isSending, encryptionStep, attachments]);
 
   const handleRestoreDraft = () => {
-    const draft = storage.getDraft();
+    const draft = storage.getDraft() as Partial<Letter> & { attachmentsMeta?: { id: string; type: string }[] };
     if (draft) {
       if (draft.title) setTitle(draft.title);
       if (draft.content) setContent(draft.content);
@@ -90,6 +91,15 @@ const CreateLetter = () => {
       if (draft.unlockDate) setUnlockDate(draft.unlockDate);
       if (draft.type) setLeakType(draft.type as Preset);
       if (draft.options?.burnOnRead) setBurnOnRead(draft.options.burnOnRead);
+      if (draft.attachmentsMeta?.length) {
+        setAttachments(draft.attachmentsMeta.map(a => ({
+          id: a.id,
+          type: a.type as 'image' | 'video' | 'audio',
+          previewUrl: '',
+          file: undefined
+        })));
+        tg.showPopup({ message: t('draft_attachments_restore') || 'Add files again' });
+      }
     }
     setHasDraft(false);
   };
@@ -170,8 +180,9 @@ const CreateLetter = () => {
     const toUpload = attachments.filter(a => a.file);
     if (toUpload.length > 0) {
       try {
+        const opts = { signal: getSignal() };
         for (const att of toUpload) {
-          const res = await lettersAPI.uploadAttachment(letterId, att.file!);
+          const res = await lettersAPI.uploadAttachment(letterId, att.file!, opts);
           if (!res.ok || !res.data?.url) {
             tg.showPopup({ message: res.error || 'Upload failed' });
             setEncryptionStep(0);
@@ -217,10 +228,7 @@ const CreateLetter = () => {
         // Trigger quest refresh event for DailyQuests component
         window.dispatchEvent(new CustomEvent('questProgressUpdated'));
         
-        // Refresh profile to get updated XP
-        await storage.getUserProfileAsync();
-        
-        // Get current profile to check for level up
+        // Get current profile to check for level up (single request)
         const profile = await storage.getUserProfileAsync();
         const oldLevel = calculateLevel(profile.experience || 0);
         const newLevel = calculateLevel((profile.experience || 0) + result.xp);
@@ -245,6 +253,15 @@ const CreateLetter = () => {
     setIsSending(false);
     navigate('/letters');
   };
+
+  // MainButton (Telegram SEND) — listens for pressf:send-letter from App.tsx (stable subscription)
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+  useEffect(() => {
+    const handler = () => handleSaveRef.current();
+    window.addEventListener('pressf:send-letter', handler);
+    return () => window.removeEventListener('pressf:send-letter', handler);
+  }, []);
 
   // --- Presets Logic ---
   const applyPreset = (preset: Preset) => {

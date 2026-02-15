@@ -10,6 +10,7 @@ import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
 import { tg } from '../utils/telegram';
 import { useApiAbort } from '../hooks/useApiAbort';
+import { useApiError } from '../contexts/ApiErrorContext';
 import { isEncrypted, decryptPayload } from '../utils/security';
 
 type Tab = 'all' | 'draft' | 'scheduled' | 'sent';
@@ -160,6 +161,8 @@ const Letters = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const getSignal = useApiAbort();
+  const { showApiError } = useApiError();
+  const [retryLetters, setRetryLetters] = useState(0);
 
   useEffect(() => {
     setLetters(storage.getLetters());
@@ -180,6 +183,8 @@ const Letters = () => {
       };
       storage.getLettersAsync(params, { signal: getSignal() }).then((apiLetters) => {
         if (isMounted) setLetters(apiLetters);
+      }).catch(() => {
+        if (isMounted) showApiError(t('api_error_generic'), () => setRetryLetters((c) => c + 1));
       }).finally(() => {
         if (isMounted) setLoading(false);
         if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current);
@@ -191,7 +196,7 @@ const Letters = () => {
       clearTimeout(timer);
       if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current);
     };
-  }, [activeTab, activeType, favoriteFilter, searchQuery]);
+  }, [activeTab, activeType, favoriteFilter, searchQuery, retryLetters, showApiError, t]);
 
   const handleToggleFavorite = useCallback((letter: Letter, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -279,11 +284,15 @@ const Letters = () => {
     }
   }, [letters, selectedLetterId, t]);
 
-  const handleEdit = useCallback((letter: Letter, e: React.MouseEvent) => {
+  const handleEdit = useCallback(async (letter: Letter, e: React.MouseEvent) => {
     e.stopPropagation();
+    let contentForDraft = letter.content || '';
+    if (letter.content && isEncrypted(letter.content)) {
+      contentForDraft = await decryptPayload(letter.content, letter.id);
+    }
     storage.saveDraft({
       title: letter.title,
-      content: letter.content,
+      content: contentForDraft,
       recipients: letter.recipients,
       unlockDate: letter.unlockDate,
       type: letter.type,

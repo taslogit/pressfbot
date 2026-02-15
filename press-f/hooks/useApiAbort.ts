@@ -3,13 +3,13 @@ import { useEffect, useRef } from 'react';
 /**
  * Hook that provides an AbortController signal for API requests.
  * Automatically aborts all pending requests when the component unmounts.
- * 
+ *
  * Usage:
  *   const getSignal = useApiAbort();
- * 
+ *
  *   useEffect(() => {
- *     const signal = getSignal();
- *     lettersAPI.getAll({ signal }).then(res => { ... });
+ *     const opts = { signal: getSignal() };
+ *     lettersAPI.getAll(params, opts).then(res => { ... });
  *   }, []);
  */
 export function useApiAbort() {

@@ -13,7 +13,7 @@ export const useTelegramSession = () => {
         (async () => {
           try {
             const res = await verifyInitDataOnServer(raw);
-            if (res?.ok && res.sessionId) {
+            if (res?.sessionId) {
               storage.setSessionId(res.sessionId);
             } else {
               console.warn('Failed to verify initData, using fallback');

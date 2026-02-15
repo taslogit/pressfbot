@@ -104,11 +104,9 @@ async function apiRequest<T>(
     return { ok: true, data };
   } catch (e: any) {
     if (e.name === 'AbortError') {
-      // If aborted by external signal (component unmount), don't retry
       if (externalSignal?.aborted) {
         return { ok: false, error: 'Request cancelled', code: 'CANCELLED' };
       }
-      // Retry on timeout
       if (retryCount < MAX_RETRIES) {
         const delay = RETRY_DELAY_MS * Math.pow(2, retryCount);
         console.warn(`[API] Retrying timeout [${endpoint}] (attempt ${retryCount + 1}/${MAX_RETRIES}) after ${delay}ms`);
@@ -118,15 +116,14 @@ async function apiRequest<T>(
       console.error(`API request timeout [${endpoint}]`);
       return { ok: false, error: 'Request timeout', code: 'TIMEOUT' };
     }
-    
-    // Retry on network errors
-    if (retryCount < MAX_RETRIES && RETRYABLE_ERROR_CODES.includes('NETWORK_ERROR')) {
+
+    // Network or other errors — retry with backoff
+    if (retryCount < MAX_RETRIES) {
       const delay = RETRY_DELAY_MS * Math.pow(2, retryCount);
-      console.warn(`[API] Retrying network error [${endpoint}] (attempt ${retryCount + 1}/${MAX_RETRIES}) after ${delay}ms`);
+      console.warn(`[API] Retrying [${endpoint}] after error (attempt ${retryCount + 1}/${MAX_RETRIES}) after ${delay}ms`, e?.message || e);
       await sleep(delay);
       return apiRequest<T>(endpoint, options, retryCount + 1);
     }
-    
     console.error(`API request error [${endpoint}]:`, e);
     return { ok: false, error: e.message || 'Network error', code: 'NETWORK_ERROR' };
   }

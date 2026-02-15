@@ -14,9 +14,10 @@ const FuneralDJ = () => {
   const [selected, setSelected] = useState(storage.getSettings().funeralTrack);
   const { t } = useTranslation();
 
-  const select = (id: string) => {
+  const select = async (id: string) => {
     setSelected(id);
     storage.updateSettings({ funeralTrack: id });
+    storage.updateSettingsAsync({ funeralTrack: id }).catch(() => {});
   };
 
   return (

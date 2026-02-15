@@ -132,6 +132,16 @@ const Store = () => {
 
   const ownedItemIds = new Set(myItems.map((i) => i.item_id));
 
+  const getItemLabel = (itemId: string, fallback: string) => {
+    if (itemId?.startsWith('avatar_')) {
+      const key = `avatar_label_${itemId.replace('avatar_', '')}`;
+      const tr = t(key as any);
+      if (tr !== key) return tr;
+    }
+    const tk = t(`store_item_${itemId}` as any);
+    return tk !== `store_item_${itemId}` ? tk : fallback;
+  };
+
   if (loading) {
     return (
       <div className="min-h-[40vh] flex items-center justify-center">
@@ -334,7 +344,7 @@ const Store = () => {
                         )}
                         <div className="flex-1 min-w-0">
                           <span className="font-bold text-primary block flex items-center gap-2">
-                            {(() => { const tk = t(`store_item_${item.id}` as any); return tk !== `store_item_${item.id}` ? tk : item.name; })()}
+                            {getItemLabel(item.id, item.name)}
                             {ownedItemIds.has(item.id) && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent-lime/20 text-accent-lime">✓</span>
                             )}
@@ -412,7 +422,7 @@ const Store = () => {
             ) : (
               <div className="grid gap-2">
                 {myItems.map((p: any) => {
-                  const label = t(`store_item_${p.item_id}` as any) || xpCatalog.find((x: any) => x.id === p.item_id)?.name || p.item_id;
+                  const label = getItemLabel(p.item_id, xpCatalog.find((x: any) => x.id === p.item_id)?.name || p.item_id);
                   return (
                     <div
                       key={`${p.item_id}-${p.created_at}`}

@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Mail, Swords, Zap, User, Search, ShoppingBag } from 'lucide-react';
 import { tg } from '../utils/telegram';
 import { useTranslation } from '../contexts/LanguageContext';
 import { playSound } from '../utils/sound';
+import OfflineIndicator from './OfflineIndicator';
 
 interface Props {
   children: React.ReactNode;
@@ -36,11 +36,12 @@ const Layout: React.FC<Props> = ({ children }) => {
 
   return (
     <div className="min-h-screen pb-20 bg-bg text-primary font-sans selection:bg-accent-pink selection:text-white transition-colors duration-300">
-      <main className="p-4 max-w-md mx-auto relative z-10">
+      <OfflineIndicator />
+      <main className="p-4 max-w-md mx-auto relative z-10" id="main-content">
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-xl border-t border-border z-40 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.3)]">
+      <nav className="fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-xl border-t border-border z-40 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.3)]" aria-label={t('nav_aria_label')}>
         <div className="flex justify-around items-center h-20 max-w-md mx-auto">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
@@ -50,6 +51,8 @@ const Layout: React.FC<Props> = ({ children }) => {
                 key={item.path}
                 onClick={() => handleNav(item.path)}
                 className={`flex flex-col items-center justify-center w-full h-full transition-all duration-300 relative group`}
+                aria-label={item.label}
+                aria-current={isActive ? 'page' : undefined}
               >
                 <div className={`transition-all duration-300 transform ${isActive ? 'scale-110 -translate-y-1' : 'scale-100'}`}>
                   <Icon 

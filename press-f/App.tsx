@@ -2,6 +2,7 @@ import React, { useEffect, Suspense, lazy } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ApiErrorProvider } from './contexts/ApiErrorContext';
 import Layout from './components/Layout';
 import { TonConnectUIProvider } from '@tonconnect/ui-react';
 
@@ -152,6 +153,7 @@ const App = () => {
     <ErrorBoundary>
       <LanguageProvider>
         <ThemeProvider>
+          <ApiErrorProvider>
           <TonConnectUIProvider manifestUrl={manifestUrl}>
             <HashRouter>
               <TelegramHandler />
@@ -186,6 +188,7 @@ const App = () => {
               </Suspense>
             </HashRouter>
           </TonConnectUIProvider>
+          </ApiErrorProvider>
         </ThemeProvider>
       </LanguageProvider>
     </ErrorBoundary>

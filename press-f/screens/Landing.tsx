@@ -447,7 +447,12 @@ const Landing = () => {
         </div>
 
         {/* Central Interaction Area */}
-        <div className="relative group cursor-pointer" onClick={handleCheckIn}>
+        <button
+          type="button"
+          className="relative group cursor-pointer w-full border-0 bg-transparent p-0 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-lime focus-visible:ring-offset-2 focus-visible:ring-offset-bg rounded-full"
+          onClick={handleCheckIn}
+          aria-label={t('im_alive_btn')}
+        >
             {/* Outer Glow Ring */}
             <div className={`absolute -inset-6 rounded-full opacity-20 blur-2xl animate-pulse motion-reduce:animate-none ${isUrgent ? 'bg-red-500' : 'bg-accent-lime'}`} />
             
@@ -501,7 +506,7 @@ const Landing = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </button>
 
         {/* Timer Interval Selector */}
         <div className="mt-6 w-full max-w-[280px]">
