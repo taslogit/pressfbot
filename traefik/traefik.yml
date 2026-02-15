@@ -4,11 +4,11 @@ entryPoints:
   websecure:
     address: ":443"
 
-# Замените email на свой для уведомлений Let's Encrypt
+# Email для Let's Encrypt (укажите свой, если не pressfbot.ru)
 certificatesResolvers:
   le:
     acme:
-      email: admin@example.com
+      email: "noreply@pressfbot.ru"
       storage: /letsencrypt/acme.json
       tlsChallenge: {}
 
