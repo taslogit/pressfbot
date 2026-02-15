@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Flame } from 'lucide-react';
+import { Flame, Share2 } from 'lucide-react';
 import { profileAPI } from '../utils/api';
 import { StreakInfo } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
+import { tg } from '../utils/telegram';
+import { playSound } from '../utils/sound';
 
 interface Props {
   className?: string;
@@ -81,6 +83,20 @@ const StreakIndicator: React.FC<Props> = ({ className = '' }) => {
             </div>
           )}
         </div>
+        <button
+          onClick={() => {
+            playSound('click');
+            const text = t('share_streak_text', { days: current });
+            const url = tg.initDataUnsafe?.user?.username
+              ? `https://t.me/${tg.initDataUnsafe.user.username}`
+              : window.location.href;
+            tg.openLink?.(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
+          }}
+          className="flex-shrink-0 p-2 rounded-lg border border-orange-500/40 text-orange-400 hover:bg-orange-500/20 transition-all"
+          title={t('share_streak')}
+        >
+          <Share2 size={18} />
+        </button>
       </div>
     </motion.div>
   );

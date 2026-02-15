@@ -6,10 +6,17 @@ interface XPNotificationProps {
   xp: number;
   level?: number;
   levelUp?: boolean;
+  bonusLabel?: 'lucky' | 'comeback' | 'milestone' | null;
   onComplete?: () => void;
 }
 
-const XPNotification: React.FC<XPNotificationProps> = ({ xp, level, levelUp = false, onComplete }) => {
+const BONUS_LABELS: Record<string, string> = {
+  lucky: 'LUCKY!',
+  comeback: 'Welcome back!',
+  milestone: 'Streak bonus!'
+};
+
+const XPNotification: React.FC<XPNotificationProps> = ({ xp, level, levelUp = false, bonusLabel, onComplete }) => {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
@@ -61,8 +68,15 @@ const XPNotification: React.FC<XPNotificationProps> = ({ xp, level, levelUp = fa
               ) : (
                 <>
                   <TrendingUp size={20} className="text-white" />
-                  <div className="text-white font-bold text-base">
-                    +{xp} XP
+                  <div>
+                    {bonusLabel && (
+                      <div className="text-yellow-300 font-black text-sm uppercase tracking-wider">
+                        {BONUS_LABELS[bonusLabel] || bonusLabel}
+                      </div>
+                    )}
+                    <div className="text-white font-bold text-base">
+                      +{xp} XP
+                    </div>
                   </div>
                 </>
               )}

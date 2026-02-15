@@ -14,6 +14,7 @@ import OnboardingGuide from '../components/OnboardingGuide';
 import InfoSection from '../components/InfoSection';
 // QuestLog removed - replaced with DailyQuests component
 import StreakIndicator from '../components/StreakIndicator';
+import StreakCalendar from '../components/StreakCalendar';
 import DailyQuests from '../components/DailyQuests';
 import XPNotification from '../components/XPNotification';
 import SeasonalEvents from '../components/SeasonalEvents';
@@ -35,7 +36,7 @@ const Landing = () => {
   // showQuestLog removed - use Daily Quests component instead
   const [settings, setSettings] = useState(storage.getSettings());
   const [showSharePulse, setShowSharePulse] = useState(false);
-  const [xpNotification, setXpNotification] = useState<{ xp: number; level?: number; levelUp?: boolean } | null>(null);
+  const [xpNotification, setXpNotification] = useState<{ xp: number; level?: number; levelUp?: boolean; bonusLabel?: 'lucky' | 'comeback' | 'milestone' } | null>(null);
 
   // Dashboard Data
   const [activeDuels, setActiveDuels] = useState(0);
@@ -148,7 +149,7 @@ const Landing = () => {
       const result = await profileAPI.checkIn();
       
       if (result.ok && result.data) {
-        const { xp, streak } = result.data;
+        const { xp, streak, bonuses } = result.data;
         
         // Update local state
         imAlive();
@@ -157,6 +158,12 @@ const Landing = () => {
         
         // Track analytics
         analytics.trackCheckIn(streak?.current || undefined);
+        
+        // Determine bonus label for notification (lucky > milestone > comeback)
+        let bonusLabel: 'lucky' | 'comeback' | 'milestone' | undefined;
+        if (bonuses?.lucky) bonusLabel = 'lucky';
+        else if (bonuses?.milestone) bonusLabel = 'milestone';
+        else if (bonuses?.comeback) bonusLabel = 'comeback';
         
         // Show XP notification
         if (xp) {
@@ -167,7 +174,7 @@ const Landing = () => {
           const newLevel = calculateLevel((profile.experience || 0) + xp);
           const levelUp = newLevel > oldLevel;
           
-          setXpNotification({ xp, level: levelUp ? newLevel : undefined, levelUp });
+          setXpNotification({ xp, level: levelUp ? newLevel : undefined, levelUp, bonusLabel });
           
           if (levelUp) {
             confetti({
@@ -251,6 +258,7 @@ const Landing = () => {
           xp={xpNotification.xp}
           level={xpNotification.level}
           levelUp={xpNotification.levelUp}
+          bonusLabel={xpNotification.bonusLabel}
           onComplete={() => setXpNotification(null)}
         />
       )}
@@ -483,7 +491,8 @@ const Landing = () => {
          {/* Daily Quests Widget - handled by DailyQuests component */}
          <DailyQuests />
          
-         {/* Streak Indicator */}
+         {/* Streak Calendar & Indicator */}
+         <StreakCalendar />
          <StreakIndicator />
       </div>
 

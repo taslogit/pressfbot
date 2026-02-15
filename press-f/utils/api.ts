@@ -267,7 +267,12 @@ export const profileAPI = {
     });
   },
   checkIn: async () => {
-    return apiRequest<{ timestamp: number; streak?: any; xp?: number }>('/api/profile/check-in', {
+    return apiRequest<{
+      timestamp: number;
+      streak?: { current: number; longest: number; bonus: number; usedSkip: boolean };
+      xp?: number;
+      bonuses?: { comeback: number; milestone: number; lucky: number };
+    }>('/api/profile/check-in', {
       method: 'POST',
     });
   },

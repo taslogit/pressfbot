@@ -582,7 +582,7 @@ const Profile = () => {
                       />
                     </div>
                     <div className="text-[8px] text-muted mt-1 text-center">
-                      {levelProgress.next - levelProgress.current} XP до следующего уровня
+                      {t('profile_xp_to_next', { xp: levelProgress.next - levelProgress.current })}
                     </div>
                   </div>
               </div>

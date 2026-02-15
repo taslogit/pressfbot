@@ -391,11 +391,12 @@ const createProfileRoutes = (pool) => {
       let newStreak = currentStreak;
       let usedSkip = false;
       let streakBonus = 0;
+      let daysDiff = 0; // Days since last check-in (for comeback bonus)
 
       if (lastStreakDate) {
         const lastDate = new Date(lastStreakDate + 'T00:00:00Z'); // Parse as UTC
         const todayDate = new Date(today + 'T00:00:00Z');
-        const daysDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
+        daysDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
 
         if (daysDiff === 1) {
           // Continue streak
@@ -425,7 +426,7 @@ const createProfileRoutes = (pool) => {
         longestStreak = newStreak;
       }
 
-      // Calculate streak bonuses
+      // Calculate streak bonuses (REP)
       if (newStreak === 3) streakBonus = 5;
       else if (newStreak === 7) streakBonus = 15;
       else if (newStreak === 14) streakBonus = 30;
@@ -440,8 +441,24 @@ const createProfileRoutes = (pool) => {
         );
       }
 
-      // Award XP for check-in (10 XP) - in transaction
-      const checkInXP = 10;
+      // RETENTION: Comeback bonus — +30 XP after 3+ days offline
+      let comebackXP = 0;
+      if (daysDiff >= 3) {
+        comebackXP = 30;
+      }
+
+      // RETENTION: Milestone XP — 7d +50 XP, 30d +100 XP
+      let milestoneXP = 0;
+      if (newStreak === 7) milestoneXP = 50;
+      else if (newStreak === 30) milestoneXP = 100;
+
+      // RETENTION: Lucky Check-in — 1% chance +100 XP
+      const luckyXP = Math.random() < 0.01 ? 100 : 0;
+
+      const totalBonusXP = comebackXP + milestoneXP + luckyXP;
+
+      // Award XP for check-in (10 base + bonuses) - in transaction
+      const checkInXP = 10 + totalBonusXP;
       await client.query(
         `UPDATE profiles 
          SET experience = experience + $1, 
@@ -513,7 +530,12 @@ const createProfileRoutes = (pool) => {
           bonus: streakBonus,
           usedSkip
         },
-        xp: checkInXP
+        xp: checkInXP,
+        bonuses: {
+          comeback: comebackXP,
+          milestone: milestoneXP,
+          lucky: luckyXP
+        }
       });
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
