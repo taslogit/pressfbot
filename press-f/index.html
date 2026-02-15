@@ -11,48 +11,7 @@
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/api/static/bot-start.jpg" />
     <title>PRESS F</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script>
-      // Force Dark Mode config immediately
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              bg: 'var(--color-bg)',
-              card: 'var(--color-card)',
-              primary: 'var(--color-text-primary)',
-              muted: 'var(--color-text-muted)',
-              border: 'var(--color-border)',
-              input: 'var(--color-input)',
-              accent: {
-                lime: '#B4FF00',
-                cyan: '#00E0FF',
-                pink: '#FF4DD2',
-                gold: '#FFD700',
-              }
-            },
-            animation: {
-              'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'spin-slow': 'spin 20s linear infinite',
-              'float': 'float 6s ease-in-out infinite',
-              'scan': 'scan 4s linear infinite',
-            },
-            keyframes: {
-              float: {
-                '0%, 100%': { transform: 'translateY(0)' },
-                '50%': { transform: 'translateY(-20px)' },
-              },
-              scan: {
-                '0%, 100%': { top: '0%' },
-                '50%': { top: '100%' },
-              }
-            }
-          }
-        }
-      }
-    </script>
     <style>
       :root {
         /* Default Dark Theme to prevent flash */
@@ -104,7 +63,6 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
   <body>
     <div id="root">
