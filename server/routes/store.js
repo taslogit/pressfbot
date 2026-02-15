@@ -4,9 +4,61 @@
 
 const express = require('express');
 const router = express.Router();
+const path = require('path');
+const fs = require('fs');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { activateBoost } = require('../utils/boosts');
+
+const AVATARS_DIR = path.join(__dirname, '..', 'static', 'avatars');
+const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
+const DEFAULT_AVATAR_COST = 80;
+const AVATAR_COST_OVERRIDES = { skull: 80, ghost: 80, robot: 100, crown: 120 };
+
+/** Get avatar items from filesystem (same source as Profile /api/avatars) */
+function getAvatarsFromFolder() {
+  const items = [];
+  if (!fs.existsSync(AVATARS_DIR)) return items;
+  const files = fs.readdirSync(AVATARS_DIR);
+  const imageFiles = files.filter(file =>
+    IMAGE_EXTENSIONS.includes(path.extname(file).toLowerCase())
+  );
+  for (const file of imageFiles) {
+    const ext = path.extname(file).toLowerCase();
+    const name = path.basename(file, ext);
+    if (name.toLowerCase() === 'pressf') continue; // default/free, not in catalog
+    const cost = AVATAR_COST_OVERRIDES[name.toLowerCase()] ?? DEFAULT_AVATAR_COST;
+    const displayName = name.charAt(0).toUpperCase() + name.slice(1).replace(/[-_]/g, ' ');
+    items.push({
+      id: `avatar_${name}`,
+      name: displayName,
+      description: `${displayName} avatar`,
+      cost_xp: cost,
+      cost_rep: 0,
+      category: 'avatar',
+      type: 'permanent',
+      avatarFile: file
+    });
+  }
+  return items.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Resolve item for catalog/buy: XP_STORE or dynamic avatar */
+function resolveStoreItem(itemId) {
+  if (XP_STORE[itemId]) return XP_STORE[itemId];
+  if (itemId.startsWith('avatar_') && !itemId.includes('frame')) {
+    const avatars = getAvatarsFromFolder();
+    return avatars.find(a => a.id === itemId) || null;
+  }
+  return null;
+}
+
+/** All catalog entries for flash sale calc */
+function getAllCatalogEntries() {
+  const staticEntries = Object.entries(XP_STORE);
+  const avatarItems = getAvatarsFromFolder().map(item => [item.id, item]);
+  return [...avatarItems, ...staticEntries];
+}
 
 // ─── Store Items (purchasable with XP/REP) ──────────
 const XP_STORE = {
@@ -115,39 +167,7 @@ const XP_STORE = {
     type: 'permanent'
   },
 
-  // ─── Avatars (pressf is default/free, not in catalog) ─────
-  avatar_skull: {
-    name: 'Skull Avatar',
-    description: 'Skull icon avatar',
-    cost_xp: 80,
-    cost_rep: 0,
-    category: 'avatar',
-    type: 'permanent'
-  },
-  avatar_ghost: {
-    name: 'Ghost Avatar',
-    description: 'Ghost icon avatar',
-    cost_xp: 80,
-    cost_rep: 0,
-    category: 'avatar',
-    type: 'permanent'
-  },
-  avatar_robot: {
-    name: 'Robot Avatar',
-    description: 'Robot icon avatar',
-    cost_xp: 100,
-    cost_rep: 0,
-    category: 'avatar',
-    type: 'permanent'
-  },
-  avatar_crown: {
-    name: 'Crown Avatar',
-    description: 'Crown icon avatar',
-    cost_xp: 120,
-    cost_rep: 0,
-    category: 'avatar',
-    type: 'permanent'
-  },
+  // ─── Avatars: loaded dynamically from static/avatars (see getAvatarsFromFolder) ─────
 
   // ─── Avatar Frames (default is free, not in catalog) ─────
   avatar_frame_fire: {
@@ -204,14 +224,14 @@ const XP_STORE = {
 
 // Public handler for /api/store/catalog (no auth — static data for vitrine)
 const handleStoreCatalog = (req, res) => {
-    const entries = Object.entries(XP_STORE);
+    const entries = getAllCatalogEntries();
     const catalog = entries.map(([id, item]) => ({ id, ...item }));
 
     // Flash Sale: 1 random XP item -50% for current UTC hour
     const now = new Date();
     const hourSeed = now.getUTCFullYear() * 8760 + now.getUTCMonth() * 720 + now.getUTCDate() * 24 + now.getUTCHours();
-    const flashIndex = hourSeed % entries.length;
-    const flashItemId = entries[flashIndex][0];
+    const flashIndex = hourSeed % (entries.length || 1);
+    const flashItemId = entries[flashIndex]?.[0] || entries[0]?.[0];
     const flashEndsAt = new Date(now);
     flashEndsAt.setUTCHours(flashEndsAt.getUTCHours() + 1, 0, 0, 0);
 
@@ -280,11 +300,10 @@ const createStoreRoutes = (pool) => {
       if (!userId) return sendError(res, 401, 'AUTH_REQUIRED', 'Not authenticated');
 
       const { itemId } = req.body;
-      if (!itemId || !XP_STORE[itemId]) {
+      const item = resolveStoreItem(itemId);
+      if (!itemId || !item) {
         return sendError(res, 400, 'INVALID_ITEM', 'Item not found');
       }
-
-      const item = XP_STORE[itemId];
 
       // Check if permanent item already owned
       if (item.type === 'permanent') {
@@ -300,8 +319,8 @@ const createStoreRoutes = (pool) => {
       // Flash Sale: 50% off for 1 item per hour
       const now = new Date();
       const hourSeed = now.getUTCFullYear() * 8760 + now.getUTCMonth() * 720 + now.getUTCDate() * 24 + now.getUTCHours();
-      const entries = Object.entries(XP_STORE);
-      const flashItemId = entries[hourSeed % entries.length][0];
+      const allEntries = getAllCatalogEntries();
+      const flashItemId = allEntries[hourSeed % (allEntries.length || 1)]?.[0];
       const isFlashSale = itemId === flashItemId;
 
       // First purchase 20% discount (doesn't stack with flash sale)
@@ -443,7 +462,7 @@ const createStoreRoutes = (pool) => {
       );
       purchasesResult.rows.forEach((r) => ownedIds.add(r.item_id));
 
-      const entries = Object.entries(XP_STORE).filter(([id, item]) => {
+      const entries = getAllCatalogEntries().filter(([id, item]) => {
         if (item.type === 'permanent' && ownedIds.has(id)) return false;
         if (item.cost_rep > 0) return false;
         return true;

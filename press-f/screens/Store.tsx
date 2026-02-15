@@ -315,7 +315,7 @@ const Store = () => {
                       >
                         {category === 'avatar' ? (
                           <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 border border-border bg-black/60">
-                            <img src={getStaticUrl(`/api/static/avatars/${item.id.replace('avatar_', '')}.svg`)} alt={item.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = getStaticUrl(`/api/static/avatars/pressf.svg`); }} />
+                            <img src={getStaticUrl(`/api/static/avatars/${item.avatarFile || item.id.replace('avatar_', '') + '.svg'}`)} alt={item.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = getStaticUrl(`/api/static/avatars/pressf.svg`); }} />
                           </div>
                         ) : category === 'avatar_frame' ? (
                           <div className={`w-12 h-12 rounded-xl flex-shrink-0 bg-black/60 flex items-center justify-center ${
@@ -334,7 +334,7 @@ const Store = () => {
                         )}
                         <div className="flex-1 min-w-0">
                           <span className="font-bold text-primary block flex items-center gap-2">
-                            {t(`store_item_${item.id}` as any) || item.name}
+                            {(() => { const tk = t(`store_item_${item.id}` as any); return tk !== `store_item_${item.id}` ? tk : item.name; })()}
                             {ownedItemIds.has(item.id) && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent-lime/20 text-accent-lime">✓</span>
                             )}
@@ -342,7 +342,7 @@ const Store = () => {
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/30 text-orange-400">−50%</span>
                             )}
                           </span>
-                          <span className="text-xs text-muted line-clamp-2">{t(`store_item_${item.id}_desc` as any) || item.description}</span>
+                          <span className="text-xs text-muted line-clamp-2">{(() => { const tk = t(`store_item_${item.id}_desc` as any); return tk !== `store_item_${item.id}_desc` ? tk : item.description; })()}</span>
                         </div>
                         <span className="text-accent-pink font-bold flex-shrink-0 text-sm">{costStr}</span>
                       </motion.button>
@@ -456,14 +456,14 @@ const Store = () => {
             >
               <div className="flex justify-between items-start mb-4">
                 <h3 className="text-lg font-bold text-primary">
-                  {itemType === 'xp' ? (t(`store_item_${selectedItem.id}` as any) || selectedItem.name) : (t(`store_stars_${selectedItem.id}` as any) || selectedItem.title)}
+                  {itemType === 'xp' ? (() => { const tk = t(`store_item_${selectedItem.id}` as any); return tk !== `store_item_${selectedItem.id}` ? tk : selectedItem.name; })() : (() => { const tk = t(`store_stars_${selectedItem.id}` as any); return tk !== `store_stars_${selectedItem.id}` ? tk : selectedItem.title; })()}
                 </h3>
                 <button onClick={closeItemModal} className="p-1 text-muted hover:text-primary">
                   <X size={24} />
                 </button>
               </div>
               <p className="text-sm text-muted mb-4">
-                {itemType === 'xp' ? (t(`store_item_${selectedItem.id}_desc` as any) || selectedItem.description) : (t(`store_stars_${selectedItem.id}_desc` as any) || selectedItem.description)}
+                {itemType === 'xp' ? (() => { const tk = t(`store_item_${selectedItem.id}_desc` as any); return tk !== `store_item_${selectedItem.id}_desc` ? tk : selectedItem.description; })() : (() => { const tk = t(`store_stars_${selectedItem.id}_desc` as any); return tk !== `store_stars_${selectedItem.id}_desc` ? tk : selectedItem.description; })()}
               </p>
               <div className="flex items-center justify-between">
                 {itemType === 'stars' && (
