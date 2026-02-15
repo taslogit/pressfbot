@@ -857,7 +857,7 @@ const Profile = () => {
                            entry.rank === 3 ? 'bg-orange-500 text-white' :
                            'bg-white/5 text-muted'
                          }`}>{entry.rank}</span>
-                         <img src={getStaticUrl(`/api/static/avatars/${entry.avatar}.svg`)} alt="" className="w-7 h-7 rounded-lg object-cover" onError={(e) => { (e.target as HTMLImageElement).src = getStaticUrl(`/api/static/avatars/pressf.svg`); }} />
+                         <img src={getStaticUrl(`/api/static/avatars/${entry.avatar === 'default' ? 'pressf' : (entry.avatar || 'pressf')}.svg`)} alt="" className="w-7 h-7 rounded-lg object-cover" onError={(e) => { (e.target as HTMLImageElement).src = getStaticUrl(`/api/static/avatars/pressf.svg`); }} />
                          <span className="flex-1 text-xs font-medium truncate">{entry.title}</span>
                          <span className="text-xs font-black text-accent-lime">{entry.streak}d</span>
                        </div>

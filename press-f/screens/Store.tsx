@@ -517,7 +517,8 @@ const Store = () => {
                     } else if (itemType === 'xp') {
                       const res = await storeAPI.buyItem(selectedItem.id);
                       if (res.ok && res.data) {
-                        tg.showPopup?.({ message: t('store_buy_success') });
+                        const isAvatarOrFrame = selectedItem.id?.startsWith('avatar_');
+                        tg.showPopup?.({ message: isAvatarOrFrame ? t('store_buy_success_equip') : t('store_buy_success') });
                         if (res.data.remainingXp != null) {
                           setProfile((p: any) => p ? { ...p, spendableXp: res.data.remainingXp } : p);
                         }

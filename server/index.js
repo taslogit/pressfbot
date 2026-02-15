@@ -25,6 +25,9 @@ if (jobsQueue) {
 // Initialize Redis cache (uses same REDIS_URL)
 initCache(REDIS_URL);
 
+// Invalidate avatars cache on startup so new avatar files (e.g. pressf.svg) are picked up after deploy
+cache.del('avatars:list').catch(() => {});
+
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBHOOK_URL = process.env.WEBHOOK_URL; // https://your-backend-domain
 const WEB_APP_URL =
