@@ -441,10 +441,13 @@ const createProfileRoutes = (pool) => {
         );
       }
 
-      // RETENTION: Comeback bonus — +30 XP after 3+ days offline
+      // RETENTION: Comeback / Re-engagement bonus
       let comebackXP = 0;
-      if (daysDiff >= 3) {
-        comebackXP = 30;
+      let reengagementXP = 0;
+      if (daysDiff >= 7) {
+        reengagementXP = 50;  // Re-engagement: 7+ days offline — «Скучаем. +50 XP»
+      } else if (daysDiff >= 3) {
+        comebackXP = 30;     // Comeback: 3–6 days offline
       }
 
       // RETENTION: Milestone XP — 7d +50 XP, 30d +100 XP
@@ -455,7 +458,7 @@ const createProfileRoutes = (pool) => {
       // RETENTION: Lucky Check-in — 1% chance +100 XP
       const luckyXP = Math.random() < 0.01 ? 100 : 0;
 
-      const totalBonusXP = comebackXP + milestoneXP + luckyXP;
+      const totalBonusXP = comebackXP + reengagementXP + milestoneXP + luckyXP;
 
       // Award XP for check-in (10 base + bonuses) - in transaction
       const checkInXP = 10 + totalBonusXP;
@@ -533,6 +536,7 @@ const createProfileRoutes = (pool) => {
         xp: checkInXP,
         bonuses: {
           comeback: comebackXP,
+          reengagement: reengagementXP,
           milestone: milestoneXP,
           lucky: luckyXP
         }

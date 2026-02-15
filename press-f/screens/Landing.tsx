@@ -36,10 +36,11 @@ const Landing = () => {
   // showQuestLog removed - use Daily Quests component instead
   const [settings, setSettings] = useState(storage.getSettings());
   const [showSharePulse, setShowSharePulse] = useState(false);
-  const [xpNotification, setXpNotification] = useState<{ xp: number; level?: number; levelUp?: boolean; bonusLabel?: 'lucky' | 'comeback' | 'milestone' | 'daily' | 'guide' } | null>(null);
+  const [xpNotification, setXpNotification] = useState<{ xp: number; level?: number; levelUp?: boolean; bonusLabel?: 'lucky' | 'comeback' | 'reengagement' | 'milestone' | 'daily' | 'guide' } | null>(null);
 
   // Dashboard Data
   const [activeDuels, setActiveDuels] = useState(0);
+  const [duelsResolvingToday, setDuelsResolvingToday] = useState<any[]>([]);
   const [draftLetters, setDraftLetters] = useState(0);
   const [witnessCount, setWitnessCount] = useState(0); 
   const [nextUnlockDate, setNextUnlockDate] = useState<string | null>(null);
@@ -78,7 +79,17 @@ const Landing = () => {
     // Then try to load from API (with fallback)
     storage.getDuelsAsync().then((duels) => {
       if (isMounted) {
-        setActiveDuels(duels.filter(d => d.status === 'active').length);
+        const active = duels.filter(d => d.status === 'active');
+        setActiveDuels(active.length);
+        const today = new Date();
+        const todayStr = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}-${String(today.getUTCDate()).padStart(2, '0')}`;
+        const resolving = active.filter((d) => {
+          const dl = d.deadline ? new Date(d.deadline) : null;
+          if (!dl || Number.isNaN(dl.getTime())) return false;
+          const dlStr = `${dl.getUTCFullYear()}-${String(dl.getUTCMonth() + 1).padStart(2, '0')}-${String(dl.getUTCDate()).padStart(2, '0')}`;
+          return dlStr === todayStr;
+        });
+        setDuelsResolvingToday(resolving);
       }
     }).catch((error) => {
       console.error('Error loading duels:', error);
@@ -174,10 +185,11 @@ const Landing = () => {
         // Track analytics
         analytics.trackCheckIn(streak?.current || undefined);
         
-        // Determine bonus label for notification (lucky > milestone > comeback)
-        let bonusLabel: 'lucky' | 'comeback' | 'milestone' | undefined;
+        // Determine bonus label for notification (lucky > milestone > reengagement > comeback)
+        let bonusLabel: 'lucky' | 'comeback' | 'reengagement' | 'milestone' | undefined;
         if (bonuses?.lucky) bonusLabel = 'lucky';
         else if (bonuses?.milestone) bonusLabel = 'milestone';
+        else if (bonuses?.reengagement) bonusLabel = 'reengagement';
         else if (bonuses?.comeback) bonusLabel = 'comeback';
         
         // Show XP notification
@@ -504,6 +516,35 @@ const Landing = () => {
          <StreakCalendar />
          <StreakIndicator />
       </div>
+
+      {/* D-Day Beef Widget — Биф решается сегодня */}
+      {duelsResolvingToday.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative z-10"
+        >
+          <button
+            onClick={() => { playSound('click'); navigate('/duels'); }}
+            className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-orange-500/50 bg-orange-500/15 hover:bg-orange-500/25 transition-all text-left"
+          >
+            <div className="w-10 h-10 rounded-lg bg-orange-500/30 flex items-center justify-center flex-shrink-0">
+              <Swords size={20} className="text-orange-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-xs font-black uppercase tracking-widest text-orange-400 block">
+                {t('widget_duel_dday')}
+              </span>
+              <span className="text-sm font-bold text-primary truncate block">
+                {duelsResolvingToday[0]?.title} vs {duelsResolvingToday[0]?.opponent || '?'}
+              </span>
+              {duelsResolvingToday.length > 1 && (
+                <span className="text-[10px] text-muted">+{duelsResolvingToday.length - 1} {t('widget_duel_dday_more')}</span>
+              )}
+            </div>
+          </button>
+        </motion.div>
+      )}
 
       {/* System Log Widget */}
       <div className="relative z-10">

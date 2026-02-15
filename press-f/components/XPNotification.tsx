@@ -1,24 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, TrendingUp } from 'lucide-react';
+import { useTranslation } from '../contexts/LanguageContext';
 
 interface XPNotificationProps {
   xp: number;
   level?: number;
   levelUp?: boolean;
-  bonusLabel?: 'lucky' | 'comeback' | 'milestone' | 'daily' | 'guide' | null;
+  bonusLabel?: 'lucky' | 'comeback' | 'reengagement' | 'milestone' | 'daily' | 'guide' | null;
   onComplete?: () => void;
 }
 
-const BONUS_LABELS: Record<string, string> = {
-  lucky: 'LUCKY!',
-  comeback: 'Welcome back!',
-  milestone: 'Streak bonus!',
-  daily: 'Daily loot!',
-  guide: 'Guide complete!'
-};
-
 const XPNotification: React.FC<XPNotificationProps> = ({ xp, level, levelUp = false, bonusLabel, onComplete }) => {
+  const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
@@ -73,7 +67,7 @@ const XPNotification: React.FC<XPNotificationProps> = ({ xp, level, levelUp = fa
                   <div>
                     {bonusLabel && (
                       <div className="text-yellow-300 font-black text-sm uppercase tracking-wider">
-                        {BONUS_LABELS[bonusLabel] || bonusLabel}
+                        {t(`xp_bonus_${bonusLabel}` as any) || bonusLabel}
                       </div>
                     )}
                     <div className="text-white font-bold text-base">
