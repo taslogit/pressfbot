@@ -460,11 +460,15 @@ const Profile = () => {
                                 </svg>
                               </div>
                             )}
-                            {avatar.id === DEFAULT_AVATAR_ID && (
-                              <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[8px] font-bold px-1 py-0.5 text-center">
-                                DEFAULT
-                              </div>
-                            )}
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[8px] font-bold px-1 py-0.5 text-center">
+                              {avatar.id === DEFAULT_AVATAR_ID
+                                ? (t('avatar_label_pressf') || 'Default')
+                                : (() => {
+                                    const key = `avatar_label_${avatar.id.toLowerCase()}` as any;
+                                    const translated = t(key);
+                                    return translated !== key ? translated : avatar.name;
+                                  })()}
+                            </div>
                           </motion.button>
                         );
                       })}
