@@ -313,10 +313,10 @@ const Profile = () => {
   // Get current avatar (server avatar or default pressf.jpg)
   const currentAvatar = serverAvatar || availableAvatars.find(av => av.id === DEFAULT_AVATAR_ID) || null;
   
-  // If no avatar selected or avatar not found, use default (pressf.png)
+  // If no avatar selected or avatar not found, use default (pressf.svg)
   const displayAvatar = currentAvatar || {
     id: DEFAULT_AVATAR_ID,
-    url: `/api/static/avatars/${DEFAULT_AVATAR_ID}.png`,
+    url: `/api/static/avatars/${DEFAULT_AVATAR_ID}.svg`,
     name: 'PressF'
   };
 
@@ -857,7 +857,7 @@ const Profile = () => {
                            entry.rank === 3 ? 'bg-orange-500 text-white' :
                            'bg-white/5 text-muted'
                          }`}>{entry.rank}</span>
-                         <img src={getStaticUrl(`/api/static/avatars/${entry.avatar}.png`)} alt="" className="w-7 h-7 rounded-lg object-cover" onError={(e) => { (e.target as HTMLImageElement).src = getStaticUrl(`/api/static/avatars/pressf.png`); }} />
+                         <img src={getStaticUrl(`/api/static/avatars/${entry.avatar}.svg`)} alt="" className="w-7 h-7 rounded-lg object-cover" onError={(e) => { (e.target as HTMLImageElement).src = getStaticUrl(`/api/static/avatars/pressf.svg`); }} />
                          <span className="flex-1 text-xs font-medium truncate">{entry.title}</span>
                          <span className="text-xs font-black text-accent-lime">{entry.streak}d</span>
                        </div>

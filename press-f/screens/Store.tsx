@@ -36,7 +36,7 @@ const Store = () => {
   const address = useTonAddress();
   const walletConnected = !!address;
 
-  const [tab, setTab] = useState<TabId>('stars');
+  const [tab, setTab] = useState<TabId>('xp');
   const [starsCatalog, setStarsCatalog] = useState<any[]>([]);
   const [xpCatalog, setXpCatalog] = useState<any[]>([]);
   const [premiumStatus, setPremiumStatus] = useState<any>(null);
@@ -118,6 +118,12 @@ const Store = () => {
     acc[cat].push(item);
     return acc;
   }, {});
+
+  // Prefer avatar & avatar_frame categories first in XP tab
+  const CATEGORY_ORDER = ['avatar', 'avatar_frame', 'boost', 'profile', 'template', 'badge', 'duel', 'social', 'other'];
+  const sortedCategoryEntries = Object.entries(xpByCategory).sort(
+    ([a], [b]) => (CATEGORY_ORDER.indexOf(a) >= 0 ? CATEGORY_ORDER.indexOf(a) : 99) - (CATEGORY_ORDER.indexOf(b) >= 0 ? CATEGORY_ORDER.indexOf(b) : 99)
+  );
 
   const ownedItemIds = new Set(myItems.map((i) => i.item_id));
 
@@ -279,7 +285,9 @@ const Store = () => {
               </span>
             </motion.button>
             <div className="text-xs text-muted mb-2">{t('store_xp_hint')}</div>
-            {Object.entries(xpByCategory).map(([category, items]) => (
+            {sortedCategoryEntries.length === 0 ? (
+              <div className="text-center py-8 text-muted text-sm">{t('store_no_items') || 'No items available'}</div>
+            ) : sortedCategoryEntries.map(([category, items]) => (
               <div key={category}>
                 <h4 className="text-xs font-black uppercase tracking-widest text-accent-pink mb-2">
                   {t(CATEGORY_LABELS[category] as any) || category}
@@ -302,7 +310,7 @@ const Store = () => {
                       >
                         {category === 'avatar' ? (
                           <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 border border-border bg-black/60">
-                            <img src={getStaticUrl(`/api/static/avatars/${item.id.replace('avatar_', '')}.svg`)} alt={item.name} className="w-full h-full object-cover" />
+                            <img src={getStaticUrl(`/api/static/avatars/${item.id.replace('avatar_', '')}.svg`)} alt={item.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = getStaticUrl(`/api/static/avatars/pressf.svg`); }} />
                           </div>
                         ) : category === 'avatar_frame' ? (
                           <div className={`w-12 h-12 rounded-xl flex-shrink-0 bg-black/60 flex items-center justify-center ${
