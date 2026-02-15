@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Mail, Swords, Zap, User, Search, ShoppingBag } from 'lucide-react';
 import { tg } from '../utils/telegram';
 import { useTranslation } from '../contexts/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { playSound } from '../utils/sound';
 import OfflineIndicator from './OfflineIndicator';
 
@@ -14,6 +15,7 @@ const Layout: React.FC<Props> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
+  const { theme } = useTheme();
 
   React.useEffect(() => {
     tg.ready();
@@ -35,7 +37,7 @@ const Layout: React.FC<Props> = ({ children }) => {
   ];
 
   return (
-    <div className="min-h-screen pb-content-bottom bg-bg text-primary font-sans selection:bg-accent-pink selection:text-white transition-colors duration-300">
+    <div className={`min-h-screen pb-content-bottom text-primary font-sans selection:bg-accent-pink selection:text-white transition-colors duration-300 ${theme === 'light' ? 'light-theme-bg' : 'bg-bg'}`}>
       <OfflineIndicator />
       <main className="p-4 max-w-md mx-auto relative z-10" id="main-content">
         {children}

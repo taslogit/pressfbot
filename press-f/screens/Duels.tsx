@@ -367,7 +367,7 @@ const Duels = () => {
       )}
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-heading text-2xl font-black flex items-center gap-3 text-orange-500 drop-shadow-[0_0_10px_rgba(249,115,22,0.8)]">
+          <h2 className="text-2xl font-black flex items-center gap-3 text-orange-500 drop-shadow-[0_0_10px_rgba(249,115,22,0.8)]">
             <Sword className="fill-current" size={28} />
             {t('meme_duels')}
           </h2>

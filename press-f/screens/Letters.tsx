@@ -427,7 +427,7 @@ const Letters = () => {
 
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-lime drop-shadow-[0_0_10px_rgba(180,255,0,0.8)]">
+          <h2 className="text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-lime drop-shadow-[0_0_10px_rgba(180,255,0,0.8)]">
             <Send className="text-accent-lime" size={28} />
             <span className="drop-shadow-sm">{t('your_letters')}</span>
           </h2>
@@ -571,7 +571,7 @@ const Letters = () => {
                         {getTypeIcon(selectedLetter.type)}
                         <span className="text-xs font-mono text-accent-lime uppercase">DECRYPTED_LOG</span>
                       </div>
-                      <h2 className="font-heading text-xl font-black text-primary leading-tight">
+                      <h2 className="text-xl font-black text-primary leading-tight">
                         <DecryptedText text={selectedLetter.title} />
                       </h2>
                   </div>
@@ -616,7 +616,7 @@ const Letters = () => {
                 {/* Content */}
                 <div className="bg-black/40 p-4 rounded-xl border border-accent-lime/20 mb-6 relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-1 bg-accent-lime/50" />
-                  <p className="font-body whitespace-pre-wrap text-sm leading-relaxed opacity-90 text-green-100/80">
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed opacity-90 font-mono text-green-100/80">
                     <DecryptedLetterContent content={selectedLetter.content} letterId={selectedLetter.id} />
                   </p>
                 </div>
@@ -727,7 +727,7 @@ const Letters = () => {
                   >
                     <div className="p-6">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-heading text-lg font-black text-accent-cyan uppercase">History</h3>
+                        <h3 className="text-lg font-black text-accent-cyan uppercase">History</h3>
                         <button onClick={() => setHistoryOpen(false)} className="p-2 bg-white/5 rounded-full text-muted hover:text-white">
                           <X size={18} />
                         </button>

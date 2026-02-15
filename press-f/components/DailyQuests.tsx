@@ -90,7 +90,7 @@ const DailyQuests: React.FC<Props> = ({ className = '' }) => {
     >
       <div className="flex items-center gap-2 mb-3">
         <Trophy size={18} className="text-accent-gold" />
-        <h3 className="font-heading text-sm font-black uppercase text-white">
+        <h3 className="text-sm font-black uppercase text-white">
           {t('daily_quests') || 'ЕЖЕДНЕВНЫЕ ЗАДАНИЯ'}
         </h3>
         <span className="text-xs text-muted ml-auto">

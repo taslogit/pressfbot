@@ -18,16 +18,22 @@
   --spacing-content-bottom: 5rem;
 }
 
-/* Light theme — без смены стилистики, те же акценты */
+/* Light theme — тёмный градиент вместо белого, чтобы контент не сливался */
 .light {
-  --color-bg: #f4f4f6;
-  --color-card: #ffffff;
-  --color-primary: #0f0d16;
-  --color-text-primary: #0f0d16;
-  --color-muted: #5c6370;
-  --color-text-muted: #5c6370;
-  --color-border: rgba(0, 0, 0, 0.08);
-  --color-input: rgba(0, 0, 0, 0.04);
+  --color-bg: #1e1e24;
+  --color-card: #2a2a32;
+  --color-primary: #f0f0f2;
+  --color-text-primary: #f0f0f2;
+  --color-muted: #9ca3af;
+  --color-text-muted: #9ca3af;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-input: rgba(255, 255, 255, 0.05);
+}
+
+/* Фон светлой темы — тёмный градиент (применяется к основному контейнеру) */
+.light .light-theme-bg {
+  background: linear-gradient(165deg, #2a2a32 0%, #1e1e24 35%, #18181e 100%);
+  background-attachment: fixed;
 }
 
 @keyframes float {
@@ -49,13 +55,7 @@ html, body, #root {
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-family: 'DM Sans', system-ui, sans-serif;
 }
-
-/* Gothic display for main branding and numbers */
-.font-display { font-family: 'Cinzel', serif; }
-.font-heading { font-family: 'Cinzel', serif; }
-.font-body { font-family: 'Crimson Pro', serif; }
 
 /* Reduced motion: только бесконечные/долгие анимации делаем мгновенными */
 @media (prefers-reduced-motion: reduce) {

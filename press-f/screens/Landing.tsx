@@ -342,7 +342,7 @@ const Landing = () => {
       >
         <div>
            <motion.h1 
-             className="font-display text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-accent-lime via-white to-accent-cyan drop-shadow-[0_0_15px_rgba(180,255,0,0.6)] motion-reduce:animate-none"
+             className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-accent-lime via-white to-accent-cyan drop-shadow-[0_0_15px_rgba(180,255,0,0.6)] motion-reduce:animate-none"
              animate={{
                opacity: [1, 0.8, 1, 1, 0.5, 1, 0.9, 1],
                textShadow: [
@@ -381,8 +381,8 @@ const Landing = () => {
       </motion.header>
 
       {/* Quick value + actions */}
-      <div className="bg-card/60 border border-border rounded-xl p-4 text-xs text-muted overflow-hidden font-body">
-        <div className="font-heading text-xs uppercase tracking-widest mb-2 text-muted truncate">{t('home_value_title')}</div>
+      <div className="bg-card/60 border border-border rounded-xl p-4 text-xs text-muted overflow-hidden">
+        <div className="text-xs uppercase tracking-widest mb-2 text-muted truncate">{t('home_value_title')}</div>
         <div className="space-y-1 break-words min-w-0 overflow-hidden">
           <div>• {t('home_value_line1')}</div>
           <div>• {t('home_value_line2')}</div>
@@ -413,9 +413,9 @@ const Landing = () => {
       </div>
 
       {/* Streak share */}
-      <div className="bg-card/60 border border-border rounded-xl p-4 text-xs text-muted overflow-hidden font-body">
+      <div className="bg-card/60 border border-border rounded-xl p-4 text-xs text-muted overflow-hidden">
         <div className="flex items-center justify-between gap-2 mb-2 min-w-0">
-          <div className="font-heading text-xs uppercase tracking-widest text-muted truncate">{t('home_streak_title')}</div>
+          <div className="text-xs uppercase tracking-widest text-muted truncate">{t('home_streak_title')}</div>
           <span className={`text-xs uppercase tracking-widest shrink-0 ${isOverdue ? 'text-red-400' : 'text-accent-lime'}`}>
             {t('home_streak_days', { days: Math.max(daysRemaining, 0) })}
           </span>
@@ -434,7 +434,7 @@ const Landing = () => {
       {/* MAIN HUD: SKULL & TIMER */}
       <div className="relative z-10 flex flex-col items-center">
         <div className="flex justify-between items-center w-full mb-2">
-           <h2 className="font-heading text-sm font-bold text-muted flex items-center gap-2">
+           <h2 className="text-sm font-bold text-muted flex items-center gap-2">
              <Activity size={16} className="text-accent-lime" />
              {t('system_status')}
            </h2>
@@ -483,10 +483,10 @@ const Landing = () => {
 
                 {/* Days Text */}
                 <div className="flex flex-col items-center z-10 mt-1">
-                    <span className={`font-display text-5xl font-black tracking-tighter leading-none ${isUrgent ? 'text-red-500' : 'text-white'}`}>
+                    <span className={`text-5xl font-black tracking-tighter leading-none ${isUrgent ? 'text-red-500' : 'text-white'}`}>
                         {daysRemaining}
                     </span>
-                    <span className="font-heading text-xs font-bold uppercase text-muted tracking-[0.3em] mt-1">
+                    <span className="text-xs font-bold uppercase text-muted tracking-[0.3em] mt-1">
                         {t('days_left')}
                     </span>
                 </div>
@@ -653,7 +653,7 @@ const Landing = () => {
       {/* System Log Widget */}
       <div className="relative z-10">
          <div className="flex justify-between items-end mb-2 px-1">
-           <h3 className="font-heading text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-1">
+           <h3 className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-1">
              <Terminal size={12} /> {t('system_log_title')}
            </h3>
            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -676,7 +676,7 @@ const Landing = () => {
 
       {/* Active Widgets */}
       <div className="relative z-10">
-         <h3 className="font-heading text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">{t('active_widgets')}</h3>
+         <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">{t('active_widgets')}</h3>
          
          <div className="grid grid-cols-2 gap-3">
             <motion.div 
