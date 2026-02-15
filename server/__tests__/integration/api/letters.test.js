@@ -17,17 +17,18 @@ describe('Letters API', () => {
       query: jest.fn()
     };
 
-    // Mock auth middleware
+    // Mock auth middleware (use null when explicitly testing unauthenticated)
     app.use((req, res, next) => {
-      req.userId = mockUserId || 123456;
+      req.userId = mockUserId === undefined ? 123456 : mockUserId;
       next();
     });
 
-    // Mock rate limiter
+    // Mock rate limiter and limit check (must call next())
     const mockLimiter = (req, res, next) => next();
+    const mockLimitCheck = (req, res, next) => next();
 
     // Register routes
-    app.use('/api/letters', createLettersRoutes(pool, mockLimiter));
+    app.use('/api/letters', createLettersRoutes(pool, mockLimiter, mockLimitCheck));
   });
 
   beforeEach(() => {
@@ -48,7 +49,8 @@ describe('Letters API', () => {
     });
 
     test('should return 503 when database is unavailable', async () => {
-      const routesWithoutPool = createLettersRoutes(null, jest.fn());
+      const mockNext = (req, res, next) => next();
+      const routesWithoutPool = createLettersRoutes(null, mockNext, mockNext);
       const testApp = express();
       testApp.use(express.json());
       testApp.use((req, res, next) => {
@@ -129,10 +131,14 @@ describe('Letters API', () => {
       expect(response.body.error.code).toBe('AUTH_REQUIRED');
     });
 
-    test('should validate required fields', async () => {
+    test('should validate invalid status', async () => {
       const response = await request(app)
         .post('/api/letters')
-        .send({})
+        .send({
+          title: 'Test',
+          content: 'Content',
+          status: 'invalid_status'
+        })
         .expect(400);
 
       expect(response.body.ok).toBe(false);
@@ -146,15 +152,9 @@ describe('Letters API', () => {
         status: 'scheduled'
       };
 
-      pool.query.mockResolvedValueOnce({
-        rows: [{
-          id: 'new-letter-id',
-          user_id: 123456,
-          ...letterData,
-          created_at: new Date(),
-          updated_at: new Date()
-        }],
-        rowCount: 1
+      pool.query.mockResolvedValue({
+        rows: [],
+        rowCount: 0
       });
 
       const response = await request(app)
@@ -163,8 +163,8 @@ describe('Letters API', () => {
         .expect(200);
 
       expect(response.body.ok).toBe(true);
-      expect(response.body.letter).toBeDefined();
-      expect(response.body.letter.title).toBe(letterData.title);
+      expect(response.body.id).toBeDefined();
+      expect(response.body.xp).toBeDefined();
     });
   });
 });

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Music, Play, Check, Disc, Music4 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -6,13 +5,9 @@ import { storage } from '../utils/storage';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
+import { FUNERAL_TRACKS } from '../constants/funeralTracks';
 
-const tracks = [
-  { id: 'astronomia', name: 'Astronomia (Coffin Dance)', artist: 'Vicetone & Tony Igy' },
-  { id: 'sax', name: 'Epic Sax Guy', artist: 'Sunstroke Project' },
-  { id: 'ussr', name: 'Soviet Anthem (Trap Remix)', artist: 'Mother Russia' },
-  { id: 'sad', name: 'Sad Violin', artist: 'Meme Orchestra' },
-];
+const tracks = Object.entries(FUNERAL_TRACKS).map(([id, { name, artist }]) => ({ id, name, artist }));
 
 const FuneralDJ = () => {
   const navigate = useNavigate();

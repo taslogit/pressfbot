@@ -1,7 +1,6 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit2, Save, Fingerprint, Target, Sparkles, Shield, Zap, Hourglass, Brain, Share2, Activity, Gift, Settings, Trophy, Flame } from 'lucide-react';
+import { Edit2, Save, Fingerprint, Target, Sparkles, Shield, Zap, Hourglass, Brain, Share2, Activity, Gift, Settings, Trophy, Flame, Music, Pause } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { tg } from '../utils/telegram';
 import { storage } from '../utils/storage';
@@ -16,6 +15,7 @@ import ReferralSection from '../components/ReferralSection';
 import SendGiftModal from '../components/SendGiftModal';
 import { giftsAPI } from '../utils/api';
 import { useApiAbort } from '../hooks/useApiAbort';
+import { FUNERAL_TRACKS } from '../constants/funeralTracks';
 
 // Default avatar is pressf from server (free for everyone)
 const DEFAULT_AVATAR_ID = 'pressf';
@@ -68,6 +68,8 @@ const Profile = () => {
   const [ownedFrameIds, setOwnedFrameIds] = useState<Set<string>>(new Set(['default']));
   const [showFrameSelector, setShowFrameSelector] = useState(false);
   const [frameLoading, setFrameLoading] = useState(false);
+  const [isFuneralPlaying, setIsFuneralPlaying] = useState(false);
+  const funeralAudioRef = useRef<HTMLAudioElement>(null);
   
   // Calculate level from experience (needed before state initialization)
   const currentXP = profile.experience || 0;
@@ -795,9 +797,41 @@ const Profile = () => {
                   >
                     F — {fCount}
                   </button>
-                  <p className="text-[10px] text-muted uppercase tracking-wider">
-                    {t('ghost_dj_track')}: {funeralTrackId}
-                  </p>
+                  {(() => {
+                    const track = FUNERAL_TRACKS[funeralTrackId] || FUNERAL_TRACKS.astronomia;
+                    const audioUrl = track?.url || getStaticUrl(`/api/static/funeral/${funeralTrackId}.mp3`);
+                    return (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            const el = funeralAudioRef.current;
+                            if (!el) return;
+                            if (isFuneralPlaying) {
+                              el.pause();
+                              el.currentTime = 0;
+                            } else {
+                              el.src = audioUrl;
+                              el.play().catch(() => {});
+                            }
+                            setIsFuneralPlaying(!isFuneralPlaying);
+                          }}
+                          className="p-2 rounded-full bg-accent-gold/20 border border-accent-gold/50 text-accent-gold hover:bg-accent-gold/30 transition-colors"
+                        >
+                          {isFuneralPlaying ? <Pause size={16} /> : <Music size={16} />}
+                        </button>
+                        <p className="text-[10px] text-muted uppercase tracking-wider">
+                          {track?.name || funeralTrackId}
+                        </p>
+                        <audio
+                          ref={funeralAudioRef}
+                          onPlay={() => setIsFuneralPlaying(true)}
+                          onPause={() => setIsFuneralPlaying(false)}
+                          onEnded={() => setIsFuneralPlaying(false)}
+                          className="hidden"
+                        />
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
            </div>

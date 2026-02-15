@@ -242,6 +242,10 @@ const createLettersRoutes = (pool, createLimiter, letterLimitCheck) => {
         );
       }
 
+      if (!result || !result.rows) {
+        logger.warn('Letters query returned invalid result', { hasResult: !!result });
+        return sendError(res, 500, 'LETTERS_FETCH_FAILED', 'Failed to fetch letters');
+      }
       const letters = result.rows.map(normalizeLetter);
       
       // Generate next cursor if using cursor-based pagination
