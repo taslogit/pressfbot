@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X, Package } from 'lucide-react';
+import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X, Package, Box } from 'lucide-react';
 import { useTonAddress } from '@tonconnect/ui-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { starsAPI, storeAPI, profileAPI } from '../utils/api';
@@ -44,7 +44,10 @@ const Store = () => {
   const [itemType, setItemType] = useState<'stars' | 'xp' | 'ton' | null>(null);
   const [myItems, setMyItems] = useState<any[]>([]);
   const [firstPurchaseEligible, setFirstPurchaseEligible] = useState(false);
+  const [achievementDiscountPercent, setAchievementDiscountPercent] = useState(0);
+  const [achievementsCount, setAchievementsCount] = useState(0);
   const [flashSale, setFlashSale] = useState<{ itemId: string; discount: number; endsAt: string } | null>(null);
+  const [mysteryBoxLoading, setMysteryBoxLoading] = useState(false);
 
   const loadData = (silent = false) => {
     if (!silent) setLoading(true);
@@ -65,6 +68,8 @@ const Store = () => {
       if (myRes.ok) {
         setMyItems(myRes.data?.items || []);
         setFirstPurchaseEligible(myRes.data?.firstPurchaseEligible ?? false);
+        setAchievementDiscountPercent(myRes.data?.achievementDiscountPercent ?? 0);
+        setAchievementsCount(myRes.data?.achievementsCount ?? 0);
       }
       if (!silent) setLoading(false);
     }).catch(() => { if (!silent) setLoading(false); });
@@ -229,6 +234,41 @@ const Store = () => {
                 🎉 {t('store_first_purchase_discount')}
               </div>
             )}
+            {achievementDiscountPercent > 0 && (
+              <div className="mb-3 px-3 py-2 rounded-xl bg-accent-cyan/20 border border-accent-cyan/50 text-accent-cyan text-xs font-bold text-center">
+                🏆 {t('store_achievement_discount', { count: achievementsCount, pct: achievementDiscountPercent })}
+              </div>
+            )}
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={async () => {
+                if (mysteryBoxLoading || userXP < 120) return;
+                playSound('click');
+                setMysteryBoxLoading(true);
+                const res = await storeAPI.buyMysteryBox();
+                setMysteryBoxLoading(false);
+                if (res.ok && res.data) {
+                  loadData(true);
+                  setSelectedItem(res.data.item);
+                  setItemType('xp');
+                } else {
+                  tg.showPopup?.({ message: res.error?.message || t('store_buy_failed') });
+                }
+              }}
+              disabled={userXP < 120 || mysteryBoxLoading}
+              className="w-full flex items-center gap-3 p-4 mb-4 rounded-xl border-2 border-dashed border-accent-pink/50 bg-accent-pink/10 hover:border-accent-pink hover:bg-accent-pink/20 transition-all text-left"
+            >
+              <div className="w-12 h-12 rounded-xl bg-accent-pink/30 flex items-center justify-center flex-shrink-0">
+                <Box size={24} className="text-accent-pink" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="font-bold text-accent-pink block">{t('store_mystery_box')}</span>
+                <span className="text-xs text-muted">{t('store_mystery_box_desc')}</span>
+              </div>
+              <span className={`font-bold flex-shrink-0 ${userXP >= 120 ? 'text-accent-pink' : 'text-muted'}`}>
+                {mysteryBoxLoading ? '...' : t('store_mystery_box_cost')}
+              </span>
+            </motion.button>
             <div className="text-xs text-muted mb-2">{t('store_xp_hint')}</div>
             {Object.entries(xpByCategory).map(([category, items]) => (
               <div key={category}>
@@ -240,7 +280,8 @@ const Store = () => {
                     const baseCost = item.cost_xp || item.cost_rep || 0;
                     const isFlash = flashSale?.itemId === item.id && !ownedItemIds.has(item.id);
                     const isFirst = firstPurchaseEligible && !ownedItemIds.has(item.id) && !isFlash;
-                    const discount = isFlash ? 0.5 : (isFirst ? 0.8 : 1);
+                    let discount = isFlash ? 0.5 : (isFirst ? 0.8 : 1);
+                    discount *= 1 - achievementDiscountPercent / 100;
                     const cost = Math.floor(baseCost * discount);
                     const costStr = item.cost_rep ? `${cost} REP` : `${cost} XP`;
                     return (

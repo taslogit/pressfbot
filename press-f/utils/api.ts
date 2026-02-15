@@ -558,12 +558,17 @@ export const storeAPI = {
     return apiRequest<{ catalog: any[] }>('/api/store/catalog');
   },
   getMyItems: async () => {
-    return apiRequest<{ items: any[] }>('/api/store/my-items');
+    return apiRequest<{ items: any[]; firstPurchaseEligible?: boolean; achievementDiscountPercent?: number; achievementsCount?: number }>('/api/store/my-items');
   },
   buyItem: async (itemId: string) => {
     return apiRequest<{ item: any; remainingXp: number }>('/api/store/buy', {
       method: 'POST',
       body: JSON.stringify({ itemId })
+    });
+  },
+  buyMysteryBox: async () => {
+    return apiRequest<{ item: any; remainingXp: number }>('/api/store/mystery-box', {
+      method: 'POST'
     });
   }
 };

@@ -161,17 +161,26 @@ const createStoreRoutes = (pool) => {
       const userId = req.userId;
       if (!userId) return sendError(res, 401, 'AUTH_REQUIRED', 'Not authenticated');
 
-      const result = await pool.query(
-        `SELECT item_type, item_id, cost_xp, cost_rep, created_at 
-         FROM store_purchases WHERE user_id = $1 
-         ORDER BY created_at DESC`,
-        [userId]
-      );
+      const [purchasesResult, profileResult] = await Promise.all([
+        pool.query(
+          `SELECT item_type, item_id, cost_xp, cost_rep, created_at 
+           FROM store_purchases WHERE user_id = $1 
+           ORDER BY created_at DESC`,
+          [userId]
+        ),
+        pool.query('SELECT achievements FROM profiles WHERE user_id = $1', [userId])
+      ]);
+
+      const achievements = profileResult.rows[0]?.achievements || {};
+      const achievementCount = typeof achievements === 'object' ? Object.keys(achievements).length : 0;
+      const achievementDiscountPercent = Math.min(achievementCount, 10);
 
       return res.json({
         ok: true,
-        items: result.rows,
-        firstPurchaseEligible: result.rows.length === 0
+        items: purchasesResult.rows,
+        firstPurchaseEligible: purchasesResult.rows.length === 0,
+        achievementDiscountPercent,
+        achievementsCount: achievementCount
       });
     } catch (error) {
       logger.error('My items error:', error);
@@ -216,21 +225,29 @@ const createStoreRoutes = (pool) => {
         [userId]
       );
       const isFirstPurchase = parseInt(purchaseCount.rows[0]?.n || '0', 10) === 0;
-      const discount = isFlashSale ? 0.5 : (isFirstPurchase ? 0.8 : 1);
+
+      // Achievements → discount: 1% per achievement, max 10% (roadmap Phase 5)
+      const profileResult = await pool.query(
+        `SELECT achievements, spendable_xp, reputation FROM profiles WHERE user_id = $1`,
+        [userId]
+      );
+      const profile = profileResult.rows[0];
+      if (!profile) {
+        return sendError(res, 404, 'PROFILE_NOT_FOUND', 'Profile not found');
+      }
+      const achievements = profile.achievements || {};
+      const achievementCount = typeof achievements === 'object' ? Object.keys(achievements).length : 0;
+      const achievementDiscount = Math.min(achievementCount * 0.01, 0.1);
+
+      let discount = isFlashSale ? 0.5 : (isFirstPurchase ? 0.8 : 1);
+      discount = discount * (1 - achievementDiscount);
       const actualCostXp = item.cost_xp > 0 ? Math.floor(item.cost_xp * discount) : 0;
       const actualCostRep = item.cost_rep > 0 ? Math.floor(item.cost_rep * discount) : 0;
 
       // Check balance
-      const profile = await pool.query(
-        `SELECT spendable_xp, reputation FROM profiles WHERE user_id = $1`,
-        [userId]
-      );
 
-      if (!profile.rows[0]) {
-        return sendError(res, 404, 'PROFILE_NOT_FOUND', 'Profile not found');
-      }
 
-      const { spendable_xp = 0, reputation = 0 } = profile.rows[0];
+      const { spendable_xp = 0, reputation = 0 } = profile;
 
       if (actualCostXp > 0 && spendable_xp < actualCostXp) {
         return sendError(res, 400, 'INSUFFICIENT_XP', 'Not enough XP', {
@@ -285,7 +302,8 @@ const createStoreRoutes = (pool) => {
           item: { id: itemId, ...item },
           remainingXp: spendable_xp - actualCostXp,
           firstPurchaseDiscount: isFirstPurchase,
-          flashSaleDiscount: isFlashSale
+          flashSaleDiscount: isFlashSale,
+          achievementDiscountPercent: Math.round(achievementDiscount * 100)
         });
       } catch (txError) {
         await client.query('ROLLBACK');
@@ -296,6 +314,98 @@ const createStoreRoutes = (pool) => {
     } catch (error) {
       logger.error('Store purchase error:', error);
       return sendError(res, 500, 'PURCHASE_FAILED', 'Failed to purchase item');
+    }
+  });
+
+  // ─── POST /api/store/mystery-box — Random item for fixed XP (roadmap: переменное подкрепление)
+  router.post('/mystery-box', async (req, res) => {
+    try {
+      const userId = req.userId;
+      if (!userId) return sendError(res, 401, 'AUTH_REQUIRED', 'Not authenticated');
+
+      const MYSTERY_BOX_COST = 120;
+
+      const profileResult = await pool.query(
+        `SELECT spendable_xp, achievements FROM profiles WHERE user_id = $1`,
+        [userId]
+      );
+      const profile = profileResult.rows[0];
+      if (!profile || (profile.spendable_xp || 0) < MYSTERY_BOX_COST) {
+        return sendError(res, 400, 'INSUFFICIENT_XP', 'Not enough XP for Mystery Box', {
+          required: MYSTERY_BOX_COST,
+          available: profile?.spendable_xp || 0
+        });
+      }
+
+      const achievements = profile.achievements || {};
+      const ownedIds = new Set();
+      const purchasesResult = await pool.query(
+        'SELECT item_id FROM store_purchases WHERE user_id = $1',
+        [userId]
+      );
+      purchasesResult.rows.forEach((r) => ownedIds.add(r.item_id));
+
+      const entries = Object.entries(XP_STORE).filter(([id, item]) => {
+        if (item.type === 'permanent' && ownedIds.has(id)) return false;
+        if (item.cost_rep > 0) return false;
+        return true;
+      });
+
+      if (entries.length === 0) {
+        return sendError(res, 400, 'MYSTERY_BOX_EMPTY', 'No items available in Mystery Box');
+      }
+
+      const weights = entries.map(([, item]) => item.type === 'consumable' ? 2 : 1);
+      const totalWeight = weights.reduce((a, b) => a + b, 0);
+      let r = Math.random() * totalWeight;
+      let chosenIndex = 0;
+      for (let i = 0; i < weights.length; i++) {
+        r -= weights[i];
+        if (r <= 0) {
+          chosenIndex = i;
+          break;
+        }
+      }
+      const [itemId, item] = entries[chosenIndex];
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(
+          `UPDATE profiles SET spendable_xp = spendable_xp - $2 WHERE user_id = $1`,
+          [userId, MYSTERY_BOX_COST]
+        );
+        await client.query(
+          `INSERT INTO store_purchases (user_id, item_type, item_id, cost_xp, cost_rep)
+           VALUES ($1, $2, $3, $4, 0)`,
+          [userId, item.category, itemId, MYSTERY_BOX_COST]
+        );
+        if (item.type === 'permanent') {
+          await client.query(
+            `UPDATE profiles SET achievements = COALESCE(achievements, '{}')::jsonb || jsonb_build_object($2, true)
+             WHERE user_id = $1`,
+            [userId, itemId]
+          );
+        }
+        await client.query('COMMIT');
+      } catch (txError) {
+        await client.query('ROLLBACK');
+        throw txError;
+      } finally {
+        client.release();
+      }
+
+      logger.info('Mystery box purchase', { userId, itemId });
+
+      return res.json({
+        ok: true,
+        item: { id: itemId, ...item },
+        remainingXp: profile.spendable_xp - MYSTERY_BOX_COST,
+        mysteryBox: true
+      });
+    } catch (error) {
+      logger.error('Mystery box error', error);
+      return sendError(res, 500, 'MYSTERY_BOX_FAILED', 'Mystery Box failed');
     }
   });
 
