@@ -120,6 +120,60 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           willChange: 'opacity',
         }}
       />
+      {/* Виньетка */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: `
+            radial-gradient(ellipse 100% 100% at 50% 50%, transparent 45%, rgba(0,0,0,0.4) 100%),
+            radial-gradient(ellipse 80% 50% at 50% 50%, transparent 60%, rgba(15,13,22,0.3) 100%)
+          `,
+          animation: reducedMotion ? 'none' : 'splash-vignette-in 2s ease-out forwards',
+          opacity: 0.9,
+        }}
+      />
+      {/* Угловая рамка — четыре угла */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          animation: reducedMotion ? 'none' : 'splash-corner-in 0.8s ease-out 0.3s forwards',
+          opacity: 0,
+        }}
+      >
+        <div className="absolute top-4 left-4 w-12 h-12 border-l-2 border-t-2 border-[rgba(0,224,255,0.4)] rounded-tl" style={{ boxShadow: '0 0 12px rgba(0,224,255,0.2)' }} />
+        <div className="absolute top-4 right-4 w-12 h-12 border-r-2 border-t-2 border-[rgba(255,77,210,0.35)] rounded-tr" style={{ boxShadow: '0 0 12px rgba(255,77,210,0.15)' }} />
+        <div className="absolute bottom-4 left-4 w-12 h-12 border-l-2 border-b-2 border-[rgba(180,255,0,0.3)] rounded-bl" style={{ boxShadow: '0 0 12px rgba(180,255,0,0.15)' }} />
+        <div className="absolute bottom-4 right-4 w-12 h-12 border-r-2 border-b-2 border-[rgba(255,215,0,0.25)] rounded-br" style={{ boxShadow: '0 0 12px rgba(255,215,0,0.1)' }} />
+      </div>
+      {/* Летающие точки (data flow) */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 rounded-full bg-[#00E0FF]"
+            style={{
+              left: `${8 + i * 10}%`,
+              top: `${15 + (i % 4) * 22}%`,
+              animation: reducedMotion ? 'none' : `splash-dot-pulse ${1.2 + i * 0.15}s ease-in-out infinite`,
+              animationDelay: `${i * 0.1}s`,
+              opacity: 0.3,
+            }}
+          />
+        ))}
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div
+            key={`b-${i}`}
+            className="absolute w-1 h-1 rounded-full bg-[#FF4DD2]"
+            style={{
+              right: `${10 + i * 12}%`,
+              bottom: `${20 + (i % 3) * 25}%`,
+              animation: reducedMotion ? 'none' : `splash-dot-pulse ${1.5 + i * 0.12}s ease-in-out infinite`,
+              animationDelay: `${0.5 + i * 0.15}s`,
+              opacity: 0.25,
+            }}
+          />
+        ))}
+      </div>
 
       {/* Phase 0: terminal */}
       {phase === 0 && (
@@ -180,8 +234,8 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
               style={{
                 animation: reducedMotion
                   ? 'none'
-                  : 'splash-fadeIn 0.6s ease-out forwards',
-                willChange: 'opacity',
+                  : 'splash-fadeIn 0.6s ease-out forwards, splash-monument-float 3s ease-in-out 0.6s infinite',
+                willChange: 'opacity, transform',
               }}
               aria-hidden
             >
@@ -234,7 +288,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
             style={{
               animation: reducedMotion
                 ? 'none'
-                : 'splash-skull-neon 1.2s ease-in-out infinite',
+                : 'splash-skull-neon 1.2s ease-in-out infinite, splash-monument-float 3s ease-in-out infinite, splash-border-glow 2s ease-in-out infinite',
               willChange: 'transform',
             }}
             aria-hidden
@@ -252,6 +306,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
               F
             </span>
           </div>
+          {/* Скан-линия cyan */}
           <div
             className="absolute left-0 right-0 h-0.5 pointer-events-none top-0 origin-center"
             style={{
@@ -265,6 +320,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
               willChange: 'transform',
             }}
           />
+          {/* Скан-линия pink */}
           <div
             className="absolute left-0 right-0 h-px pointer-events-none top-0"
             style={{
@@ -274,6 +330,19 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
               animation: reducedMotion
                 ? 'none'
                 : 'splash-scan 2.4s linear 0.3s infinite',
+              willChange: 'transform',
+            }}
+          />
+          {/* Скан-линия gold */}
+          <div
+            className="absolute left-0 right-0 h-px pointer-events-none top-0"
+            style={{
+              background:
+                'linear-gradient(90deg, transparent, rgba(255,215,0,0.6) 30%, rgba(255,215,0,0.8) 70%, transparent)',
+              boxShadow: '0 0 12px rgba(255, 215, 0, 0.4)',
+              animation: reducedMotion
+                ? 'none'
+                : 'splash-scan 3s linear 0.8s infinite, splash-line-flicker 1.5s ease-in-out infinite',
               willChange: 'transform',
             }}
           />
@@ -322,22 +391,39 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
               {t('splash_data_wont')}
             </div>
           </div>
-          <div
-            className="font-logo text-4xl sm:text-5xl mt-3"
-            style={{
-              color: '#FFD700',
-              fontFamily: 'var(--font-logo), Rye, cursive',
-              textShadow:
-                '0 0 25px rgba(255, 215, 0, 0.9), 0 0 50px rgba(255, 77, 210, 0.3)',
-              animation:
-                reducedMotion
-                  ? 'none'
-                  : 'splash-logo-burst 0.5s ease-out 0.3s forwards, splash-glow-pulse 1.2s ease-in-out 0.9s infinite',
-              opacity: reducedMotion ? 1 : 0,
-              willChange: 'transform, opacity',
-            }}
-          >
-            {t('app_title')}
+          <div className="relative inline-block mt-3">
+            {/* Кольцо-пульс вокруг PRESS F */}
+            {!reducedMotion && (
+              <div
+                className="absolute rounded-full border-2 border-[rgba(255,215,0,0.5)] pointer-events-none"
+                style={{
+                  width: '6rem',
+                  height: '6rem',
+                  left: '50%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%) translateZ(0)',
+                  animation: 'splash-ring-pulse 1.2s ease-out 0.4s 2 forwards',
+                  willChange: 'transform, opacity',
+                }}
+              />
+            )}
+            <div
+              className="font-logo text-4xl sm:text-5xl relative z-10"
+              style={{
+                color: '#FFD700',
+                fontFamily: 'var(--font-logo), Rye, cursive',
+                textShadow:
+                  '0 0 25px rgba(255, 215, 0, 0.9), 0 0 50px rgba(255, 77, 210, 0.3)',
+                animation:
+                  reducedMotion
+                    ? 'none'
+                    : 'splash-logo-burst 0.5s ease-out 0.3s forwards, splash-glow-pulse 1.2s ease-in-out 0.9s infinite',
+                opacity: reducedMotion ? 1 : 0,
+                willChange: 'transform, opacity',
+              }}
+            >
+              {t('app_title')}
+            </div>
           </div>
           <div
             className="font-mono text-xs sm:text-sm mt-2 tracking-widest uppercase opacity-90"
