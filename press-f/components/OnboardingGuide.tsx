@@ -157,7 +157,7 @@ const OnboardingGuide: React.FC<Props> = ({ isVisible, onClose }) => {
               </div>
 
               {/* Text Content */}
-              <h2 className={`font-mono text-4xl font-black italic uppercase tracking-tighter text-center mb-4 ${currentStep.color.split(' ')[1]}`}>
+              <h2 className={`font-heading text-4xl font-black italic uppercase tracking-tighter text-center mb-4 ${currentStep.color.split(' ')[1]}`}>
                 {t(currentStep.title as any)}
               </h2>
               

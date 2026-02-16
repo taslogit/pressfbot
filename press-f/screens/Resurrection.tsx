@@ -57,7 +57,7 @@ const Resurrection = () => {
                     <AlertTriangle size={80} strokeWidth={1} className="drop-shadow-[0_0_20px_rgba(255,0,0,0.8)]" />
                 </motion.div>
 
-                <h1 className="font-mono text-3xl font-black text-center mb-4 tracking-widest uppercase glitch-text text-red-500 drop-shadow-[0_0_12px_rgba(239,68,68,0.8)] flex items-center justify-center gap-3">
+                <h1 className="font-heading text-3xl font-black text-center mb-4 tracking-widest uppercase glitch-text text-red-500 drop-shadow-[0_0_12px_rgba(239,68,68,0.8)] flex items-center justify-center gap-3">
                     <AlertTriangle size={28} className="text-red-500" />
                     SYSTEM FAILURE
                 </h1>

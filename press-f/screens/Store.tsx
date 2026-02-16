@@ -7,6 +7,8 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { starsAPI, storeAPI, profileAPI, getStaticUrl } from '../utils/api';
 import { useApiAbort } from '../hooks/useApiAbort';
 import InfoSection from '../components/InfoSection';
+import ListSkeleton from '../components/ListSkeleton';
+import EmptyState from '../components/EmptyState';
 import { playSound } from '../utils/sound';
 import { tg } from '../utils/telegram';
 
@@ -179,8 +181,21 @@ const Store = () => {
 
   if (loading && !catalogError) {
     return (
-      <div className="min-h-[40vh] flex items-center justify-center">
-        <div className="text-muted text-sm">{t('settings_loading')}</div>
+      <div className="pb-6 relative">
+        <div className="relative z-10">
+          <div className="flex justify-between items-center mb-4">
+<h1 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-lime">
+            <ShoppingBag size={28} className="text-accent-lime" />
+            {t('nav_store')}
+          </h1>
+          </div>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="card-terminal bg-black/40 border border-border rounded-lg p-3 h-[72px] animate-pulse" />
+            <div className="card-terminal bg-black/40 border border-border rounded-lg p-3 h-[72px] animate-pulse" />
+            <div className="card-terminal bg-black/40 border border-border rounded-lg p-3 h-[72px] animate-pulse" />
+          </div>
+          <ListSkeleton rows={6} />
+        </div>
       </div>
     );
   }
@@ -226,10 +241,10 @@ const Store = () => {
         </div>
       )}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="font-mono text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-lime drop-shadow-[0_0_10px_rgba(180,255,0,0.8)]">
+        <h1 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-lime drop-shadow-[0_0_10px_rgba(180,255,0,0.8)]">
           <ShoppingBag size={28} className="text-accent-lime" />
           {t('nav_store')}
-        </h2>
+        </h1>
         <InfoSection title={t('nav_store')} description={t('store_help')} id="store_help" autoOpen />
       </div>
 
@@ -363,7 +378,7 @@ const Store = () => {
               <div className="text-center py-8 text-muted text-sm">{t('store_no_items') || 'No items available'}</div>
             ) : sortedCategoryEntries.map(([category, items]) => (
               <div key={category}>
-                <h4 className="font-mono text-xs font-black uppercase tracking-widest text-accent-pink mb-2">
+                <h4 className="font-heading text-xs font-black uppercase tracking-widest text-accent-pink mb-2">
                   {t(CATEGORY_LABELS[category] as any) || category}
                 </h4>
                 <div className="grid gap-2">
@@ -474,10 +489,13 @@ const Store = () => {
           >
             <div className="text-xs text-muted mb-2">{t('store_my_hint')}</div>
             {myItems.length === 0 ? (
-              <div className="text-center py-12 text-muted">
-                <Package size={48} className="mx-auto mb-3 opacity-50" />
-                <p className="text-sm">{t('store_my_empty')}</p>
-              </div>
+              <EmptyState
+                icon={<Package size={40} />}
+                title={t('store_my_empty')}
+                description={t('store_xp_hint')}
+                actionLabel={t('store_tab_xp')}
+                onAction={() => setTab('xp')}
+              />
             ) : (
               <div className="grid gap-2">
                 {myItems.map((p: any) => {
@@ -515,6 +533,9 @@ const Store = () => {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
             onClick={closeItemModal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="store-item-modal-title"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -524,7 +545,7 @@ const Store = () => {
               className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full"
             >
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-bold text-primary">
+                <h3 id="store-item-modal-title" className="font-heading text-lg font-bold text-primary">
                   {itemType === 'xp' ? (() => { const tk = t(`store_item_${selectedItem.id}` as any); return tk !== `store_item_${selectedItem.id}` ? tk : selectedItem.name; })() : (() => { const tk = t(`store_stars_${selectedItem.id}` as any); return tk !== `store_stars_${selectedItem.id}` ? tk : selectedItem.title; })()}
                 </h3>
                 <button onClick={closeItemModal} className="p-1 text-muted hover:text-primary">
@@ -603,7 +624,7 @@ const Store = () => {
                       }
                     }
                   }}
-                  className="px-6 py-2 rounded-xl bg-accent-lime text-black font-bold uppercase text-sm"
+                  className="btn-primary px-6 py-2 bg-accent-lime text-black text-sm shadow-[0_0_15px_rgba(180,255,0,0.3)] hover:shadow-[0_0_20px_rgba(180,255,0,0.4)]"
                 >
                   {t('store_buy')}
                 </button>

@@ -11,6 +11,8 @@
   --color-accent-cyan: #00E0FF;
   --color-accent-pink: #FF4DD2;
   --color-accent-gold: #FFD700;
+  --font-heading: "Share Tech Mono", ui-monospace, monospace;
+  --font-body: "JetBrains Mono", "Share Tech Mono", ui-monospace, monospace;
   --animate-pulse-fast: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-spin-slow: spin 20s linear infinite;
   --animate-float: float 6s ease-in-out infinite;
@@ -60,13 +62,18 @@ html, body, #root {
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-family: "JetBrains Mono", "Share Tech Mono", ui-monospace, monospace;
+  font-family: var(--font-body);
+}
+
+/* Заголовки: терминальный хакерский шрифт */
+.font-heading {
+  font-family: var(--font-heading);
 }
 
 /* ─── Hacker / Terminal UI ───────────────────────────────────────────── */
 /* Терминальные поля ввода: моноширинный шрифт, левая полоска-акцент, лёгкое свечение */
 .input-terminal {
-  font-family: "JetBrains Mono", "Share Tech Mono", monospace;
+  font-family: var(--font-body);
   border-left: 3px solid rgba(0, 224, 255, 0.6);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 0 10px rgba(0, 224, 255, 0.05);
 }
@@ -81,9 +88,66 @@ body {
 }
 /* Метки в хакерском стиле: верхний регистр, разреженный трекинг */
 .label-terminal {
-  font-family: "Share Tech Mono", "JetBrains Mono", monospace;
+  font-family: var(--font-heading);
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+/* ─── Кнопки (дизайн-система) ──────────────────────────────────────────── */
+/* Контраст: btn-primary использует text-black на accent-lime (WCAG AA). */
+.btn-primary {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 0.75rem;
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+.btn-primary:active {
+  transform: scale(0.98);
+}
+.btn-primary:focus-visible {
+  outline: 2px solid var(--color-accent-cyan);
+  outline-offset: 2px;
+}
+
+.btn-secondary {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-radius: 0.75rem;
+  transition: background-color 0.2s, border-color 0.2s, transform 0.15s;
+}
+.btn-secondary:active {
+  transform: scale(0.98);
+}
+.btn-secondary:focus-visible {
+  outline: 2px solid var(--color-accent-cyan);
+  outline-offset: 2px;
+}
+
+.btn-ghost {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  transition: background-color 0.2s, opacity 0.2s, transform 0.15s;
+}
+.btn-ghost:active {
+  transform: scale(0.98);
+}
+.btn-ghost:focus-visible {
+  outline: 2px solid var(--color-accent-cyan);
+  outline-offset: 2px;
+}
+
+/* Фокус для доступности */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-accent-cyan);
+  outline-offset: 2px;
 }
 
 /* Лёгкий сканлайн-эффект на контенте (опционально) */

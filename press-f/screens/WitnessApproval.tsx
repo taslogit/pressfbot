@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { tg } from '../utils/telegram';
 import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
+import LoadingState from '../components/LoadingState';
 import { witnessesAPI } from '../utils/api';
 import { playSound } from '../utils/sound';
 
@@ -123,7 +124,7 @@ const WitnessApproval = () => {
 
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-mono text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-cyan drop-shadow-[0_0_10px_rgba(0,224,255,0.8)]">
+          <h1 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-cyan drop-shadow-[0_0_10px_rgba(0,224,255,0.8)]">
             <ShieldCheck className="text-accent-cyan" size={28} />
             {t('witness_protocol')}
           </h2>
@@ -201,7 +202,7 @@ const WitnessApproval = () => {
 
         <div className="space-y-3">
           {loading ? (
-            <p className="text-center text-muted text-sm py-4">{t('loading') || 'Loading...'}</p>
+            <LoadingState message={t('loading') || 'Loading...'} terminal className="min-h-[20vh] py-8" />
           ) : witnesses.length === 0 ? (
             <p className="text-center text-muted text-sm opacity-60 italic py-4">{t('no_witnesses')}</p>
           ) : (

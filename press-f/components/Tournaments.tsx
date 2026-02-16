@@ -92,7 +92,7 @@ const Tournaments: React.FC = () => {
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-4">
         <Trophy size={18} className="text-accent-gold" />
-        <h3 className="font-mono text-xs font-black uppercase tracking-wider text-purple-400">
+        <h3 className="font-heading text-xs font-black uppercase tracking-wider text-purple-400">
           {t('tournaments') || 'TOURNAMENTS'}
         </h3>
       </div>
@@ -136,7 +136,7 @@ const Tournaments: React.FC = () => {
                 <div className="flex items-center gap-2 flex-1">
                   {tournament.icon && <span className="text-2xl">{tournament.icon}</span>}
                   <div className="flex-1">
-                    <h4 className="font-mono text-sm font-black text-white">{tournament.name}</h4>
+                    <h4 className="font-heading text-sm font-black text-white">{tournament.name}</h4>
                     {tournament.description && (
                       <p className="text-xs text-muted mt-1">{tournament.description}</p>
                     )}

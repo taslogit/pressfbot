@@ -1,5 +1,6 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ApiErrorProvider } from './contexts/ApiErrorContext';
@@ -24,6 +25,7 @@ const Wiki = lazy(() => import('./screens/Wiki'));
 import { tg, initTelegramApp } from './utils/telegram';
 import { useTelegramSession } from './hooks/useTelegramSession';
 import ErrorBoundary from './components/ErrorBoundary';
+import LoadingState from './components/LoadingState';
 import { analytics } from './utils/analytics';
 
 // Component to handle Telegram Logic inside Router context
@@ -128,6 +130,42 @@ const TelegramHandler = () => {
   return null;
 };
 
+/** Оборачивает маршруты в AnimatePresence для плавной смены экранов. */
+const AnimatedLayoutRoutes = () => {
+  const location = useLocation();
+  const reduceMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const transition = reduceMotion ? { duration: 0 } : { duration: 0.2, ease: 'easeInOut' as const };
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : -6 }}
+        transition={transition}
+      >
+        <Routes location={location}>
+          <Route index element={<Landing />} />
+          <Route path="/" element={<Landing />} />
+          <Route path="/create-letter" element={<CreateLetter />} />
+          <Route path="/letters" element={<Letters />} />
+          <Route path="/search" element={<SearchScreen />} />
+          <Route path="/duels" element={<Duels />} />
+          <Route path="/funeral-dj" element={<FuneralDJ />} />
+          <Route path="/witness-approval" element={<WitnessApproval />} />
+          <Route path="/squads" element={<Squads />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/store" element={<Store />} />
+          <Route path="/wiki" element={<Wiki />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/share" element={<SharePost />} />
+          <Route path="/notifications" element={<Notifications />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
 const App = () => {
   const manifestUrl = `${window.location.origin}/tonconnect-manifest.json`;
   
@@ -157,7 +195,7 @@ const App = () => {
           <TonConnectUIProvider manifestUrl={manifestUrl}>
             <HashRouter>
               <TelegramHandler />
-              <Suspense fallback={<div className="p-6 text-center text-muted">Loading...</div>}>
+              <Suspense fallback={<LoadingState terminal className="min-h-screen" />}>
                 <Routes>
                   {/* Routes without Layout */}
                   <Route path="/resurrection" element={<Resurrection />} />
@@ -165,23 +203,7 @@ const App = () => {
                   {/* Routes with Layout */}
                   <Route path="*" element={
                     <Layout>
-                      <Routes>
-                        <Route index element={<Landing />} />
-                        <Route path="/" element={<Landing />} />
-                        <Route path="/create-letter" element={<CreateLetter />} />
-                        <Route path="/letters" element={<Letters />} />
-                        <Route path="/search" element={<SearchScreen />} />
-                        <Route path="/duels" element={<Duels />} />
-                        <Route path="/funeral-dj" element={<FuneralDJ />} />
-                        <Route path="/witness-approval" element={<WitnessApproval />} />
-                        <Route path="/squads" element={<Squads />} />
-                        <Route path="/profile" element={<Profile />} />
-                        <Route path="/store" element={<Store />} />
-                        <Route path="/wiki" element={<Wiki />} />
-                        <Route path="/settings" element={<Settings />} />
-                        <Route path="/share" element={<SharePost />} />
-                        <Route path="/notifications" element={<Notifications />} />
-                      </Routes>
+                      <AnimatedLayoutRoutes />
                     </Layout>
                   } />
                 </Routes>

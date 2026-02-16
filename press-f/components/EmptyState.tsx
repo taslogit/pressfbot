@@ -29,7 +29,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
       </div>
 
       {/* Title */}
-      <h3 className="text-lg font-bold text-primary mb-2 tracking-wide">
+      <h3 className="font-heading text-lg font-bold text-primary mb-2 tracking-wide">
         {title}
       </h3>
 
@@ -42,7 +42,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
       {actionLabel && onAction && (
         <button
           onClick={onAction}
-          className="px-6 py-3 rounded-xl bg-accent-lime/10 border border-accent-lime/30 text-accent-lime text-xs font-bold uppercase tracking-widest hover:bg-accent-lime/20 transition-all active:scale-95"
+          className="btn-secondary px-6 py-3 bg-accent-lime/10 border border-accent-lime/30 text-accent-lime text-xs hover:bg-accent-lime/20"
         >
           {actionLabel}
         </button>

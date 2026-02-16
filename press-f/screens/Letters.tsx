@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
+import EmptyState from '../components/EmptyState';
 import { tg } from '../utils/telegram';
 import { useApiAbort } from '../hooks/useApiAbort';
 import { useApiError } from '../contexts/ApiErrorContext';
@@ -103,7 +104,7 @@ const LetterCard = React.memo(
           <div className="flex justify-between items-start gap-2 mb-2 min-w-0">
             <div className="flex items-center gap-2 min-w-0 flex-1">
                {getTypeIcon(letter.type)}
-               <h3 className="font-bold text-sm text-primary leading-tight font-mono tracking-tight truncate">{letter.title}</h3>
+               <h3 className="font-heading font-bold text-sm text-primary leading-tight tracking-tight truncate">{letter.title}</h3>
             </div>
             
             <div className="flex gap-2">
@@ -427,7 +428,7 @@ const Letters = () => {
 
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-mono text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-lime drop-shadow-[0_0_10px_rgba(180,255,0,0.8)]">
+          <h1 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-lime drop-shadow-[0_0_10px_rgba(180,255,0,0.8)]">
             <Send className="text-accent-lime" size={28} />
             <span className="drop-shadow-sm">{t('your_letters')}</span>
           </h2>
@@ -519,25 +520,13 @@ const Letters = () => {
               </div>
             ))
           ) : filteredLetters.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-              <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 relative">
-                <div className="absolute inset-0 bg-accent-cyan/5 blur-xl rounded-full" />
-                <FileText size={40} className="relative z-10 text-muted" />
-              </div>
-              <h3 className="text-lg font-bold text-primary mb-2 tracking-wide">
-                {t('no_results')}
-              </h3>
-              <p className="text-sm text-muted max-w-xs leading-relaxed mb-6 font-mono">
-                {t('letters_empty_hint') || 'Create your first time-locked letter. It will be stored securely until the unlock date.'}
-              </p>
-              <button 
-                onClick={() => navigate('/create-letter')}
-                className="px-6 py-3 rounded-xl bg-accent-lime/10 border border-accent-lime/30 text-accent-lime text-xs font-bold uppercase tracking-widest hover:bg-accent-lime/20 transition-all active:scale-95"
-              >
-                {t('write_now')}
-              </button>
-              <div className="mt-8 w-16 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-            </div>
+            <EmptyState
+              icon={<FileText size={40} />}
+              title={t('no_results')}
+              description={t('letters_empty_hint') || 'Create your first time-locked letter. It will be stored securely until the unlock date.'}
+              actionLabel={t('write_now')}
+              onAction={() => navigate('/create-letter')}
+            />
           ) : (
             letterCards
           )}
@@ -561,6 +550,9 @@ const Letters = () => {
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="fixed bottom-0 left-0 right-0 z-50 bg-[#0f0d16] border-t border-accent-lime/30 rounded-t-3xl max-h-[85vh] overflow-y-auto shadow-[0_-10px_40px_rgba(0,0,0,0.8)]"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="letter-detail-title"
             >
               <div className="p-6 relative">
                 <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-6" />
@@ -571,7 +563,7 @@ const Letters = () => {
                         {getTypeIcon(selectedLetter.type)}
                         <span className="text-xs font-mono text-accent-lime uppercase">DECRYPTED_LOG</span>
                       </div>
-                      <h2 className="font-mono text-xl font-black text-primary leading-tight">
+                      <h2 id="letter-detail-title" className="font-heading text-xl font-black text-primary leading-tight">
                         <DecryptedText text={selectedLetter.title} />
                       </h2>
                   </div>
@@ -727,7 +719,7 @@ const Letters = () => {
                   >
                     <div className="p-6">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-mono text-lg font-black text-accent-cyan uppercase">History</h3>
+                        <h3 className="font-heading text-lg font-black text-accent-cyan uppercase">History</h3>
                         <button onClick={() => setHistoryOpen(false)} className="p-2 bg-white/5 rounded-full text-muted hover:text-white">
                           <X size={18} />
                         </button>

@@ -10,6 +10,7 @@ import { storage } from '../utils/storage';
 import { Duel } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
+import EmptyState from '../components/EmptyState';
 import { tg } from '../utils/telegram';
 import EnvelopeAnimation from '../components/EnvelopeAnimation';
 import { playSound } from '../utils/sound';
@@ -367,7 +368,7 @@ const Duels = () => {
       )}
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-mono text-2xl font-black flex items-center gap-3 text-orange-500 drop-shadow-[0_0_10px_rgba(249,115,22,0.8)]">
+          <h1 className="font-heading text-2xl font-black flex items-center gap-3 text-orange-500 drop-shadow-[0_0_10px_rgba(249,115,22,0.8)]">
             <Sword className="fill-current" size={28} />
             {t('meme_duels')}
           </h2>
@@ -482,7 +483,7 @@ const Duels = () => {
 
         {activeTab === 'shame' && (
              <div className="mb-4 text-center">
-                 <h3 className="font-black text-xl text-red-600 uppercase tracking-widest animate-pulse">{t('shame_wall_title')}</h3>
+                 <h3 className="font-heading font-black text-xl text-red-600 uppercase tracking-widest animate-pulse">{t('shame_wall_title')}</h3>
                  <p className="text-xs text-muted">{t('shame_desc')}</p>
              </div>
         )}
@@ -582,25 +583,13 @@ const Duels = () => {
               </div>
             ))
           ) : displayFiltered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-              <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 relative">
-                <div className="absolute inset-0 bg-accent-pink/5 blur-xl rounded-full" />
-                <Swords size={40} className="relative z-10 text-muted" />
-              </div>
-              <h3 className="text-lg font-bold text-primary mb-2 tracking-wide">
-                {t('no_results')}
-              </h3>
-              <p className="text-sm text-muted max-w-xs leading-relaxed mb-6 font-mono">
-                {t('duels_empty_hint') || 'No duels yet. Start a new beef and challenge someone.'}
-              </p>
-              <button 
-                onClick={() => setIsCreating(true)}
-                className="px-6 py-3 rounded-xl bg-accent-pink/10 border border-accent-pink/30 text-accent-pink text-xs font-bold uppercase tracking-widest hover:bg-accent-pink/20 transition-all active:scale-95"
-              >
-                {t('create_beef') || 'START A BEEF'}
-              </button>
-              <div className="mt-8 w-16 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-            </div>
+            <EmptyState
+              icon={<Swords size={40} />}
+              title={t('no_results')}
+              description={t('duels_empty_hint') || 'No duels yet. Start a new beef and challenge someone.'}
+              actionLabel={t('create_beef') || 'START A BEEF'}
+              onAction={() => setIsCreating(true)}
+            />
           ) : (
             displayFiltered.map((duel, index) => {
               // Track view for public duels in hype tab (only once per mount)

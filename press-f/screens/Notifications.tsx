@@ -5,6 +5,8 @@ import { notificationsAPI } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
 import { playSound } from '../utils/sound';
 import InfoSection from '../components/InfoSection';
+import ListSkeleton from '../components/ListSkeleton';
+import EmptyState from '../components/EmptyState';
 
 interface NotificationEvent {
   id: string;
@@ -103,7 +105,7 @@ const Notifications = () => {
 
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-mono text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-cyan drop-shadow-[0_0_10px_rgba(0,224,255,0.8)]">
+          <h1 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-cyan drop-shadow-[0_0_10px_rgba(0,224,255,0.8)]">
             <Bell size={28} className="text-accent-cyan" />
             {t('notifications_title') || 'Notifications'}
             {unreadCount > 0 && (
@@ -123,28 +125,20 @@ const Notifications = () => {
         {unreadCount > 0 && (
           <button
             onClick={markAllAsRead}
-            className="w-full mb-4 px-4 py-2 bg-accent-cyan/10 border border-accent-cyan/30 rounded-xl text-accent-cyan text-sm font-bold uppercase tracking-wider hover:bg-accent-cyan/20 transition-colors"
+            className="btn-secondary w-full mb-4 px-4 py-2 bg-accent-cyan/10 border border-accent-cyan/30 rounded-xl text-accent-cyan text-sm hover:bg-accent-cyan/20"
           >
             {t('mark_all_read') || 'Mark All as Read'}
           </button>
         )}
 
         {loading ? (
-          <div className="text-center text-muted py-8">{t('loading') || 'Loading...'}</div>
+          <ListSkeleton rows={5} className="py-4" />
         ) : notifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-            <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 relative">
-              <div className="absolute inset-0 bg-accent-cyan/5 blur-xl rounded-full" />
-              <Bell size={40} className="relative z-10 text-muted" />
-            </div>
-            <h3 className="text-lg font-bold text-primary mb-2 tracking-wide">
-              {t('no_notifications') || 'No notifications'}
-            </h3>
-            <p className="text-sm text-muted max-w-xs leading-relaxed font-mono">
-              {t('notifications_empty_hint') || 'You\'re all caught up. New activity will appear here.'}
-            </p>
-            <div className="mt-8 w-16 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-          </div>
+          <EmptyState
+            icon={<Bell size={40} />}
+            title={t('no_notifications') || 'No notifications'}
+            description={t('notifications_empty_hint') || "You're all caught up. New activity will appear here."}
+          />
         ) : (
           <div className="space-y-3">
             {unreadNotifications.length > 0 && (
