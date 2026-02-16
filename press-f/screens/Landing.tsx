@@ -173,10 +173,13 @@ const Landing = () => {
       // Keep localStorage data
     });
 
-    // Daily login loot
+    // Daily login loot — начисление XP за вход; обновляем кэш профиля
     profileAPI.claimDailyLoginLoot().then((res) => {
       if (isMounted && res.ok && res.data?.claimed && res.data?.xp) {
-        setXpNotification({ xp: res.data.xp, bonusLabel: 'daily' });
+        const xp = res.data.xp;
+        const profile = storage.getUserProfile();
+        storage.saveUserProfile({ ...profile, experience: (profile.experience ?? 0) + xp });
+        setXpNotification({ xp, bonusLabel: 'daily' });
         setTimeout(() => setXpNotification(null), 2500);
       }
     });
@@ -216,7 +219,10 @@ const Landing = () => {
     if (completed) {
       const res = await profileAPI.claimGuideReward();
       if (res.ok && res.data?.claimed && res.data?.xp) {
-        setXpNotification({ xp: res.data.xp, bonusLabel: 'guide' });
+        const xp = res.data.xp;
+        const profile = storage.getUserProfile();
+        storage.saveUserProfile({ ...profile, experience: (profile.experience ?? 0) + xp });
+        setXpNotification({ xp, bonusLabel: 'guide' });
         setTimeout(() => setXpNotification(null), 2500);
       }
     }
@@ -248,7 +254,13 @@ const Landing = () => {
       const result = await profileAPI.checkIn();
       
       if (result.ok && result.data) {
-        const { xp, streak, bonuses } = result.data;
+        const { xp, streak, bonuses, timestamp } = result.data;
+        
+        // Обновить локальные настройки: время последнего чекина (таймер и даты)
+        if (timestamp != null) {
+          storage.updateSettings({ lastCheckIn: timestamp });
+          setSettings(storage.getSettings());
+        }
         
         // Update local state
         imAlive();
@@ -266,13 +278,23 @@ const Landing = () => {
         else if (bonuses?.reengagement) bonusLabel = 'reengagement';
         else if (bonuses?.comeback) bonusLabel = 'comeback';
         
-        // Show XP notification
+        // Оптимистичное обновление кэша профиля: сразу добавляем начисленный XP,
+        // чтобы в Профиле и Магазине отображался актуальный баланс (бэкенд может отдавать профиль с задержкой)
+        if (xp != null && xp > 0) {
+          const profile = storage.getUserProfile();
+          const prevExperience = profile.experience ?? 0;
+          const newExperience = prevExperience + xp;
+          storage.saveUserProfile({ ...profile, experience: newExperience });
+        }
+        
+        // Show XP notification and level-up (используем уже обновлённый кэш)
         if (xp) {
-          // Get current profile to check for level up
-          const profile = await storage.getUserProfileAsync();
           const { calculateLevel } = await import('../utils/levelSystem');
-          const oldLevel = calculateLevel(profile.experience || 0);
-          const newLevel = calculateLevel((profile.experience || 0) + xp);
+          const profile = storage.getUserProfile();
+          const prevExperience = (profile.experience ?? 0) - (xp || 0);
+          const newExperience = profile.experience ?? 0;
+          const oldLevel = calculateLevel(prevExperience);
+          const newLevel = calculateLevel(newExperience);
           const levelUp = newLevel > oldLevel;
           
           setXpNotification({ xp, level: levelUp ? newLevel : undefined, levelUp, bonusLabel });

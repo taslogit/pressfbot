@@ -427,9 +427,9 @@ const Store = () => {
 
   return (
     <div className="pb-6 relative">
-      {/* Background Animation — иконка на 30% меньше */}
+      {/* Background Animation — вверх-вниз, как на остальных страницах (кроме главной) */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 flex items-center justify-center">
-        <div className="bg-decor opacity-[0.05] text-accent-lime drop-shadow-[0_0_30px_rgba(180,255,0,0.3)] bg-decor-spin motion-reduce:animate-none">
+        <div className="bg-decor opacity-[0.05] text-accent-lime drop-shadow-[0_0_30px_rgba(180,255,0,0.3)] animate-float motion-reduce:animate-none">
           <ShoppingBag size={315} strokeWidth={0.5} />
         </div>
       </div>
