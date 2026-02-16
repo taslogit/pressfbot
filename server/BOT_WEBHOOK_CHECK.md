@@ -129,3 +129,13 @@ docker logs pressf-backend-1 --tail 50
    Ожидается **200**. Если 404 — запрос идёт не во frontend (проверьте правила Traefik и что контейнер frontend в сети `pressf-net`).
 
 4. В Traefik для домена `pressfbot.ru` маршрут без пути (главная страница) должен вести на **frontend** (priority 0), а `/bot`, `/api`, `/static` — на backend (см. п. 5).
+
+5. **404 при том что frontend запущен и в контейнере есть index.html** — Traefik не направляет запросы на frontend. Часто контейнер был создан без лейблов Traefik (запускали только `docker-compose.yml`). Пересоздайте frontend с обоими файлами:
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d frontend --force-recreate
+   ```
+   Проверьте, что у контейнера есть лейблы Traefik:
+   ```bash
+   docker inspect pressf-frontend-1 --format '{{json .Config.Labels}}' | grep -o 'traefik[^"]*'
+   ```
+   Должны быть `traefik.enable=true`, `traefik.http.routers.pressf-frontend.rule=...` и т.д. После этого `curl -s -o /dev/null -w "%{http_code}" https://pressfbot.ru/` должен вернуть 200.

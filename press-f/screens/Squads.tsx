@@ -10,7 +10,7 @@ import { playSound } from '../utils/sound';
 import { Squad, SquadMember, LeaderboardEntry } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 import { getAvatarComponent } from '../components/Avatars';
-import { squadsAPI } from '../utils/api';
+import { squadsAPI, dailyQuestsAPI } from '../utils/api';
 
 type Tab = 'pact' | 'leaderboard';
 
@@ -123,6 +123,8 @@ const Squads = () => {
                 setSquad(result.data.squad);
                 setSquadName('');
                 setIsCreating(false);
+                dailyQuestsAPI.updateProgress('create_squad').catch(() => {});
+                window.dispatchEvent(new CustomEvent('questProgressUpdated'));
             } else {
                 tg.showPopup({ message: result.error || 'Failed to create squad' });
             }

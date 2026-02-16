@@ -1,20 +1,27 @@
-const normalizeProfile = (row) => ({
-  avatar: row.avatar || 'pressf',
-  bio: row.bio || 'No bio yet.',
-  level: row.level || 1,
-  title: row.title || 'Newbie',
-  gifts: row.gifts || [],
-  achievements: row.achievements || [],
-  perks: row.perks || [],
-  contracts: row.contracts || [],
-  reputation: row.reputation || 0,
-  karma: row.karma || 50,
-  stats: row.stats || { beefsWon: 0, leaksDropped: 0, daysAlive: 1 },
-  tonAddress: row.ton_address || null,
-  experience: row.experience || 0,
-  totalXpEarned: row.total_xp_earned || 0,
-  spendableXp: row.spendable_xp ?? row.experience ?? 0
-});
+const { calculateLevel } = require('../utils/xpSystem');
+
+// Level is derived from experience so it never goes out of sync with XP grants
+const normalizeProfile = (row) => {
+  const experience = row.experience || 0;
+  const level = calculateLevel(experience);
+  return {
+    avatar: row.avatar || 'pressf',
+    bio: row.bio || 'No bio yet.',
+    level,
+    title: row.title || 'Newbie',
+    gifts: row.gifts || [],
+    achievements: row.achievements || [],
+    perks: row.perks || [],
+    contracts: row.contracts || [],
+    reputation: row.reputation || 0,
+    karma: row.karma || 50,
+    stats: row.stats || { beefsWon: 0, leaksDropped: 0, daysAlive: 1 },
+    tonAddress: row.ton_address || null,
+    experience,
+    totalXpEarned: row.total_xp_earned || 0,
+    spendableXp: row.spendable_xp ?? row.experience ?? 0
+  };
+};
 
 const normalizeSettings = (row) => ({
   deadManSwitchDays: row.dead_man_switch_days || 30,

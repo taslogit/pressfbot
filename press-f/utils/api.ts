@@ -101,11 +101,16 @@ async function apiRequest<T>(
         return apiRequest<T>(endpoint, options, retryCount + 1);
       }
       
-      return { 
-        ok: false, 
-        error: errorData.error || errorData.message || 'Request failed',
-        code: errorData.code ?? (res.status === 429 ? '429' : undefined),
-        details: errorData.details
+      const errObj = errorData?.error;
+      const message = (typeof errObj === 'object' && errObj !== null && errObj.message)
+        ? errObj.message
+        : (typeof errorData.error === 'string' ? errorData.error : errorData.message || 'Request failed');
+      const code = (typeof errObj === 'object' && errObj !== null && errObj.code) ? errObj.code : errorData.code ?? (res.status === 429 ? '429' : undefined);
+      return {
+        ok: false,
+        error: message,
+        code,
+        details: errorData.details ?? (typeof errObj === 'object' && errObj !== null ? errObj.details : undefined)
       };
     }
 
@@ -212,7 +217,12 @@ export const lettersAPI = {
     const res = await fetch(url, { method: 'POST', headers, body: fd, ...options });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      return { ok: false as const, error: err?.error || res.statusText, code: err?.code };
+      const errObj = err?.error;
+      const message = (typeof errObj === 'object' && errObj !== null && errObj.message)
+        ? errObj.message
+        : (typeof err?.error === 'string' ? err.error : res.statusText);
+      const code = (typeof errObj === 'object' && errObj !== null && errObj.code) ? errObj.code : err?.code;
+      return { ok: false as const, error: message, code };
     }
     return { ok: true as const, data: await res.json() };
   },

@@ -4,7 +4,7 @@ import { Edit2, Save, Fingerprint, Target, Sparkles, Shield, Zap, Hourglass, Bra
 import { useNavigate } from 'react-router-dom';
 import { tg } from '../utils/telegram';
 import { storage } from '../utils/storage';
-import { notificationsAPI, avatarsAPI, profileAPI, storeAPI, getStaticUrl } from '../utils/api';
+import { notificationsAPI, avatarsAPI, profileAPI, storeAPI, dailyQuestsAPI, getStaticUrl } from '../utils/api';
 import { UserProfile } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
@@ -191,15 +191,21 @@ const Profile = () => {
   };
 
 
-  const handleSave = () => {
+  const handleSave = async () => {
     playSound('success');
     const updated = { ...profile, bio: tempBio };
     if (hasTitleCustom) {
       (updated as Record<string, unknown>).title = tempTitle.slice(0, 100);
     }
-    storage.saveUserProfileAsync(updated);
-    setProfile(updated);
-    setIsEditing(false);
+    try {
+      await storage.saveUserProfileAsync(updated);
+      setProfile(updated);
+      setIsEditing(false);
+      dailyQuestsAPI.updateProgress('update_profile').catch(() => {});
+    } catch (e) {
+      console.error('Profile save failed', e);
+      tg.showPopup({ message: t('api_error_generic') || 'Something went wrong. Try again.' });
+    }
   };
 
   const loadGifts = async () => {

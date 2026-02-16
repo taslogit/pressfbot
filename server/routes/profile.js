@@ -387,6 +387,15 @@ const createProfileRoutes = (pool) => {
       // Start transaction for atomic operations
       await client.query('BEGIN');
 
+      // Ensure profile exists so XP update affects a row (profile is usually created on first PUT /api/profile)
+      const profileCheck = await client.query('SELECT user_id FROM profiles WHERE user_id = $1', [userId]);
+      if (profileCheck.rowCount === 0) {
+        await client.query(
+          'INSERT INTO profiles (user_id, created_at, updated_at) VALUES ($1, now(), now()) ON CONFLICT (user_id) DO NOTHING',
+          [userId]
+        );
+      }
+
       // Get current settings with lock to prevent race conditions
       const settingsResult = await client.query(
         'SELECT * FROM user_settings WHERE user_id = $1 FOR UPDATE',
@@ -887,7 +896,7 @@ const createProfileRoutes = (pool) => {
 
       const xp = 5 + Math.floor(Math.random() * 11);
       await pool.query(
-        `UPDATE profiles SET experience = experience + $1, spendable_xp = COALESCE(spendable_xp, 0) + $1, updated_at = now() WHERE user_id = $2`,
+        `UPDATE profiles SET experience = experience + $1, total_xp_earned = total_xp_earned + $1, spendable_xp = COALESCE(spendable_xp, 0) + $1, updated_at = now() WHERE user_id = $2`,
         [xp, userId]
       );
       const upd = await pool.query(
@@ -927,7 +936,7 @@ const createProfileRoutes = (pool) => {
 
       const xp = 50;
       await pool.query(
-        `UPDATE profiles SET experience = experience + $1, spendable_xp = COALESCE(spendable_xp, 0) + $1, updated_at = now() WHERE user_id = $2`,
+        `UPDATE profiles SET experience = experience + $1, total_xp_earned = total_xp_earned + $1, spendable_xp = COALESCE(spendable_xp, 0) + $1, updated_at = now() WHERE user_id = $2`,
         [xp, userId]
       );
       const upd = await pool.query(

@@ -16,7 +16,7 @@ import EnvelopeAnimation from '../components/EnvelopeAnimation';
 import { playSound } from '../utils/sound';
 import XPNotification from '../components/XPNotification';
 import { calculateLevel } from '../utils/levelSystem';
-import { duelsAPI } from '../utils/api';
+import { duelsAPI, dailyQuestsAPI } from '../utils/api';
 import { useApiAbort } from '../hooks/useApiAbort';
 import { useApiError } from '../contexts/ApiErrorContext';
 
@@ -248,6 +248,8 @@ const Duels = () => {
             message: result.data.winnerTauntMessage,
             title: t('duel_winner_taunt_title') || 'Winner says'
           });
+          dailyQuestsAPI.updateProgress('win_duel').catch(() => {});
+          window.dispatchEvent(new CustomEvent('questProgressUpdated'));
         } else {
           tg.showPopup({ message: t('duel_updated') || t('duel_created') });
         }
@@ -257,7 +259,6 @@ const Duels = () => {
         analytics.trackDuelCreated(newDuel.id, isPublic);
         // Show XP notification if received
         if (result && result.xp) {
-          const { dailyQuestsAPI } = await import('../utils/api');
           dailyQuestsAPI.updateProgress('create_duel').catch(() => {});
           window.dispatchEvent(new CustomEvent('questProgressUpdated'));
 
