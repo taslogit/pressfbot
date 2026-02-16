@@ -78,10 +78,11 @@ const createTournamentsRoutes = (pool) => {
       );
 
       const finalParams = userId ? [...params, userId] : params;
-      const tournamentsResult = await pool.query(
-        optimizedQuery + (optimizedQuery.includes('GROUP BY') ? '' : ' GROUP BY t.id, t.name, t.description, t.start_date, t.end_date, t.registration_start, t.registration_end, t.max_participants, t.min_participants, t.status, t.format, t.prize_pool, t.rules, t.banner_url, t.icon, t.created_at, t.updated_at'),
-        finalParams
-      );
+      const groupByClause = ' GROUP BY t.id, t.name, t.description, t.start_date, t.end_date, t.registration_start, t.registration_end, t.max_participants, t.min_participants, t.status, t.format, t.prize_pool, t.rules, t.banner_url, t.icon, t.created_at, t.updated_at';
+      const sql = optimizedQuery.includes('GROUP BY')
+        ? optimizedQuery
+        : optimizedQuery.replace(/\s+ORDER BY\s+/i, groupByClause + ' ORDER BY ');
+      const tournamentsResult = await pool.query(sql, finalParams);
 
       const tournaments = tournamentsResult.rows.map((row) => {
         const participantCount = parseInt(row.participant_count || 0);

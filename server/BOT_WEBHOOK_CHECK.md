@@ -2,6 +2,39 @@
 
 Если после команды /start бот не отвечает и приложение не открывается, проверьте по шагам.
 
+## 0. Connection refused — типичная причина
+
+**Ошибка «Connection refused»** значит: Telegram стучится на `https://pressfbot.ru:443/bot`, но **на порту 443 никто не принимает соединение**.
+
+- Вебхук у Telegram всегда идёт по **HTTPS на порт 443**. Без работающего reverse proxy с SSL бот апдейты не получит.
+- Нужно поднимать стек **с Traefik** (или другим прокси с SSL), а не только `docker-compose.yml` (там нет прокси на 443).
+
+**Что проверить на сервере:**
+
+```bash
+# 1. Запущен ли Traefik (должен быть контейнер traefik)
+docker ps | grep -E 'traefik|backend'
+
+# 2. Слушается ли на хосте порт 443
+ss -tlnp | grep 443
+# или
+netstat -tlnp | grep 443
+
+# 3. Доступен ли /bot снаружи (выполнить с сервера или с другого компьютера)
+curl -v https://pressfbot.ru/bot
+# Ожидается: HTTP 200 и тело с "ok":true. Если "Connection refused" — до контейнеров запрос не доходит.
+```
+
+**Если Traefik не запущен:** поднимайте проект так, чтобы был и Traefik, и backend, например:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
+```
+
+Убедитесь, что в `docker-compose.traefik.yml` есть сервис `traefik` и у backend заданы лейблы для роутов (в т.ч. для `/bot`).
+
+**Фаервол:** на хосте должен быть открыт порт 443 (например `ufw allow 443` и `ufw reload`).
+
 ## 1. Доступность вебхука снаружи
 
 С сервера или с любого компьютера:
