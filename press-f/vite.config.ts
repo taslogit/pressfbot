@@ -26,9 +26,9 @@ export default defineConfig(({ mode }) => {
         },
         // Use esbuild minification (default, faster and doesn't require terser)
         minify: 'esbuild',
-        // Remove console.log in production using esbuild
+        // В проде убираем только debugger; console оставляем (log/warn обёрнуты в DEV в коде)
         esbuild: {
-          drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : []
+          drop: process.env.NODE_ENV === 'production' ? ['debugger'] : []
         }
       },
       define: {

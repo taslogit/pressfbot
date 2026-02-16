@@ -3,8 +3,9 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 
-// Log initialization
-console.log('[index.tsx] Starting app initialization...');
+if (import.meta.env.DEV) {
+  console.log('[index.tsx] Starting app initialization...');
+}
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -12,19 +13,23 @@ if (!rootElement) {
   throw new Error('Failed to find the root element');
 }
 
-console.log('[index.tsx] Root element found, creating React root...');
+if (import.meta.env.DEV) {
+  console.log('[index.tsx] Root element found, creating React root...');
+}
 
 try {
   const root = ReactDOM.createRoot(rootElement);
-  console.log('[index.tsx] React root created, rendering App...');
-  
+  if (import.meta.env.DEV) {
+    console.log('[index.tsx] React root created, rendering App...');
+  }
   root.render(
     <React.StrictMode>
       <App />
     </React.StrictMode>
   );
-  
-  console.log('[index.tsx] App rendered successfully');
+  if (import.meta.env.DEV) {
+    console.log('[index.tsx] App rendered successfully');
+  }
 } catch (error) {
   console.error('[index.tsx] Error rendering app:', error);
   const msg = error instanceof Error ? error.message : String(error);

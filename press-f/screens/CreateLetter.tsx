@@ -16,6 +16,7 @@ import XPNotification from '../components/XPNotification';
 import { calculateLevel } from '../utils/levelSystem';
 import { analytics } from '../utils/analytics';
 import { useApiAbort } from '../hooks/useApiAbort';
+import { useApiError } from '../contexts/ApiErrorContext';
 
 type Attachment = {
   id: string;
@@ -30,6 +31,7 @@ const CreateLetter = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const getSignal = useApiAbort();
+  const { showApiError } = useApiError();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [recipients, setRecipients] = useState('');
@@ -201,7 +203,7 @@ const CreateLetter = () => {
     } catch (e) {
         console.error("Save failed:", e);
         setEncryptionStep(0);
-        tg.showPopup({ message: t('error_encryption') });
+        showApiError(t('error_encryption'), handleSave);
     }
   };
 

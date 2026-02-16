@@ -147,6 +147,26 @@ html {
   .title-logo-glitch { animation: none; }
 }
 
+/* Глитч-эффект для экрана Resurrection (SYSTEM FAILURE) */
+.glitch-text {
+  text-shadow:
+    0 0 4px currentColor,
+    2px 0 0 rgba(255, 0, 0, 0.8),
+    -2px 0 0 rgba(0, 255, 255, 0.8);
+  animation: glitch-text 3s ease-in-out infinite;
+}
+@keyframes glitch-text {
+  0%, 88%, 100% { transform: translate(0, 0); filter: none; }
+  90% { transform: translate(-2px, 1px); filter: hue-rotate(-10deg); }
+  92% { transform: translate(2px, -1px); filter: hue-rotate(10deg); }
+  94% { transform: translate(0, 0); filter: none; }
+  96% { transform: translate(1px, 0); filter: hue-rotate(5deg); }
+  98% { transform: translate(0, 0); filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .glitch-text { animation: none; }
+}
+
 /* ─── Hacker / Terminal UI ───────────────────────────────────────────── */
 /* Терминальные поля ввода: моноширинный шрифт, левая полоска-акцент, лёгкое свечение */
 .input-terminal {

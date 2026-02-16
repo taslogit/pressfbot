@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { useTranslation } from './LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, RefreshCw, X } from 'lucide-react';
@@ -11,35 +11,45 @@ const ApiErrorContext = createContext<ApiErrorContextValue | undefined>(undefine
 
 export function ApiErrorProvider({ children }: { children: React.ReactNode }) {
   const [message, setMessage] = useState<string | null>(null);
-  const [onRetry, setOnRetry] = useState<(() => void) | null>(null);
+  const [hasRetry, setHasRetry] = useState(false);
+  const retryRef = useRef<(() => void) | null>(null);
 
   const showApiError = useCallback((msg: string, retry?: () => void) => {
     setMessage(msg);
-    setOnRetry(retry ? () => retry : null);
+    retryRef.current = retry ?? null;
+    setHasRetry(Boolean(retry));
   }, []);
 
   const dismiss = useCallback(() => {
     setMessage(null);
-    setOnRetry(null);
+    setHasRetry(false);
+    retryRef.current = null;
   }, []);
+
+  const handleRetry = useCallback(() => {
+    retryRef.current?.();
+    dismiss();
+  }, [dismiss]);
 
   const value: ApiErrorContextValue = { showApiError };
 
   return (
     <ApiErrorContext.Provider value={value}>
       {children}
-      <ApiErrorBanner message={message} onRetry={onRetry} onDismiss={dismiss} />
+      <ApiErrorBanner message={message} hasRetry={hasRetry} onRetry={handleRetry} onDismiss={dismiss} />
     </ApiErrorContext.Provider>
   );
 }
 
 function ApiErrorBanner({
   message,
+  hasRetry,
   onRetry,
   onDismiss,
 }: {
   message: string | null;
-  onRetry: (() => void) | null;
+  hasRetry: boolean;
+  onRetry: () => void;
   onDismiss: () => void;
 }) {
   const { t } = useTranslation();
@@ -62,13 +72,10 @@ function ApiErrorBanner({
           <AlertCircle size={20} className="text-red-400 flex-shrink-0" />
           <p className="text-sm text-red-100 flex-1 min-w-0 line-clamp-2">{message}</p>
           <div className="flex items-center gap-1 flex-shrink-0">
-            {onRetry && (
+            {hasRetry && (
               <button
                 type="button"
-                onClick={() => {
-                  onRetry();
-                  onDismiss();
-                }}
+                onClick={onRetry}
                 className="p-2 rounded-lg bg-red-500/30 text-red-100 hover:bg-red-500/50 transition-colors"
                 aria-label={t('api_error_retry')}
               >

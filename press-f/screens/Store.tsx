@@ -146,7 +146,7 @@ const Store = () => {
             saveCatalogToCache(list, xpRes.data?.flashSale || null);
           } else {
             const is429 = xpRes.code === '429' || xpRes.error?.includes?.('429') || xpRes.error?.toLowerCase?.().includes('too many');
-            setCatalogError(xpRes.error || 'Network error');
+            setCatalogError(xpRes.error || t('api_error_network'));
             if (is429 && catalogRetryCountRef.current < 1) {
               catalogRetryCountRef.current += 1;
               setRetryInSec(6);
@@ -174,7 +174,7 @@ const Store = () => {
           clearTimeout(catalogTimeout);
           if (!mountedRef.current) return;
           if (err?.name === 'AbortError') return;
-          setCatalogError('Network error');
+          setCatalogError(t('api_error_network'));
           doneLoading();
         });
     };
@@ -232,7 +232,7 @@ const Store = () => {
             saveStarsCatalogToCache(list);
           } else {
             const is429 = res.code === '429' || res.error?.toLowerCase?.().includes('too many') || res.error?.includes?.('429');
-            setStarsCatalogError(res.error || 'Network error');
+            setStarsCatalogError(res.error || t('api_error_network'));
             if (is429 && starsRetryCountRef.current < 1) {
               starsRetryCountRef.current += 1;
               setStarsRetryInSec(6);
@@ -258,7 +258,7 @@ const Store = () => {
         .catch((err) => {
           if (!mountedRef.current) return;
           if (err?.name === 'AbortError') return;
-          setStarsCatalogError('Network error');
+          setStarsCatalogError(t('api_error_network'));
         })
         .finally(() => {
           if (mountedRef.current) setStarsCatalogLoading(false);

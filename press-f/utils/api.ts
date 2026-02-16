@@ -1,8 +1,7 @@
 // Use current origin for API if VITE_API_URL is not set (production mode)
 const API_BASE = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
 
-// Log API_BASE for debugging (only in development or when API_BASE is not set)
-if (typeof window !== 'undefined' && (!import.meta.env.VITE_API_URL || import.meta.env.DEV)) {
+if (import.meta.env.DEV && typeof window !== 'undefined') {
   console.log('[API] API_BASE:', API_BASE);
 }
 
@@ -88,7 +87,9 @@ async function apiRequest<T>(
       
       if (shouldRetry) {
         const delay = RETRY_DELAY_MS * Math.pow(2, retryCount); // Exponential backoff
-        console.warn(`[API] Retrying request [${endpoint}] (attempt ${retryCount + 1}/${MAX_RETRIES}) after ${delay}ms`);
+        if (import.meta.env.DEV) {
+          console.warn(`[API] Retrying request [${endpoint}] (attempt ${retryCount + 1}/${MAX_RETRIES}) after ${delay}ms`);
+        }
         await sleep(delay);
         return apiRequest<T>(endpoint, options, retryCount + 1);
       }
@@ -110,7 +111,9 @@ async function apiRequest<T>(
       }
       if (retryCount < MAX_RETRIES) {
         const delay = RETRY_DELAY_MS * Math.pow(2, retryCount);
-        console.warn(`[API] Retrying timeout [${endpoint}] (attempt ${retryCount + 1}/${MAX_RETRIES}) after ${delay}ms`);
+        if (import.meta.env.DEV) {
+          console.warn(`[API] Retrying timeout [${endpoint}] (attempt ${retryCount + 1}/${MAX_RETRIES}) after ${delay}ms`);
+        }
         await sleep(delay);
         return apiRequest<T>(endpoint, options, retryCount + 1);
       }
@@ -121,7 +124,9 @@ async function apiRequest<T>(
     // Network or other errors — retry with backoff
     if (retryCount < MAX_RETRIES) {
       const delay = RETRY_DELAY_MS * Math.pow(2, retryCount);
-      console.warn(`[API] Retrying [${endpoint}] after error (attempt ${retryCount + 1}/${MAX_RETRIES}) after ${delay}ms`, e?.message || e);
+      if (import.meta.env.DEV) {
+        console.warn(`[API] Retrying [${endpoint}] after error (attempt ${retryCount + 1}/${MAX_RETRIES}) after ${delay}ms`, e?.message || e);
+      }
       await sleep(delay);
       return apiRequest<T>(endpoint, options, retryCount + 1);
     }

@@ -23,11 +23,13 @@ import ActivityFeed from '../components/ActivityFeed';
 // Quest type removed - replaced with DailyQuest
 import { profileAPI, tonAPI } from '../utils/api';
 import { analytics } from '../utils/analytics';
+import { useApiError } from '../contexts/ApiErrorContext';
 
 const Landing = () => {
   const navigate = useNavigate();
   const { daysRemaining, hoursRemaining, is24hMode, isDead, imAlive } = useDeadManSwitch();
   const { t } = useTranslation();
+  const { showApiError } = useApiError();
   const { theme, toggleTheme } = useTheme();
   
   // Component mount tracking (removed console.log for production)
@@ -322,15 +324,11 @@ const Landing = () => {
           );
         }, 700);
       } else {
-        // Fallback to local check-in if API fails
-        imAlive();
-        setJustCheckedIn(true);
+        showApiError(result.error || t('api_error_generic'), handleCheckIn);
       }
     } catch (error) {
       console.error('Check-in failed:', error);
-      // Fallback to local check-in
-      imAlive();
-      setJustCheckedIn(true);
+      showApiError(t('api_error_generic'), handleCheckIn);
     }
   };
 

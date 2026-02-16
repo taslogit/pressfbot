@@ -27,6 +27,9 @@ const SearchScreen = () => {
       if (result.ok && result.data) {
         setLetters(result.data.letters || []);
         setDuels(result.data.duels || []);
+      } else {
+        setLetters([]);
+        setDuels([]);
       }
       setLoading(false);
     }, 300);

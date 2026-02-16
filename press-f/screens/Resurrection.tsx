@@ -59,16 +59,16 @@ const Resurrection = () => {
 
                 <h1 className="font-heading text-3xl font-black text-center mb-4 tracking-widest uppercase glitch-text text-red-500 drop-shadow-[0_0_12px_rgba(239,68,68,0.8)] flex items-center justify-center gap-3">
                     <AlertTriangle size={28} className="text-red-500" />
-                    SYSTEM FAILURE
+                    {t('resurrection_system_failure')}
                 </h1>
                 
                 <div className="border border-red-500/50 bg-red-900/10 p-4 rounded-xl mb-8 w-full text-center">
-                     <p className="text-xs mb-2 text-red-400">ERROR_CODE: DEAD_MAN_TRIGGER</p>
+                     <p className="text-xs mb-2 text-red-400">{t('resurrection_error_code')}</p>
                      <p className="text-sm font-bold text-white mb-4">
-                        USER_HEARTBEAT_LOST
+                        {t('resurrection_heartbeat_lost')}
                      </p>
                      <p className="text-xs text-red-300 leading-relaxed">
-                        Protocol 66 initiated. Legacy payload release scheduled in <span className="text-white font-bold">T-MINUS 00:00:00</span>.
+                        {t('resurrection_protocol_66')} <span className="text-white font-bold">{t('resurrection_t_minus')}</span>.
                      </p>
                 </div>
 
@@ -91,10 +91,10 @@ const Resurrection = () => {
                 animate={{ opacity: 1 }}
                 className="z-10 w-full max-w-md text-green-500"
             >
-                <div className="mb-2 text-xs font-bold">{"> SYSTEM_REBOOT_INITIATED..."}</div>
-                <div className="mb-2 text-xs">{"> VERIFYING_BIOMETRICS... OK"}</div>
-                <div className="mb-2 text-xs">{"> CANCELLING_DOOMSDAY_PROTOCOL... OK"}</div>
-                <div className="mb-6 text-xs">{"> RESTORING_SESSION..."}</div>
+                <div className="mb-2 text-xs font-bold">{t('resurrection_reboot_initiated')}</div>
+                <div className="mb-2 text-xs">{t('resurrection_verifying_biometrics')}</div>
+                <div className="mb-2 text-xs">{t('resurrection_cancelling_protocol')}</div>
+                <div className="mb-6 text-xs">{t('resurrection_restoring_session')}</div>
                 
                 <div className="w-full h-2 bg-gray-900 rounded overflow-hidden border border-green-500/30">
                     <motion.div 

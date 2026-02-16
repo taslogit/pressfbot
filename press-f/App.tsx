@@ -35,57 +35,51 @@ const TelegramHandler = () => {
 
   useTelegramSession();
 
+  // Единый эффект: инициализация TG + обработка deep link (без двойной навигации)
   useEffect(() => {
-    console.log('[App] Initializing TelegramHandler...');
-    
-    // 1. Initialize TG (Expand, Colors, ClosingConfirmation, ThemeChanged)
+    if (import.meta.env.DEV) {
+      console.log('[App] Initializing TelegramHandler...');
+    }
     try {
       initTelegramApp();
-      console.log('[App] Telegram initialized');
+      if (import.meta.env.DEV) console.log('[App] Telegram initialized');
     } catch (error) {
       console.error('[App] Error initializing Telegram:', error);
     }
 
-    // 2. Handle Deep Links (Start Params)
     const startParam = tg.initDataUnsafe?.start_param;
-    console.log('[App] Start param:', startParam);
+    if (import.meta.env.DEV) console.log('[App] Start param:', startParam);
 
     if (startParam) {
-      console.log("[App] Deep Link Detected:", startParam);
-      
       if (startParam.startsWith('witness_')) {
         localStorage.setItem('lastmeme_pending_witness', startParam.replace('witness_', ''));
         navigate('/witness-approval', { replace: true });
         return;
-      } 
-      else if (startParam.startsWith('duel_')) {
+      }
+      if (startParam.startsWith('duel_')) {
         navigate('/duels', { replace: true });
         return;
       }
-      else if (startParam.startsWith('squad_')) {
+      if (startParam.startsWith('squad_')) {
         const squadId = startParam.replace('squad_', '');
         localStorage.setItem('lastmeme_pending_squad_join', squadId);
         navigate('/squads', { replace: true });
         return;
       }
-    }
-
-    // 3. ALWAYS redirect to home if no deep link
-    if (!startParam) {
-      setTimeout(() => {
+      if (startParam.startsWith('ref_')) {
+        const refCode = startParam.replace('ref_', '');
+        try {
+          localStorage.setItem('lastmeme_pending_ref', refCode);
+        } catch (_) {}
         navigate('/', { replace: true });
-      }, 0);
+        return;
+      }
     }
-  }, []);
 
-  // Fallback: ensure home page on initial mount if no deep link
-  useEffect(() => {
-    const startParam = tg.initDataUnsafe?.start_param;
-    const currentPath = location.pathname;
-    if (!startParam && currentPath !== '/') {
+    if (!startParam && location.pathname !== '/') {
       navigate('/', { replace: true });
     }
-  }, []);
+  }, [navigate, location.pathname]);
 
   // Handle Back Button
   useEffect(() => {
@@ -145,7 +139,6 @@ const AnimatedLayoutRoutes = () => {
         transition={transition}
       >
         <Routes location={location}>
-          <Route index element={<Landing />} />
           <Route path="/" element={<Landing />} />
           <Route path="/create-letter" element={<CreateLetter />} />
           <Route path="/letters" element={<Letters />} />
@@ -169,14 +162,14 @@ const AnimatedLayoutRoutes = () => {
 const App = () => {
   const manifestUrl = `${window.location.origin}/tonconnect-manifest.json`;
   
-  // Log app initialization and track analytics
   if (typeof window !== 'undefined') {
-    console.log('[App] Initializing app...', {
-      origin: window.location.origin,
-      pathname: window.location.pathname,
-      hash: window.location.hash
-    });
-    
+    if (import.meta.env.DEV) {
+      console.log('[App] Initializing app...', {
+        origin: window.location.origin,
+        pathname: window.location.pathname,
+        hash: window.location.hash
+      });
+    }
     // Set analytics user ID from Telegram
     const tgUser = tg.initDataUnsafe?.user;
     if (tgUser?.id) {
@@ -188,8 +181,8 @@ const App = () => {
   }
   
   return (
-    <ErrorBoundary>
-      <LanguageProvider>
+    <LanguageProvider>
+      <ErrorBoundary>
         <ThemeProvider>
           <ApiErrorProvider>
           <TonConnectUIProvider manifestUrl={manifestUrl}>
@@ -212,8 +205,8 @@ const App = () => {
           </TonConnectUIProvider>
           </ApiErrorProvider>
         </ThemeProvider>
-      </LanguageProvider>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </LanguageProvider>
   );
 };
 
