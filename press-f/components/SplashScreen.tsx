@@ -1,24 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../contexts/LanguageContext';
+import {
+  playTerminalBeep,
+  playTerminalSuccess,
+  playWarning,
+  playEpic,
+} from '../utils/splashSound';
 
-const SPLASH_DURATION_MS = 7800;
-const PHASE1_END_MS = 2600;
-const PHASE2_END_MS = 5200;
-const FLASH_AT_MS = 7000;
-const FADEOUT_START_MS = 7200;
-
+const SPLASH_DURATION_MS = 10000;
 const TYPING_INTERVAL_MS = 26;
+/** Одна скан-линия идёт 3 раза за первые 4 фазы (0–3): 6.5s / 3 ≈ 2.167s на проход */
+const SCAN_DURATION_S = 2.167;
+const SCAN_ITERATIONS = 3;
+
+const PHASE0_END_MS = 2000;
+const PHASE1_END_MS = 3500;
+const PHASE2_END_MS = 5000;
+const PHASE3_END_MS = 6500;
+const PHASE4_END_MS = 8000;
+const PHASE5_END_MS = 9000;
+const FLASH_AT_MS = 9600;
+const FADEOUT_START_MS = 9700;
 
 interface SplashScreenProps {
   onFinish: () => void;
 }
 
 /**
- * Заставка PRESS F: двуязычная (en/ru по языку приложения), удлинённая по времени.
- * Фаза 0: проверка пульса → нет ответа → появление монументальной «F».
- * Фаза 1: протокол наследия, «твои слова переживут тебя», скан-линии, неон «F».
- * Фаза 2: ТЫ МОЖЕШЬ ИСЧЕЗНУТЬ / ТВОИ ДАННЫЕ — НЕТ / PRESS F + подпись «в знак уважения».
- * Язык берётся из LanguageContext (Telegram или настройки).
+ * Заставка: 7 фаз, ~10 с.
+ * 0: терминал — проверка пульса / нет ответа (как есть).
+ * 1: терминал — Сканирование...
+ * 2: терминал — Идентификация...
+ * 3: терминал — Юзер отметился
+ * 4: Данные зашифрованы (анимация шифрования + иконка замка)
+ * 5: ИЛИ? — крупно на весь экран, звук предупреждения
+ * 6: PRESS F и эпичный переход (звук + вспышка)
+ * Одна скан-линия, 3 прохода за фазы 0–3. Стиль терминала Kali для 0–3.
  */
 const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const { t } = useTranslation();
@@ -29,12 +46,33 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const [showFlash, setShowFlash] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
   const onFinishRef = useRef(onFinish);
+  const soundPlayedRef = useRef<Record<number, boolean>>({});
   onFinishRef.current = onFinish;
 
   const LINE1 = t('splash_checking');
   const LINE2 = t('splash_no_response');
 
-  // Typing effect phase 0
+  // Звуки при входе в фазу
+  useEffect(() => {
+    if (soundPlayedRef.current[phase]) return;
+    soundPlayedRef.current[phase] = true;
+    if (phase === 1 || phase === 2) playTerminalBeep();
+    if (phase === 3) playTerminalSuccess();
+    if (phase === 4) playTerminalSuccess();
+    if (phase === 5) playWarning();
+    if (phase === 6) playEpic();
+  }, [phase]);
+
+  // Бип при появлении "no response" (конец набора второй строки в фазе 0)
+  const line2DoneRef = useRef(false);
+  useEffect(() => {
+    if (phase === 0 && line2Len >= LINE2.length && LINE2.length > 0 && !line2DoneRef.current) {
+      line2DoneRef.current = true;
+      playTerminalBeep();
+    }
+  }, [phase, line2Len, LINE2.length]);
+
+  // Печатание фазы 0
   useEffect(() => {
     if (phase !== 0) return;
     const t1 = setInterval(() => {
@@ -55,7 +93,11 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
       setLine2Len((n) => {
         if (n >= LINE2.length) {
           clearInterval(t2);
+          return n;
+        }
+        if (n >= LINE2.length) {
           setSymbolVisible(true);
+          clearInterval(t2);
           return n;
         }
         return n + 1;
@@ -64,27 +106,27 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     return () => clearInterval(t2);
   }, [line1Len, LINE1.length, LINE2]);
 
-  // Phase and final timers
+  // Таймеры фаз и финала
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase(1), PHASE1_END_MS);
-    const t2 = setTimeout(() => setPhase(2), PHASE2_END_MS);
-    const t3 = setTimeout(() => setShowFlash(true), FLASH_AT_MS);
-    const t4 = setTimeout(() => setFadeOut(true), FADEOUT_START_MS);
-    const t5 = setTimeout(() => {
-      onFinishRef.current();
-    }, SPLASH_DURATION_MS);
+    const t0 = setTimeout(() => setPhase(1), PHASE0_END_MS);
+    const t1 = setTimeout(() => setPhase(2), PHASE1_END_MS);
+    const t2 = setTimeout(() => setPhase(3), PHASE2_END_MS);
+    const t3 = setTimeout(() => setPhase(4), PHASE3_END_MS);
+    const t4 = setTimeout(() => setPhase(5), PHASE4_END_MS);
+    const t5 = setTimeout(() => setPhase(6), PHASE5_END_MS);
+    const t6 = setTimeout(() => setShowFlash(true), FLASH_AT_MS);
+    const t7 = setTimeout(() => setFadeOut(true), FADEOUT_START_MS);
+    const t8 = setTimeout(() => onFinishRef.current(), SPLASH_DURATION_MS);
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
-      clearTimeout(t5);
+      [t0, t1, t2, t3, t4, t5, t6, t7, t8].forEach(clearTimeout);
     };
   }, []);
 
   const reducedMotion =
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const isTerminalPhase = phase >= 0 && phase <= 3;
 
   return (
     <div
@@ -98,117 +140,58 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
       }}
       aria-hidden="true"
     >
-      {/* Фон: сетка + пульс */}
+      {/* Фон: сетка (для терминальных фаз — чуть зеленоватая) */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: `
-            linear-gradient(rgba(0, 224, 255, 0.04) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 224, 255, 0.04) 1px, transparent 1px)
-          `,
+          backgroundImage: isTerminalPhase
+            ? `linear-gradient(rgba(0, 255, 65, 0.03) 1px, transparent 1px),
+               linear-gradient(90deg, rgba(0, 255, 65, 0.03) 1px, transparent 1px)`
+            : `linear-gradient(rgba(0, 224, 255, 0.04) 1px, transparent 1px),
+               linear-gradient(90deg, rgba(0, 224, 255, 0.04) 1px, transparent 1px)`,
           backgroundSize: '24px 24px',
-          animation: reducedMotion ? 'none' : 'splash-grid-fade 1.5s ease-out forwards',
           opacity: 0.6,
         }}
       />
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(180, 255, 0, 0.06) 0%, transparent 55%)',
-          animation: reducedMotion ? 'none' : 'splash-bg-pulse 2.5s ease-in-out infinite',
-          willChange: 'opacity',
-        }}
-      />
-      {/* Виньетка */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: `
-            radial-gradient(ellipse 100% 100% at 50% 50%, transparent 45%, rgba(0,0,0,0.4) 100%),
-            radial-gradient(ellipse 80% 50% at 50% 50%, transparent 60%, rgba(15,13,22,0.3) 100%)
-          `,
-          animation: reducedMotion ? 'none' : 'splash-vignette-in 2s ease-out forwards',
-          opacity: 0.9,
-        }}
-      />
-      {/* Угловая рамка — четыре угла */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          animation: reducedMotion ? 'none' : 'splash-corner-in 0.8s ease-out 0.3s forwards',
-          opacity: 0,
-        }}
-      >
-        <div className="absolute top-4 left-4 w-12 h-12 border-l-2 border-t-2 border-[rgba(0,224,255,0.4)] rounded-tl" style={{ boxShadow: '0 0 12px rgba(0,224,255,0.2)' }} />
-        <div className="absolute top-4 right-4 w-12 h-12 border-r-2 border-t-2 border-[rgba(255,77,210,0.35)] rounded-tr" style={{ boxShadow: '0 0 12px rgba(255,77,210,0.15)' }} />
-        <div className="absolute bottom-4 left-4 w-12 h-12 border-l-2 border-b-2 border-[rgba(180,255,0,0.3)] rounded-bl" style={{ boxShadow: '0 0 12px rgba(180,255,0,0.15)' }} />
-        <div className="absolute bottom-4 right-4 w-12 h-12 border-r-2 border-b-2 border-[rgba(255,215,0,0.25)] rounded-br" style={{ boxShadow: '0 0 12px rgba(255,215,0,0.1)' }} />
-      </div>
-      {/* Летающие точки (data flow) */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 rounded-full bg-[#00E0FF]"
-            style={{
-              left: `${8 + i * 10}%`,
-              top: `${15 + (i % 4) * 22}%`,
-              animation: reducedMotion ? 'none' : `splash-dot-pulse ${1.2 + i * 0.15}s ease-in-out infinite`,
-              animationDelay: `${i * 0.1}s`,
-              opacity: 0.3,
-            }}
-          />
-        ))}
-        {[0, 1, 2, 3, 4].map((i) => (
-          <div
-            key={`b-${i}`}
-            className="absolute w-1 h-1 rounded-full bg-[#FF4DD2]"
-            style={{
-              right: `${10 + i * 12}%`,
-              bottom: `${20 + (i % 3) * 25}%`,
-              animation: reducedMotion ? 'none' : `splash-dot-pulse ${1.5 + i * 0.12}s ease-in-out infinite`,
-              animationDelay: `${0.5 + i * 0.15}s`,
-              opacity: 0.25,
-            }}
-          />
-        ))}
-      </div>
 
-      {/* Phase 0: terminal */}
-      {phase === 0 && (
+      {/* Одна скан-линия, 3 прохода — только в фазах 0–3 */}
+      {isTerminalPhase && (
         <div
-          className="absolute inset-0 flex flex-col items-center justify-center px-4"
-          style={{ willChange: 'transform', transform: 'translateZ(0)' }}
-        >
-          <div
-            className="font-mono text-sm text-left w-full max-w-[340px]"
-            style={{
-              color: '#b0b8c2',
-              textShadow: '0 0 12px rgba(180, 255, 0, 0.25)',
-            }}
-          >
-            <div className="mb-1" style={{ color: '#b0b8c2' }}>
+          className="absolute left-0 right-0 h-0.5 pointer-events-none top-0 origin-center"
+          style={{
+            background:
+              'linear-gradient(90deg, transparent, #00ff41 20%, #00ff41 80%, transparent)',
+            boxShadow: '0 0 16px rgba(0, 255, 65, 0.6)',
+            animation:
+              reducedMotion
+                ? 'none'
+                : `splash-scan ${SCAN_DURATION_S}s linear ${SCAN_ITERATIONS}`,
+            willChange: 'transform',
+          }}
+        />
+      )}
+
+      {/* Фаза 0: терминал — heartbeat / no response (как есть) + линия пульса + F */}
+      {phase === 0 && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
+          <div className="splash-terminal px-5 py-4 text-sm text-left max-w-[360px] w-full">
+            <div className="splash-terminal-prompt mb-1" />
+            <div className="mb-1" style={{ color: '#00ff41' }}>
               {LINE1.slice(0, line1Len)}
               {line1Len < LINE1.length && (
                 <span
-                  className="inline-block w-2 h-4 bg-[#B4FF00] ml-0.5 animate-pulse"
-                  style={{ boxShadow: '0 0 8px #B4FF00' }}
+                  className="inline-block w-2 h-4 bg-[#00ff41] ml-0.5 animate-pulse"
+                  style={{ boxShadow: '0 0 6px #00ff41' }}
                 />
               )}
             </div>
             {line1Len >= LINE1.length && (
-              <div
-                style={{
-                  color: '#FF6B8A',
-                  textShadow: '0 0 10px rgba(255, 77, 210, 0.4)',
-                }}
-              >
+              <div style={{ color: '#ff6b6b' }}>
                 {LINE2.slice(0, line2Len)}
                 {line2Len < LINE2.length && (
                   <span
-                    className="inline-block w-2 h-4 bg-[#FF4DD2] ml-0.5 animate-pulse"
-                    style={{ boxShadow: '0 0 8px #FF4DD2' }}
+                    className="inline-block w-2 h-4 bg-[#ff6b6b] ml-0.5 animate-pulse"
+                    style={{ boxShadow: '0 0 6px #ff6b6b' }}
                   />
                 )}
               </div>
@@ -216,14 +199,11 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           </div>
           {line1Len >= LINE1.length && (
             <div
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 w-32 h-0.5 rounded-full origin-center"
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 w-28 h-0.5 rounded-full origin-center"
               style={{
-                background:
-                  'linear-gradient(90deg, transparent, #FF4DD2 30%, #00E0FF 70%, transparent)',
-                boxShadow: '0 0 12px rgba(255, 77, 210, 0.6)',
-                animation: reducedMotion
-                  ? 'none'
-                  : 'splash-heartbeat 1.2s ease-in-out infinite',
+                background: 'linear-gradient(90deg, transparent, #ff6b6b 40%, #00ff41 60%, transparent)',
+                boxShadow: '0 0 10px rgba(255, 107, 107, 0.5)',
+                animation: reducedMotion ? 'none' : 'splash-heartbeat 1.2s ease-in-out infinite',
                 willChange: 'transform',
               }}
             />
@@ -232,20 +212,19 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
             <div
               className="splash-monument-f opacity-0 flex items-center justify-center mt-8"
               style={{
-                animation: reducedMotion
-                  ? 'none'
-                  : 'splash-fadeIn 0.6s ease-out forwards, splash-monument-float 3s ease-in-out 0.6s infinite',
-                willChange: 'opacity, transform',
+                animation: reducedMotion ? 'none' : 'splash-fadeIn 0.5s ease-out forwards',
+                willChange: 'opacity',
+                borderColor: 'rgba(0, 255, 65, 0.4)',
+                boxShadow: '0 0 14px rgba(0, 255, 65, 0.2), inset 0 0 16px rgba(0, 255, 65, 0.06)',
               }}
               aria-hidden
             >
               <span
-                className="font-logo text-5xl sm:text-6xl font-black select-none"
+                className="font-logo text-4xl sm:text-5xl font-black select-none"
                 style={{
-                  color: '#B4FF00',
+                  color: '#00ff41',
                   fontFamily: 'var(--font-logo), Rye, cursive',
-                  textShadow:
-                    '0 0 12px rgba(180, 255, 0, 0.6), 0 0 24px rgba(0, 224, 255, 0.3)',
+                  textShadow: '0 0 12px rgba(0, 255, 65, 0.6)',
                   lineHeight: 1,
                 }}
               >
@@ -256,190 +235,114 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         </div>
       )}
 
-      {/* Phase 1: legacy protocol */}
+      {/* Фаза 1: Сканирование... */}
       {phase === 1 && (
-        <div
-          className="absolute inset-0 flex flex-col items-center justify-center px-4"
-          style={{ willChange: 'transform', transform: 'translateZ(0)' }}
-        >
-          <div className="font-mono text-sm text-center max-w-[340px]">
-            <div
-              className="mb-2"
-              style={{
-                color: '#00E0FF',
-                textShadow:
-                  '0 0 15px rgba(0, 224, 255, 0.6), 0 0 30px rgba(0, 224, 255, 0.3)',
-              }}
-            >
-              {t('splash_activating')}
-            </div>
-            <div
-              style={{
-                color: '#B4FF00',
-                textShadow:
-                  '0 0 15px rgba(180, 255, 0, 0.7), 0 0 25px rgba(180, 255, 0, 0.3)',
-              }}
-            >
-              {t('splash_data_survive')}
-            </div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
+          <div className="splash-terminal px-5 py-4 text-sm text-left max-w-[360px] w-full">
+            <div className="splash-terminal-prompt mb-2" />
+            <div style={{ color: '#00ff41' }}>{t('splash_scanning')}</div>
           </div>
+        </div>
+      )}
+
+      {/* Фаза 2: Идентификация... */}
+      {phase === 2 && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
+          <div className="splash-terminal px-5 py-4 text-sm text-left max-w-[360px] w-full">
+            <div className="splash-terminal-prompt mb-2" />
+            <div style={{ color: '#00ff41' }}>{t('splash_identification')}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Фаза 3: Юзер отметился */}
+      {phase === 3 && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
+          <div className="splash-terminal px-5 py-4 text-sm text-left max-w-[360px] w-full">
+            <div className="splash-terminal-prompt mb-2" />
+            <div style={{ color: '#00ff41' }}>{t('splash_user_checked_in')}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Фаза 4: Данные зашифрованы + анимация + замок */}
+      {phase === 4 && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
           <div
-            className="splash-monument-f flex items-center justify-center mt-8"
+            className="font-mono text-lg sm:text-xl text-center mb-6"
             style={{
-              animation: reducedMotion
-                ? 'none'
-                : 'splash-skull-neon 1.2s ease-in-out infinite, splash-monument-float 3s ease-in-out infinite, splash-border-glow 2s ease-in-out infinite',
-              willChange: 'transform',
+              color: '#00ff41',
+              textShadow: '0 0 12px rgba(0, 255, 65, 0.5)',
+              animation: reducedMotion ? 'none' : 'splash-encrypt 1.2s ease-in-out infinite',
             }}
-            aria-hidden
           >
-            <span
-              className="font-logo text-5xl sm:text-6xl font-black select-none"
-              style={{
-                color: '#B4FF00',
-                fontFamily: 'var(--font-logo), Rye, cursive',
-                textShadow:
-                  '0 0 12px var(--splash-cyan), 0 0 24px var(--splash-lime)',
-                lineHeight: 1,
-              }}
-            >
-              F
-            </span>
+            {t('splash_data_encrypted')}
           </div>
-          {/* Скан-линия cyan */}
+          {/* Иконка замка (CSS) */}
           <div
-            className="absolute left-0 right-0 h-0.5 pointer-events-none top-0 origin-center"
+            className="relative w-14 h-14 flex items-center justify-center"
             style={{
-              background:
-                'linear-gradient(90deg, transparent, #00E0FF 15%, #00E0FF 85%, transparent)',
-              boxShadow: '0 0 20px #00E0FF',
+              animation: reducedMotion ? 'none' : 'splash-lock-in 0.5s ease-out forwards',
+              opacity: reducedMotion ? 1 : 0,
+            }}
+          >
+            <div
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-7 rounded-b-lg border-2 border-[#00ff41] bg-[#0d1117]"
+              style={{ boxShadow: '0 0 12px rgba(0, 255, 65, 0.4)' }}
+            />
+            <div
+              className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-8 rounded-t-full border-2 border-[#00ff41] border-b-0 bg-transparent"
+              style={{
+                boxShadow: '0 0 12px rgba(0, 255, 65, 0.4)',
+                transform: 'translate(-50%, -50%) translateZ(0)',
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Фаза 5: ИЛИ? — на весь экран, привлекает внимание */}
+      {phase === 5 && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
+          <div
+            className="font-heading text-6xl sm:text-8xl md:text-9xl font-black uppercase tracking-tight"
+            style={{
+              color: '#FFD700',
+              fontFamily: 'var(--font-heading), "Rubik Wet Paint", cursive',
+              textShadow: '0 0 40px rgba(255, 215, 0, 0.9), 0 0 80px rgba(255, 77, 210, 0.5)',
+              animation: reducedMotion ? 'none' : 'splash-text-reveal 0.35s ease-out forwards, splash-or-pulse 1.5s ease-in-out 0.4s infinite',
+              opacity: reducedMotion ? 1 : 0,
+            }}
+          >
+            {t('splash_or')}
+          </div>
+        </div>
+      )}
+
+      {/* Фаза 6: PRESS F и эпичный переход */}
+      {phase === 6 && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
+          <div
+            className="font-logo text-5xl sm:text-6xl md:text-7xl font-black"
+            style={{
+              color: '#FFD700',
+              fontFamily: 'var(--font-logo), Rye, cursive',
+              textShadow:
+                '0 0 30px rgba(255, 215, 0, 0.9), 0 0 60px rgba(255, 77, 210, 0.4)',
               animation:
                 reducedMotion
                   ? 'none'
-                  : 'splash-scan 1.8s linear infinite, splash-scan-glow 0.8s ease-in-out infinite',
-              willChange: 'transform',
-            }}
-          />
-          {/* Скан-линия pink */}
-          <div
-            className="absolute left-0 right-0 h-px pointer-events-none top-0"
-            style={{
-              background:
-                'linear-gradient(90deg, transparent, #FF4DD2 25%, #FF4DD2 75%, transparent)',
-              boxShadow: '0 0 15px rgba(255, 77, 210, 0.7)',
-              animation: reducedMotion
-                ? 'none'
-                : 'splash-scan 2.4s linear 0.3s infinite',
-              willChange: 'transform',
-            }}
-          />
-          {/* Скан-линия gold */}
-          <div
-            className="absolute left-0 right-0 h-px pointer-events-none top-0"
-            style={{
-              background:
-                'linear-gradient(90deg, transparent, rgba(255,215,0,0.6) 30%, rgba(255,215,0,0.8) 70%, transparent)',
-              boxShadow: '0 0 12px rgba(255, 215, 0, 0.4)',
-              animation: reducedMotion
-                ? 'none'
-                : 'splash-scan 3s linear 0.8s infinite, splash-line-flicker 1.5s ease-in-out infinite',
-              willChange: 'transform',
-            }}
-          />
-        </div>
-      )}
-
-      {/* Phase 2: main statement */}
-      {phase === 2 && (
-        <div
-          className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center"
-          style={{ willChange: 'transform', transform: 'translateZ(0)' }}
-        >
-          <div
-            className="font-heading text-lg sm:text-xl tracking-wider uppercase"
-            style={{
-              color: '#B4FF00',
-              fontFamily: 'var(--font-heading), "Rubik Wet Paint", cursive',
-              textShadow:
-                '0 0 20px rgba(180, 255, 0, 0.5), 0 0 40px rgba(0, 224, 255, 0.2)',
-              animation: reducedMotion
-                ? 'none'
-                : 'splash-glitch 0.5s ease-in-out 2',
-              willChange: 'transform',
+                  : 'splash-logo-burst 0.5s ease-out 0.2s forwards, splash-glow-pulse 1.2s ease-in-out 0.8s infinite',
+              opacity: reducedMotion ? 1 : 0,
+              willChange: 'transform, opacity',
             }}
           >
-            <div
-              className="mb-1"
-              style={{
-                animation:
-                  reducedMotion ? 'none' : 'splash-text-reveal 0.4s ease-out forwards',
-                animationDelay: '0s',
-                opacity: reducedMotion ? 1 : 0,
-              }}
-            >
-              {t('splash_you_disappear')}
-            </div>
-            <div
-              className="mb-2"
-              style={{
-                animation:
-                  reducedMotion ? 'none' : 'splash-text-reveal 0.4s ease-out forwards',
-                animationDelay: '0.18s',
-                opacity: reducedMotion ? 1 : 0,
-              }}
-            >
-              {t('splash_data_wont')}
-            </div>
-          </div>
-          <div className="relative inline-block mt-3">
-            {/* Кольцо-пульс вокруг PRESS F */}
-            {!reducedMotion && (
-              <div
-                className="absolute rounded-full border-2 border-[rgba(255,215,0,0.5)] pointer-events-none"
-                style={{
-                  width: '6rem',
-                  height: '6rem',
-                  left: '50%',
-                  top: '50%',
-                  transform: 'translate(-50%, -50%) translateZ(0)',
-                  animation: 'splash-ring-pulse 1.2s ease-out 0.4s 2 forwards',
-                  willChange: 'transform, opacity',
-                }}
-              />
-            )}
-            <div
-              className="font-logo text-4xl sm:text-5xl relative z-10"
-              style={{
-                color: '#FFD700',
-                fontFamily: 'var(--font-logo), Rye, cursive',
-                textShadow:
-                  '0 0 25px rgba(255, 215, 0, 0.9), 0 0 50px rgba(255, 77, 210, 0.3)',
-                animation:
-                  reducedMotion
-                    ? 'none'
-                    : 'splash-logo-burst 0.5s ease-out 0.3s forwards, splash-glow-pulse 1.2s ease-in-out 0.9s infinite',
-                opacity: reducedMotion ? 1 : 0,
-                willChange: 'transform, opacity',
-              }}
-            >
-              {t('app_title')}
-            </div>
-          </div>
-          <div
-            className="font-mono text-xs sm:text-sm mt-2 tracking-widest uppercase opacity-90"
-            style={{
-              color: 'var(--splash-muted, #b0b8c2)',
-              animation:
-                reducedMotion ? 'none' : 'splash-text-reveal 0.35s ease-out 0.5s forwards',
-              opacity: reducedMotion ? 0.9 : 0,
-            }}
-          >
-            {t('splash_pay_respects')}
+            {t('app_title')}
           </div>
         </div>
       )}
 
-      {/* Gold flash overlay */}
+      {/* Вспышка при переходе */}
       {showFlash && (
         <>
           <div
@@ -447,9 +350,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
             style={{
               backgroundColor: '#FFD700',
               opacity: 0,
-              animation: reducedMotion
-                ? 'none'
-                : 'splash-flash-strong 0.7s ease-out forwards',
+              animation: reducedMotion ? 'none' : 'splash-flash-strong 0.6s ease-out forwards',
               willChange: 'opacity',
             }}
           />
@@ -458,9 +359,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
             style={{
               backgroundColor: '#fff',
               opacity: 0,
-              animation: reducedMotion
-                ? 'none'
-                : 'splash-flash 0.25s ease-out 0.05s forwards',
+              animation: reducedMotion ? 'none' : 'splash-flash 0.2s ease-out 0.02s forwards',
               willChange: 'opacity',
             }}
           />
