@@ -39,7 +39,7 @@ const Wiki = () => {
           <div>
             <h1 className="font-heading text-xl font-black uppercase tracking-widest text-accent-cyan">
               {t('wiki_title')}
-            </h2>
+            </h1>
             <p className="text-xs text-muted">{t('wiki_intro')}</p>
           </div>
         </div>

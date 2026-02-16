@@ -47,7 +47,7 @@ const SearchScreen = () => {
         <h1 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-red-500 drop-shadow-[0_0_12px_rgba(239,68,68,0.7)]">
           <Search size={28} className="text-red-500" />
           {t('search_title')}
-        </h2>
+        </h1>
         <InfoSection title={t('search_title')} description={t('help_search')} id="search_help" autoOpen />
       </div>
       <div className="mb-4">

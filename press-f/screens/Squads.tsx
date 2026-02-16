@@ -181,7 +181,7 @@ const Squads = () => {
                     <h1 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-blue-500 drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]">
                         <Users size={28} className="text-blue-500" />
                         {t('squad_title')}
-                    </h2>
+                    </h1>
                     <InfoSection title={t('squad_title')} description={t('help_squad')} id="squad_help" autoOpen />
                 </div>
 

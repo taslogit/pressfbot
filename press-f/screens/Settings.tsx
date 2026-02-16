@@ -174,9 +174,9 @@ const Settings = () => {
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
           <h1 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-cyan drop-shadow-[0_0_10px_rgba(0,224,255,0.8)]">
-            <SettingsIcon className="text-accent-cyan" size={28} />
-            <span className="drop-shadow-sm">{t('settings_title')}</span>
-          </h2>
+<SettingsIcon className="text-accent-cyan" size={28} />
+              <span className="drop-shadow-sm">{t('settings_title')}</span>
+            </h1>
           <InfoSection title={t('settings_title')} description={t('help_settings')} id="settings_help" autoOpen />
         </div>
 

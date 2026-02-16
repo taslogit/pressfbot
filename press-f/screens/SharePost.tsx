@@ -127,7 +127,7 @@ const SharePost = () => {
           <h1 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-gold drop-shadow-[0_0_10px_rgba(255,215,0,0.8)]">
             {isDuel ? <Trophy size={28} className="text-accent-gold" /> : <Mail size={28} className="text-accent-gold" />}
             {t('share_post_title')}
-          </h2>
+          </h1>
           <button onClick={() => navigate(-1)} className="p-2 rounded-full border border-border text-muted hover:text-primary">
             <X size={20} />
           </button>

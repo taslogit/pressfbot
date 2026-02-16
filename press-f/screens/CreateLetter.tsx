@@ -476,7 +476,7 @@ const CreateLetter = () => {
         <h1 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-2 text-accent-cyan drop-shadow-[0_0_10px_rgba(0,224,255,0.8)]">
             <Terminal size={24} className="text-accent-cyan" /> 
             {t('new_letter')}
-        </h2>
+        </h1>
         <div className="flex items-center gap-2">
           <InfoSection title={t('new_letter')} description={t('help_create_letter')} id="create_letter_help" autoOpen />
           <button onClick={() => navigate(-1)} className="p-2 bg-input rounded-full text-primary hover:bg-input/80 transition-colors">

@@ -113,7 +113,7 @@ const Notifications = () => {
                 {unreadCount}
               </span>
             )}
-          </h2>
+          </h1>
           <InfoSection 
             title={t('notifications_title') || 'Notifications'} 
             description={t('notifications_help') || 'View and manage your notifications'} 

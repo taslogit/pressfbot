@@ -575,7 +575,7 @@ const Profile = () => {
           <h1 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-purple-500 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]">
             <Fingerprint className="text-purple-500" size={28} />
             <span className="drop-shadow-sm">{t('profile_title')}</span>
-          </h2>
+          </h1>
           <div className="flex gap-2">
              <button onClick={() => setShowShareModal(true)} className="p-2 rounded-full border border-purple-500/30 text-purple-500 hover:bg-purple-500/10">
                <Share2 size={20} />

@@ -431,7 +431,7 @@ const Letters = () => {
           <h1 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-accent-lime drop-shadow-[0_0_10px_rgba(180,255,0,0.8)]">
             <Send className="text-accent-lime" size={28} />
             <span className="drop-shadow-sm">{t('your_letters')}</span>
-          </h2>
+          </h1>
           <InfoSection title={t('your_letters')} description={t('help_letters')} id="letters_help" autoOpen />
         </div>
 
