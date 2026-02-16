@@ -28,12 +28,19 @@ import ErrorBoundary from './components/ErrorBoundary';
 import LoadingState from './components/LoadingState';
 import { analytics } from './utils/analytics';
 
+// Waits for session init (verify) before rendering children so first API calls have X-Session-Id
+const SessionGate = ({ children }: { children: React.ReactNode }) => {
+  const sessionReady = useTelegramSession();
+  if (!sessionReady) {
+    return <LoadingState terminal className="min-h-screen" />;
+  }
+  return <>{children}</>;
+};
+
 // Component to handle Telegram Logic inside Router context
 const TelegramHandler = () => {
   const navigate = useNavigate();
   const location = useLocation();
-
-  useTelegramSession();
 
   // Единый эффект: инициализация TG + обработка deep link (без двойной навигации)
   useEffect(() => {
@@ -194,19 +201,21 @@ const App = () => {
           <TonConnectUIProvider manifestUrl={manifestUrl}>
             <HashRouter>
               <TelegramHandler />
-              <Suspense fallback={<LoadingState terminal className="min-h-screen" />}>
-                <Routes>
-                  {/* Routes without Layout */}
-                  <Route path="/resurrection" element={<Resurrection />} />
-                  
-                  {/* Routes with Layout */}
-                  <Route path="*" element={
-                    <Layout>
-                      <AnimatedLayoutRoutes />
-                    </Layout>
-                  } />
-                </Routes>
-              </Suspense>
+              <SessionGate>
+                <Suspense fallback={<LoadingState terminal className="min-h-screen" />}>
+                  <Routes>
+                    {/* Routes without Layout */}
+                    <Route path="/resurrection" element={<Resurrection />} />
+                    
+                    {/* Routes with Layout */}
+                    <Route path="*" element={
+                      <Layout>
+                        <AnimatedLayoutRoutes />
+                      </Layout>
+                    } />
+                  </Routes>
+                </Suspense>
+              </SessionGate>
             </HashRouter>
           </TonConnectUIProvider>
           </ApiErrorProvider>
