@@ -1267,6 +1267,21 @@ app.get('/api/session/:id', authMiddleware, async (req, res) => {
   }
 })();
 
+// If GET / hits the backend, Traefik likely routed it here (frontend down or misconfigured). Return a hint instead of 404.
+app.get('/', (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.status(200).end(
+    '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Backend</title></head><body style="font-family:sans-serif;padding:2rem;background:#0f0d16;color:#fff;">' +
+    '<h1>Backend</h1>' +
+    '<p>This request reached the <strong>backend</strong>. The main page should be served by the <strong>frontend</strong> container.</p>' +
+    '<p>If you see 404 in the Web App, run:</p>' +
+    '<pre style="background:#1a1720;padding:1rem;border-radius:8px;">docker ps | grep frontend</pre>' +
+    '<p>Ensure <code>pressf-frontend-1</code> is running. Then:</p>' +
+    '<pre style="background:#1a1720;padding:1rem;border-radius:8px;">docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d frontend</pre>' +
+    '</body></html>'
+  );
+});
+
 // 404 handler for undefined routes (must be before error handler)
 app.use(notFoundHandler);
 
