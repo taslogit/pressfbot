@@ -539,7 +539,7 @@ const Landing = () => {
                className={`relative w-52 h-52 rounded-full border-[6px] ${isUrgent ? 'border-red-500/50' : 'border-accent-lime/50'} bg-black/40 backdrop-blur-xl flex flex-col items-center justify-center shadow-2xl overflow-hidden`}
             >
                 {/* Rotating Dashed Ring */}
-                <div className={`absolute inset-0 border-2 border-dashed ${isUrgent ? 'border-red-500/30' : 'border-accent-lime/30'} rounded-full animate-spin-slow motion-reduce:animate-none`} aria-hidden="true" />
+                <div className={`absolute inset-0 border-2 border-dashed ${isUrgent ? 'border-red-500/30' : 'border-accent-lime/30'} rounded-full skull-ring-rotate`} aria-hidden="true" />
 
                 {/* Animated Background Scanline */}
                 <div className="absolute inset-0 bg-[linear-gradient(transparent_0%,rgba(255,255,255,0.05)_50%,transparent_100%)] bg-[length:100%_200%] animate-scan motion-reduce:animate-none pointer-events-none" />
