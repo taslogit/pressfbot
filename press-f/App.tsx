@@ -22,17 +22,29 @@ const SharePost = lazy(() => import('./screens/SharePost'));
 const Notifications = lazy(() => import('./screens/Notifications'));
 const Store = lazy(() => import('./screens/Store'));
 const Wiki = lazy(() => import('./screens/Wiki'));
-import { tg, initTelegramApp } from './utils/telegram';
+import { tg, initTelegramApp, isTgVersionWithoutOptionalUI, isTelegramWebApp } from './utils/telegram';
 import { useTelegramSession } from './hooks/useTelegramSession';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoadingState from './components/LoadingState';
 import { analytics } from './utils/analytics';
+import { storage } from './utils/storage';
+import { useTranslation } from './contexts/LanguageContext';
 
 // Waits for session init (verify) before rendering children so first API calls have X-Session-Id
 const SessionGate = ({ children }: { children: React.ReactNode }) => {
+  const { t } = useTranslation();
   const sessionReady = useTelegramSession();
   if (!sessionReady) {
     return <LoadingState terminal className="min-h-screen" />;
+  }
+  // In Telegram but no session (verify failed or expired) → all API calls would get 401; ask user to reopen
+  if (isTelegramWebApp && !storage.getSessionId()) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-bg text-primary text-center">
+        <p className="text-lg font-semibold mb-2">{t('session_expired')}</p>
+        <p className="text-muted text-sm">{t('session_expired_hint')}</p>
+      </div>
+    );
   }
   return <>{children}</>;
 };
@@ -94,8 +106,9 @@ const TelegramHandler = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- только при монте
   }, []);
 
-  // Handle Back Button
+  // Handle Back Button (not supported in Telegram 6.0 — avoid calling to prevent console warnings)
   useEffect(() => {
+    if (isTgVersionWithoutOptionalUI()) return;
     if (location.pathname === '/') {
       tg.BackButton.hide();
     } else {

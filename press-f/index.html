@@ -84,11 +84,12 @@
            console.log('[index.html] Telegram WebApp detected');
            window.Telegram.WebApp.ready();
            window.Telegram.WebApp.expand();
-           try {
-             window.Telegram.WebApp.setHeaderColor('#0f0d16');
-             window.Telegram.WebApp.setBackgroundColor('#0f0d16');
-           } catch(e) {
-             console.warn('[index.html] Failed to set Telegram colors:', e);
+           var v = window.Telegram.WebApp.version;
+           if (v !== '6.0' && v !== 6) {
+             try {
+               window.Telegram.WebApp.setHeaderColor('#0f0d16');
+               window.Telegram.WebApp.setBackgroundColor('#0f0d16');
+             } catch(e) { console.warn('[index.html] Failed to set Telegram colors:', e); }
            }
        } else {
          console.log('[index.html] Telegram WebApp not detected, using fallback');

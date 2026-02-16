@@ -62,9 +62,23 @@ const mockWebApp = {
 // @ts-ignore
 const isTg = typeof window !== 'undefined' && window.Telegram?.WebApp && typeof window.Telegram.WebApp.initData !== 'undefined';
 
+/** True when running inside Telegram WebApp (has initData). */
+export const isTelegramWebApp = isTg;
+
 // Export the real WebApp or the Mock
 // @ts-ignore
 export const tg = isTg ? window.Telegram.WebApp : mockWebApp;
+
+/** Telegram 6.0 does not support setHeaderColor, setBackgroundColor, BackButton, setClosingConfirmation; avoid calling them to prevent console warnings */
+export function isTgVersionWithoutOptionalUI(): boolean {
+  try {
+    const v = (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.version);
+    if (v == null || v === '') return false;
+    return parseFloat(String(v)) === 6;
+  } catch {
+    return false;
+  }
+}
 
 // Helper for haptics to ensure safety
 export const haptic = {
@@ -84,33 +98,35 @@ export const initTelegramApp = () => {
   if (isTg) {
     tg.ready();
     tg.expand(); // Force full screen height
-    
-    // Prevent accidental closure when user has unsaved data
-    try {
-      tg.enableClosingConfirmation();
-    } catch (e) {
-      console.warn('Old TG version, cannot enable closing confirmation');
-    }
-    
-    // Set colors to match your theme (Dark #0f0d16)
-    try {
-        tg.setHeaderColor('#0f0d16');
-        tg.setBackgroundColor('#0f0d16');
-    } catch (e) {
-        console.warn('Old TG version, cannot set colors');
-    }
 
-    // Listen for theme changes from Telegram
-    try {
-      tg.onEvent('themeChanged', () => {
-        // Re-apply our dark theme colors on Telegram theme change
-        try {
-          tg.setHeaderColor('#0f0d16');
-          tg.setBackgroundColor('#0f0d16');
-        } catch (e) {}
-      });
-    } catch (e) {
-      console.warn('Old TG version, cannot listen for theme changes');
+    const skipOptionalUI = isTgVersionWithoutOptionalUI();
+
+    if (!skipOptionalUI) {
+      // Prevent accidental closure when user has unsaved data (not supported in TG 6.0)
+      try {
+        tg.enableClosingConfirmation?.();
+      } catch (e) {
+        console.warn('Old TG version, cannot enable closing confirmation');
+      }
+
+      // Set colors to match your theme (Dark #0f0d16) — not supported in TG 6.0
+      try {
+        tg.setHeaderColor?.('#0f0d16');
+        tg.setBackgroundColor?.('#0f0d16');
+      } catch (e) {
+        console.warn('Old TG version, cannot set colors');
+      }
+
+      try {
+        tg.onEvent?.('themeChanged', () => {
+          try {
+            tg.setHeaderColor?.('#0f0d16');
+            tg.setBackgroundColor?.('#0f0d16');
+          } catch (e) {}
+        });
+      } catch (e) {
+        console.warn('Old TG version, cannot listen for theme changes');
+      }
     }
   } else {
     // When not inside Telegram, attempt to simulate an initData string and auto-verify with local backend
