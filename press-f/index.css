@@ -21,14 +21,14 @@
   --spacing-content-bottom: 5rem;
 }
 
-/* Light theme — тёмный градиент, максимальный контраст текста и фигур */
+/* Light theme — тёмный градиент, контраст текста по WCAG AA (≥4.5:1 для основного, ≥3:1 для крупного) */
 .light {
   --color-bg: #1e1e24;
   --color-card: #2a2a32;
   --color-primary: #f8f8fa;
   --color-text-primary: #f8f8fa;
-  --color-muted: #b0b8c2;
-  --color-text-muted: #b0b8c2;
+  --color-muted: #c4cad4;
+  --color-text-muted: #c4cad4;
   --color-border: rgba(255, 255, 255, 0.12);
   --color-input: rgba(255, 255, 255, 0.08);
 }

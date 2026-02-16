@@ -1,9 +1,9 @@
 
 
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Sword, Trophy, Swords, Plus, ChevronDown, User, Copy, QrCode, X, Globe, Flame, Users, Flag, AlertOctagon, Trash2, Edit2, Search, ArrowDownUp, Star, Share2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useBlocker } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { storage } from '../utils/storage';
@@ -311,6 +311,62 @@ const Duels = () => {
 
   const witnessLink = `https://t.me/LastMemeBot?start=duel_arbiter_${Date.now()}`;
 
+  const hasUnsavedDuelForm = isCreating && (title || opponent || stake) && !isSending;
+
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedDuelForm) e.preventDefault();
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [hasUnsavedDuelForm]);
+
+  const blocker = useBlocker(hasUnsavedDuelForm);
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return;
+    tg.showPopup?.({
+      message: t('confirm_leave_draft'),
+      buttons: [
+        { id: 'leave', type: 'destructive', text: t('confirm_leave_yes') },
+        { id: 'stay', type: 'default', text: t('confirm_leave_stay') }
+      ]
+    }, (btnId) => {
+      if (btnId === 'leave') {
+        setIsCreating(false);
+        setTitle('');
+        setOpponent('');
+        setStake('');
+        setEditingDuelId(null);
+        blocker.proceed();
+      } else {
+        blocker.reset();
+      }
+    });
+  }, [blocker.state, blocker.proceed, blocker.reset, t]);
+
+  const closeCreateForm = () => {
+    if (hasUnsavedDuelForm) {
+      tg.showPopup?.({
+        message: t('confirm_leave_draft'),
+        buttons: [
+          { id: 'leave', type: 'destructive', text: t('confirm_leave_yes') },
+          { id: 'stay', type: 'default', text: t('confirm_leave_stay') }
+        ]
+      }, (btnId) => {
+        if (btnId === 'leave') {
+          setIsCreating(false);
+          setTitle('');
+          setOpponent('');
+          setStake('');
+          setEditingDuelId(null);
+        }
+      });
+    } else {
+      setIsCreating(false);
+      setEditingDuelId(null);
+    }
+  };
+
   const copyWitnessLink = () => {
     navigator.clipboard.writeText(witnessLink);
     tg.showPopup({ message: t('link_copied') });
@@ -495,7 +551,7 @@ const Duels = () => {
                <motion.button 
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => { playSound('open'); setIsCreating(true); }}
+                onClick={() => { playSound('open'); setIsCreating(true); setEditingDuelId(null); }}
                 className="w-full bg-orange-500 hover:bg-orange-600 text-black font-black uppercase tracking-wider py-4 rounded-xl shadow-[0_0_15px_rgba(249,115,22,0.5)] flex items-center justify-center gap-2 transition-all"
               >
                 <Plus size={24} strokeWidth={3} />
@@ -509,7 +565,7 @@ const Duels = () => {
               >
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-orange-500 uppercase tracking-widest text-sm">{t('start_duel')}</h3>
-                  <button onClick={() => setIsCreating(false)} className="text-muted hover:text-primary"><X size={20} /></button>
+                  <button onClick={closeCreateForm} className="text-muted hover:text-primary" aria-label={t('confirm_leave_stay')}><X size={20} /></button>
                 </div>
                 <div className="space-y-4">
                   <div>
