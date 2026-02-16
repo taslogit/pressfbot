@@ -20,21 +20,21 @@ const ReferralSection: React.FC<Props> = ({ className = '' }) => {
   const [showQR, setShowQR] = useState(false);
 
   useEffect(() => {
-    loadReferralInfo();
-  }, []);
-
-  const loadReferralInfo = async () => {
-    try {
-      const result = await profileAPI.getReferral();
-      if (result.ok && result.data) {
-        setReferralInfo(result.data);
+    let isMounted = true;
+    const load = async () => {
+      try {
+        const result = await profileAPI.getReferral();
+        if (!isMounted) return;
+        if (result.ok && result.data) setReferralInfo(result.data);
+      } catch (error) {
+        if (isMounted) console.error('Failed to load referral info:', error);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to load referral info:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    load();
+    return () => { isMounted = false; };
+  }, []);
 
   const copyReferralLink = () => {
     if (!referralInfo?.referralLink) return;

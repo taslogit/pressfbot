@@ -249,21 +249,19 @@ const Duels = () => {
         analytics.trackDuelCreated(newDuel.id, isPublic);
         // Show XP notification if received
         if (result && result.xp) {
-          // Update quest progress
           const { dailyQuestsAPI } = await import('../utils/api');
           dailyQuestsAPI.updateProgress('create_duel').catch(() => {});
-          
-          // Trigger quest refresh event for DailyQuests component
           window.dispatchEvent(new CustomEvent('questProgressUpdated'));
-          
-          // Refresh profile to get updated XP
-          await storage.getUserProfileAsync();
-          
-          const profile = await storage.getUserProfileAsync();
-          const oldLevel = calculateLevel(profile.experience || 0);
-          const newLevel = calculateLevel((profile.experience || 0) + result.xp);
+
+          // Оптимистичное обновление кэша профиля — иначе XP не отображается до следующего запроса
+          const profile = storage.getUserProfile();
+          const prevExp = profile.experience ?? 0;
+          const newExp = prevExp + result.xp;
+          storage.saveUserProfile({ ...profile, experience: newExp });
+
+          const oldLevel = calculateLevel(prevExp);
+          const newLevel = calculateLevel(newExp);
           const levelUp = newLevel > oldLevel;
-          
           setXpNotification({ xp: result.xp, level: levelUp ? newLevel : undefined, levelUp });
         }
       }

@@ -253,23 +253,20 @@ const CreateLetter = () => {
       
       // Check if we got XP from API response
       if (result && result.xp) {
-        // Update quest progress
         const { dailyQuestsAPI } = await import('../utils/api');
         dailyQuestsAPI.updateProgress('create_letter').catch(() => {});
-        
-        // Trigger quest refresh event for DailyQuests component
         window.dispatchEvent(new CustomEvent('questProgressUpdated'));
-        
-        // Get current profile to check for level up (single request)
-        const profile = await storage.getUserProfileAsync();
-        const oldLevel = calculateLevel(profile.experience || 0);
-        const newLevel = calculateLevel((profile.experience || 0) + result.xp);
+
+        // Оптимистичное обновление кэша профиля — иначе XP не отображается в Профиле/Магазине до следующего запроса
+        const profile = storage.getUserProfile();
+        const prevExp = profile.experience ?? 0;
+        const newExp = prevExp + result.xp;
+        storage.saveUserProfile({ ...profile, experience: newExp });
+
+        const oldLevel = calculateLevel(prevExp);
+        const newLevel = calculateLevel(newExp);
         const levelUp = newLevel > oldLevel;
-        
-        if (levelUp) {
-          analytics.trackLevelUp(newLevel);
-        }
-        
+        if (levelUp) analytics.trackLevelUp(newLevel);
         setXpNotification({ xp: result.xp, level: levelUp ? newLevel : undefined, levelUp });
       }
     } catch (error) {

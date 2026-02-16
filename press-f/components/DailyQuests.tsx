@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Circle, Trophy } from 'lucide-react';
 import { dailyQuestsAPI } from '../utils/api';
@@ -7,31 +7,28 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { playSound } from '../utils/sound';
 import confetti from 'canvas-confetti';
 import { analytics } from '../utils/analytics';
+import { storage } from '../utils/storage';
 
 interface Props {
   className?: string;
+  /** Вызывается при успешном получении награды; передаётся начисленный XP для отображения в баннере */
+  onQuestClaimed?: (xp: number) => void;
 }
 
-const DailyQuests: React.FC<Props> = ({ className = '' }) => {
+const DailyQuests: React.FC<Props> = ({ className = '', onQuestClaimed }) => {
   const { t } = useTranslation();
   const [quests, setQuests] = useState<DailyQuest[]>([]);
   const [loading, setLoading] = useState(true);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
     loadQuests();
-    
-    // Listen for quest progress updates
-    const handleQuestUpdate = () => {
-      loadQuests();
-    };
+    const handleQuestUpdate = () => loadQuests();
     window.addEventListener('questProgressUpdated', handleQuestUpdate);
-    
-    // Auto-refresh every 30 seconds to catch progress updates
-    const interval = setInterval(() => {
-      loadQuests();
-    }, 30000);
-    
+    const interval = setInterval(() => loadQuests(), 30000);
     return () => {
+      isMountedRef.current = false;
       window.removeEventListener('questProgressUpdated', handleQuestUpdate);
       clearInterval(interval);
     };
@@ -40,13 +37,12 @@ const DailyQuests: React.FC<Props> = ({ className = '' }) => {
   const loadQuests = async () => {
     try {
       const result = await dailyQuestsAPI.getAll();
-      if (result.ok && result.data?.quests) {
-        setQuests(result.data.quests);
-      }
+      if (!isMountedRef.current) return;
+      if (result.ok && result.data?.quests) setQuests(result.data.quests);
     } catch (error) {
-      console.error('Failed to load daily quests:', error);
+      if (isMountedRef.current) console.error('Failed to load daily quests:', error);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   };
 
@@ -54,19 +50,23 @@ const DailyQuests: React.FC<Props> = ({ className = '' }) => {
     if (!quest.isCompleted || quest.isClaimed) return;
 
     try {
-      // Track analytics before claiming
-      analytics.trackQuestCompleted(quest.id, quest.questType);
-      
+      analytics.trackQuestCompleted(quest.id, quest.type ?? '');
       const result = await dailyQuestsAPI.claim(quest.id);
-      if (result.ok) {
+      if (result.ok && result.data) {
         playSound('success');
+        const { reward, xp } = result.data;
+        // Обновляем кэш профиля: начисленный XP сразу отображается в Профиле и Магазине
+        if (xp != null && xp > 0) {
+          const profile = storage.getUserProfile();
+          storage.saveUserProfile({ ...profile, experience: (profile.experience ?? 0) + xp });
+          onQuestClaimed?.(xp);
+        }
         confetti({
           particleCount: 30,
           spread: 50,
           origin: { y: 0.7 },
-          colors: ['#00E0FF', '#ffffff']
+          colors: ['#00E0FF', '#ffffff', '#B4FF00']
         });
-        // Reload quests
         await loadQuests();
       }
     } catch (error) {
@@ -127,8 +127,11 @@ const DailyQuests: React.FC<Props> = ({ className = '' }) => {
                   <div className="text-xs font-bold text-white">{quest.title}</div>
                   <div className="text-xs text-muted">{quest.description}</div>
                 </div>
-                <div className="text-xs font-black text-accent-gold">
+                <div className="text-xs font-black text-accent-gold text-right">
                   +{quest.reward} REP
+                  {(quest as any).xpReward != null && (quest as any).xpReward > 0 && (
+                    <span className="block text-accent-cyan font-bold">+{(quest as any).xpReward} XP</span>
+                  )}
                 </div>
               </div>
 

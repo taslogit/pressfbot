@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ShieldCheck, Skull, Zap, Info, ChevronRight, Moon, Sun, Hourglass, Activity, Target, Terminal, FileText, Swords, Users, RefreshCw, Lock, Share2, Signal, BookOpen, ShoppingBag, Settings } from 'lucide-react';
+import { Plus, ShieldCheck, Skull, Zap, Info, ChevronRight, Moon, Sun, Hourglass, Activity, Target, Terminal, FileText, Swords, Users, RefreshCw, Lock, Share2, Signal, BookOpen, ShoppingBag, Settings, Trophy } from 'lucide-react';
 import { useDeadManSwitch } from '../hooks/useDeadManSwitch';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -21,7 +21,7 @@ import SeasonalEvents from '../components/SeasonalEvents';
 import Tournaments from '../components/Tournaments';
 import ActivityFeed from '../components/ActivityFeed';
 // Quest type removed - replaced with DailyQuest
-import { profileAPI, tonAPI } from '../utils/api';
+import { profileAPI, tonAPI, dailyQuestsAPI } from '../utils/api';
 import { analytics } from '../utils/analytics';
 import { useApiError } from '../contexts/ApiErrorContext';
 
@@ -273,7 +273,9 @@ const Landing = () => {
         imAlive();
         setJustCheckedIn(true);
         setShowSharePulse(true);
-        
+        // Обновить прогресс ежедневного квеста «чекин»
+        dailyQuestsAPI.updateProgress('check_in').catch(() => {});
+
         // Track analytics
         analytics.trackCheckIn(streak?.current || undefined);
         
@@ -662,9 +664,14 @@ const Landing = () => {
       </motion.div>
       
       {/* NOTIFICATIONS CONTAINER */}
-      <div className="space-y-2 relative z-20">
+      <div className="space-y-2 relative z-20" id="daily-quests-block">
          {/* Daily Quests Widget - handled by DailyQuests component */}
-         <DailyQuests />
+         <DailyQuests
+           onQuestClaimed={(xp) => {
+             setXpNotification({ xp, bonusLabel: undefined });
+             setTimeout(() => setXpNotification(null), 2500);
+           }}
+         />
          
          {/* Streak Calendar & Indicator */}
          <StreakCalendar />
@@ -790,6 +797,23 @@ const Landing = () => {
          <h3 className="font-heading text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">{t('active_widgets')}</h3>
          
          <div className="grid grid-cols-2 gap-3">
+            <motion.div 
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                playSound('click');
+                document.getElementById('daily-quests-block')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+              className="bg-card/60 backdrop-blur-md border border-border rounded-2xl p-4 flex flex-col justify-between h-28 hover:border-accent-gold/50 transition-colors cursor-pointer group"
+            >
+              <div className="flex justify-between items-start">
+                 <Trophy size={20} className="text-accent-gold group-hover:drop-shadow-[0_0_8px_rgba(255,215,0,0.6)]" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-primary">{t('widget_quests')}</p>
+                <p className="text-xs text-muted">{t('widget_quests_desc')}</p>
+              </div>
+            </motion.div>
+
             <motion.div 
               whileTap={{ scale: 0.98 }}
               onClick={() => { playSound('click'); navigate('/letters'); }}

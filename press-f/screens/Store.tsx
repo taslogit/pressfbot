@@ -10,6 +10,7 @@ import InfoSection from '../components/InfoSection';
 import ListSkeleton from '../components/ListSkeleton';
 import EmptyState from '../components/EmptyState';
 import { playSound } from '../utils/sound';
+import { storage } from '../utils/storage';
 import { tg } from '../utils/telegram';
 import { useBreadcrumb } from '../contexts/BreadcrumbContext';
 
@@ -604,6 +605,11 @@ const Store = () => {
                 const res = await storeAPI.buyMysteryBox();
                 setMysteryBoxLoading(false);
                 if (res.ok && res.data) {
+                  if (res.data.remainingXp != null) {
+                    setProfile((p: any) => p ? { ...p, spendableXp: res.data.remainingXp } : p);
+                    const cached = storage.getUserProfile();
+                    storage.saveUserProfile({ ...cached, experience: res.data.remainingXp });
+                  }
                   loadData(true);
                   setSelectedItem(res.data.item);
                   setItemType('xp');
@@ -908,6 +914,8 @@ const Store = () => {
                         tg.showPopup?.({ message: isAvatarOrFrame ? t('store_buy_success_equip') : t('store_buy_success') });
                         if (res.data.remainingXp != null) {
                           setProfile((p: any) => p ? { ...p, spendableXp: res.data.remainingXp } : p);
+                          const cached = storage.getUserProfile();
+                          storage.saveUserProfile({ ...cached, experience: res.data.remainingXp });
                         }
                         loadData(true);
                         closeItemModal();

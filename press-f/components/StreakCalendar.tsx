@@ -13,7 +13,9 @@ const StreakCalendar: React.FC<Props> = ({ className = '' }) => {
   const [streak, setStreak] = useState<{ current: number; lastStreakDate: string | null } | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
     profileAPI.getStreak().then((res) => {
+      if (!isMounted) return;
       if (res.ok && res.data?.streak) {
         setStreak({
           current: res.data.streak.current || 0,
@@ -21,6 +23,7 @@ const StreakCalendar: React.FC<Props> = ({ className = '' }) => {
         });
       }
     });
+    return () => { isMounted = false; };
   }, []);
 
   if (!streak || streak.current === 0) return null;

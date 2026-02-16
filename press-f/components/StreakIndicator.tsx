@@ -17,21 +17,21 @@ const StreakIndicator: React.FC<Props> = ({ className = '' }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadStreak();
-  }, []);
-
-  const loadStreak = async () => {
-    try {
-      const result = await profileAPI.getStreak();
-      if (result.ok && result.data?.streak) {
-        setStreak(result.data.streak);
+    let isMounted = true;
+    const load = async () => {
+      try {
+        const result = await profileAPI.getStreak();
+        if (!isMounted) return;
+        if (result.ok && result.data?.streak) setStreak(result.data.streak);
+      } catch (error) {
+        if (isMounted) console.error('Failed to load streak:', error);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to load streak:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    load();
+    return () => { isMounted = false; };
+  }, []);
 
   if (loading || !streak) {
     return null;

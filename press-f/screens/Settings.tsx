@@ -59,15 +59,17 @@ const Settings = () => {
 
   useEffect(() => {
     if (!storeOpen) return;
+    let isMounted = true;
     starsAPI.getPremiumStatus().then((r) => {
-      if (r.ok && r.data) setPremiumStatus(r.data);
+      if (isMounted && r.ok && r.data) setPremiumStatus(r.data);
     });
     storeAPI.getCatalog().then((r) => {
-      if (r.ok && r.data?.catalog) setStoreCatalog(r.data.catalog);
+      if (isMounted && r.ok && r.data?.catalog) setStoreCatalog(r.data.catalog);
     });
     storeAPI.getMyItems().then((r) => {
-      if (r.ok && r.data?.items) setMyStoreItems(r.data.items);
+      if (isMounted && r.ok && r.data?.items) setMyStoreItems(r.data.items);
     });
+    return () => { isMounted = false; };
   }, [storeOpen]);
 
   const handleToggleNotifications = (key: 'notificationsEnabled' | 'telegramNotificationsEnabled') => {

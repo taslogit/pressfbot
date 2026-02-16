@@ -179,3 +179,18 @@
 7. **Убрать дублирование:** один маршрут для главной (удалить либо `index`, либо `path="/"`).
 
 После внесения пунктов 1–4 и при желании 5–7 приложение будет в хорошем состоянии с точки зрения стабильности, предсказуемости навигации и полноты контента/локализации.
+
+---
+
+## 7. Выполненные исправления (актуально)
+
+- **App.tsx:** единый эффект для deep link и редиректа, обработка `ref_`, логи только в DEV, try-catch для localStorage.
+- **index.css:** класс `.glitch-text` и анимация для Resurrection.
+- **Search.tsx:** сброс `letters`/`duels` при ошибке и в catch; useApiAbort, isMountedRef, requestId для race condition.
+- **ErrorBoundary:** используется ErrorFallback с `t()` (error_boundary_title, reload_page и т.д.).
+- **Resurrection:** все строки через `t('resurrection_*')`.
+- **Маршруты:** один маршрут для главной (`path="/"`), без дублирования index.
+- **ApiErrorContext:** retry хранится в ref, по кнопке вызывается актуальный retry.
+- **Store:** сообщения об ошибках через `t('api_error_network')`.
+- **Settings:** isMounted для запросов getCatalog/getMyItems/getPremiumStatus.
+- **StreakIndicator, StreakCalendar, ReferralSection, DailyQuests:** isMounted/isMountedRef, чтобы не вызывать setState после unmount.

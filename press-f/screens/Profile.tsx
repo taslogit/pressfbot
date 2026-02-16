@@ -85,8 +85,10 @@ const Profile = () => {
       if (!isMounted || !res.ok) return;
       if (res.data?.profile) {
         const apiProfile = res.data.profile;
-        setProfile({ ...storage.getUserProfile(), ...apiProfile, avatar: apiProfile.avatar || 'pressf' });
+        const merged = { ...storage.getUserProfile(), ...apiProfile, avatar: apiProfile.avatar || 'pressf' };
+        setProfile(merged);
         setTempBio(apiProfile.bio || 'No bio yet.');
+        storage.saveUserProfile(merged);
       }
       if (res.data?.settings) {
         setSettings(res.data.settings);
