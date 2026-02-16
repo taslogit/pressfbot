@@ -12,7 +12,7 @@ export const useTelegramSession = () => {
     (async () => {
       try {
         // @ts-ignore
-        const raw = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData ?? null;
+        const raw = (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) ?? null;
         if (raw) {
           try {
             const res = await verifyInitDataOnServer(raw);
