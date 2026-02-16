@@ -1,41 +1,38 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from '../contexts/LanguageContext';
 
-const SPLASH_DURATION_MS = 5000;
-const PHASE1_END_MS = 1400;
-const PHASE2_END_MS = 3200;
-const FLASH_AT_MS = 4200;
-const FADEOUT_START_MS = 4400;
+const SPLASH_DURATION_MS = 7800;
+const PHASE1_END_MS = 2600;
+const PHASE2_END_MS = 5200;
+const FLASH_AT_MS = 7000;
+const FADEOUT_START_MS = 7200;
 
-const LINE1 = 'checking user heartbeat...';
-const LINE2 = 'no response';
-const TYPING_INTERVAL_MS = 28;
-
-const ASCII_SKULL = `    _____
-   /     \\
-  | () () |
-  |   >   |
-   \\_____/`;
+const TYPING_INTERVAL_MS = 26;
 
 interface SplashScreenProps {
   onFinish: () => void;
 }
 
 /**
- * Дерзкая интеллектуальная заставка PRESS F.
- * Фаза 0: heartbeat check + no response + череп.
- * Фаза 1: legacy protocol + data will survive + скан-линия + неон черепа.
- * Фаза 2: YOU MAY DISAPPEAR / YOUR DATA WON'T / PRESS F + глитч + золотая вспышка + fade-out.
- * 5000 ms, только React + CSS (transform, opacity, text-shadow).
+ * Заставка PRESS F: двуязычная (en/ru по языку приложения), удлинённая по времени.
+ * Фаза 0: проверка пульса → нет ответа → появление монументальной «F».
+ * Фаза 1: протокол наследия, «твои слова переживут тебя», скан-линии, неон «F».
+ * Фаза 2: ТЫ МОЖЕШЬ ИСЧЕЗНУТЬ / ТВОИ ДАННЫЕ — НЕТ / PRESS F + подпись «в знак уважения».
+ * Язык берётся из LanguageContext (Telegram или настройки).
  */
 const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
+  const { t } = useTranslation();
   const [phase, setPhase] = useState(0);
   const [line1Len, setLine1Len] = useState(0);
   const [line2Len, setLine2Len] = useState(0);
-  const [skullVisible, setSkullVisible] = useState(false);
+  const [symbolVisible, setSymbolVisible] = useState(false);
   const [showFlash, setShowFlash] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
   const onFinishRef = useRef(onFinish);
   onFinishRef.current = onFinish;
+
+  const LINE1 = t('splash_checking');
+  const LINE2 = t('splash_no_response');
 
   // Typing effect phase 0
   useEffect(() => {
@@ -50,7 +47,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
       });
     }, TYPING_INTERVAL_MS);
     return () => clearInterval(t1);
-  }, [phase]);
+  }, [phase, LINE1]);
 
   useEffect(() => {
     if (line1Len < LINE1.length) return;
@@ -58,16 +55,16 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
       setLine2Len((n) => {
         if (n >= LINE2.length) {
           clearInterval(t2);
-          setSkullVisible(true);
+          setSymbolVisible(true);
           return n;
         }
         return n + 1;
       });
     }, TYPING_INTERVAL_MS);
     return () => clearInterval(t2);
-  }, [line1Len]);
+  }, [line1Len, LINE1.length, LINE2]);
 
-  // Phase and final timers (setTimeout only, no rAF)
+  // Phase and final timers
   useEffect(() => {
     const t1 = setTimeout(() => setPhase(1), PHASE1_END_MS);
     const t2 = setTimeout(() => setPhase(2), PHASE2_END_MS);
@@ -85,7 +82,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     };
   }, []);
 
-  const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reducedMotion =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   return (
     <div
@@ -95,7 +94,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         opacity: fadeOut ? 0 : 1,
         transform: 'translateZ(0)',
         willChange: fadeOut ? 'opacity' : 'auto',
-        transition: reducedMotion ? 'none' : 'opacity 0.4s ease-out',
+        transition: reducedMotion ? 'none' : 'opacity 0.5s ease-out',
       }}
       aria-hidden="true"
     >
@@ -115,7 +114,8 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(180, 255, 0, 0.06) 0%, transparent 55%)',
+          background:
+            'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(180, 255, 0, 0.06) 0%, transparent 55%)',
           animation: reducedMotion ? 'none' : 'splash-bg-pulse 2.5s ease-in-out infinite',
           willChange: 'opacity',
         }}
@@ -128,44 +128,76 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           style={{ willChange: 'transform', transform: 'translateZ(0)' }}
         >
           <div
-            className="font-mono text-sm text-left w-full max-w-[320px]"
-            style={{ color: '#b0b8c2', textShadow: '0 0 12px rgba(180, 255, 0, 0.25)' }}
+            className="font-mono text-sm text-left w-full max-w-[340px]"
+            style={{
+              color: '#b0b8c2',
+              textShadow: '0 0 12px rgba(180, 255, 0, 0.25)',
+            }}
           >
             <div className="mb-1" style={{ color: '#b0b8c2' }}>
               {LINE1.slice(0, line1Len)}
-              {line1Len < LINE1.length && <span className="inline-block w-2 h-4 bg-[#B4FF00] ml-0.5 animate-pulse" style={{ boxShadow: '0 0 8px #B4FF00' }} />}
+              {line1Len < LINE1.length && (
+                <span
+                  className="inline-block w-2 h-4 bg-[#B4FF00] ml-0.5 animate-pulse"
+                  style={{ boxShadow: '0 0 8px #B4FF00' }}
+                />
+              )}
             </div>
             {line1Len >= LINE1.length && (
-              <div style={{ color: '#FF6B8A', textShadow: '0 0 10px rgba(255, 77, 210, 0.4)' }}>
+              <div
+                style={{
+                  color: '#FF6B8A',
+                  textShadow: '0 0 10px rgba(255, 77, 210, 0.4)',
+                }}
+              >
                 {LINE2.slice(0, line2Len)}
-                {line2Len < LINE2.length && <span className="inline-block w-2 h-4 bg-[#FF4DD2] ml-0.5 animate-pulse" style={{ boxShadow: '0 0 8px #FF4DD2' }} />}
+                {line2Len < LINE2.length && (
+                  <span
+                    className="inline-block w-2 h-4 bg-[#FF4DD2] ml-0.5 animate-pulse"
+                    style={{ boxShadow: '0 0 8px #FF4DD2' }}
+                  />
+                )}
               </div>
             )}
           </div>
-          {/* Heartbeat line */}
           {line1Len >= LINE1.length && (
             <div
               className="absolute left-1/2 top-1/2 -translate-x-1/2 w-32 h-0.5 rounded-full origin-center"
               style={{
-                background: 'linear-gradient(90deg, transparent, #FF4DD2 30%, #00E0FF 70%, transparent)',
+                background:
+                  'linear-gradient(90deg, transparent, #FF4DD2 30%, #00E0FF 70%, transparent)',
                 boxShadow: '0 0 12px rgba(255, 77, 210, 0.6)',
-                animation: reducedMotion ? 'none' : 'splash-heartbeat 1.2s ease-in-out infinite',
+                animation: reducedMotion
+                  ? 'none'
+                  : 'splash-heartbeat 1.2s ease-in-out infinite',
                 willChange: 'transform',
               }}
             />
           )}
-          {skullVisible && (
-            <pre
-              className="font-mono text-[#B4FF00] text-xs mt-6 whitespace-pre opacity-0"
+          {symbolVisible && (
+            <div
+              className="splash-monument-f opacity-0 flex items-center justify-center mt-8"
               style={{
-                animation: reducedMotion ? 'none' : 'splash-fadeIn 0.5s ease-out forwards',
-                textShadow: '0 0 12px rgba(180, 255, 0, 0.6), 0 0 24px rgba(0, 224, 255, 0.3)',
+                animation: reducedMotion
+                  ? 'none'
+                  : 'splash-fadeIn 0.6s ease-out forwards',
                 willChange: 'opacity',
               }}
               aria-hidden
             >
-              {ASCII_SKULL}
-            </pre>
+              <span
+                className="font-logo text-5xl sm:text-6xl font-black select-none"
+                style={{
+                  color: '#B4FF00',
+                  fontFamily: 'var(--font-logo), Rye, cursive',
+                  textShadow:
+                    '0 0 12px rgba(180, 255, 0, 0.6), 0 0 24px rgba(0, 224, 255, 0.3)',
+                  lineHeight: 1,
+                }}
+              >
+                F
+              </span>
+            </div>
           )}
         </div>
       )}
@@ -176,53 +208,72 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           className="absolute inset-0 flex flex-col items-center justify-center px-4"
           style={{ willChange: 'transform', transform: 'translateZ(0)' }}
         >
-          <div className="font-mono text-sm text-center max-w-[320px]">
+          <div className="font-mono text-sm text-center max-w-[340px]">
             <div
               className="mb-2"
               style={{
                 color: '#00E0FF',
-                textShadow: '0 0 15px rgba(0, 224, 255, 0.6), 0 0 30px rgba(0, 224, 255, 0.3)',
+                textShadow:
+                  '0 0 15px rgba(0, 224, 255, 0.6), 0 0 30px rgba(0, 224, 255, 0.3)',
               }}
             >
-              activating legacy protocol
+              {t('splash_activating')}
             </div>
             <div
               style={{
                 color: '#B4FF00',
-                textShadow: '0 0 15px rgba(180, 255, 0, 0.7), 0 0 25px rgba(180, 255, 0, 0.3)',
+                textShadow:
+                  '0 0 15px rgba(180, 255, 0, 0.7), 0 0 25px rgba(180, 255, 0, 0.3)',
               }}
             >
-              data will survive
+              {t('splash_data_survive')}
             </div>
           </div>
-          <pre
-            className="font-mono text-[#B4FF00] text-xs mt-6 whitespace-pre"
+          <div
+            className="splash-monument-f flex items-center justify-center mt-8"
             style={{
-              animation: reducedMotion ? 'none' : 'splash-skull-neon 1.2s ease-in-out infinite',
-              textShadow: '0 0 12px var(--splash-cyan), 0 0 24px var(--splash-lime)',
+              animation: reducedMotion
+                ? 'none'
+                : 'splash-skull-neon 1.2s ease-in-out infinite',
               willChange: 'transform',
             }}
             aria-hidden
           >
-            {ASCII_SKULL}
-          </pre>
-          {/* Скан-линия cyan */}
+            <span
+              className="font-logo text-5xl sm:text-6xl font-black select-none"
+              style={{
+                color: '#B4FF00',
+                fontFamily: 'var(--font-logo), Rye, cursive',
+                textShadow:
+                  '0 0 12px var(--splash-cyan), 0 0 24px var(--splash-lime)',
+                lineHeight: 1,
+              }}
+            >
+              F
+            </span>
+          </div>
           <div
             className="absolute left-0 right-0 h-0.5 pointer-events-none top-0 origin-center"
             style={{
-              background: 'linear-gradient(90deg, transparent, #00E0FF 15%, #00E0FF 85%, transparent)',
+              background:
+                'linear-gradient(90deg, transparent, #00E0FF 15%, #00E0FF 85%, transparent)',
               boxShadow: '0 0 20px #00E0FF',
-              animation: reducedMotion ? 'none' : 'splash-scan 1.8s linear infinite, splash-scan-glow 0.8s ease-in-out infinite',
+              animation:
+                reducedMotion
+                  ? 'none'
+                  : 'splash-scan 1.8s linear infinite, splash-scan-glow 0.8s ease-in-out infinite',
               willChange: 'transform',
             }}
           />
-          {/* Вторая скан-линия pink, с задержкой */}
           <div
             className="absolute left-0 right-0 h-px pointer-events-none top-0"
             style={{
-              background: 'linear-gradient(90deg, transparent, #FF4DD2 25%, #FF4DD2 75%, transparent)',
+              background:
+                'linear-gradient(90deg, transparent, #FF4DD2 25%, #FF4DD2 75%, transparent)',
               boxShadow: '0 0 15px rgba(255, 77, 210, 0.7)',
-              animation: reducedMotion ? 'none' : 'splash-scan 2.4s linear 0.3s infinite',
+              animation: reducedMotion
+                ? 'none'
+                : 'splash-scan 2.4s linear 0.3s infinite',
               willChange: 'transform',
             }}
           />
@@ -240,30 +291,35 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
             style={{
               color: '#B4FF00',
               fontFamily: 'var(--font-heading), "Rubik Wet Paint", cursive',
-              textShadow: '0 0 20px rgba(180, 255, 0, 0.5), 0 0 40px rgba(0, 224, 255, 0.2)',
-              animation: reducedMotion ? 'none' : 'splash-glitch 0.5s ease-in-out 2',
+              textShadow:
+                '0 0 20px rgba(180, 255, 0, 0.5), 0 0 40px rgba(0, 224, 255, 0.2)',
+              animation: reducedMotion
+                ? 'none'
+                : 'splash-glitch 0.5s ease-in-out 2',
               willChange: 'transform',
             }}
           >
             <div
               className="mb-1"
               style={{
-                animation: reducedMotion ? 'none' : 'splash-text-reveal 0.35s ease-out forwards',
+                animation:
+                  reducedMotion ? 'none' : 'splash-text-reveal 0.4s ease-out forwards',
                 animationDelay: '0s',
                 opacity: reducedMotion ? 1 : 0,
               }}
             >
-              YOU MAY DISAPPEAR
+              {t('splash_you_disappear')}
             </div>
             <div
               className="mb-2"
               style={{
-                animation: reducedMotion ? 'none' : 'splash-text-reveal 0.35s ease-out forwards',
-                animationDelay: '0.15s',
+                animation:
+                  reducedMotion ? 'none' : 'splash-text-reveal 0.4s ease-out forwards',
+                animationDelay: '0.18s',
                 opacity: reducedMotion ? 1 : 0,
               }}
             >
-              YOUR DATA WON'T
+              {t('splash_data_wont')}
             </div>
           </div>
           <div
@@ -271,18 +327,33 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
             style={{
               color: '#FFD700',
               fontFamily: 'var(--font-logo), Rye, cursive',
-              textShadow: '0 0 25px rgba(255, 215, 0, 0.9), 0 0 50px rgba(255, 77, 210, 0.3)',
-              animation: reducedMotion ? 'none' : 'splash-logo-burst 0.5s ease-out 0.25s forwards, splash-glow-pulse 1.2s ease-in-out 0.8s infinite',
+              textShadow:
+                '0 0 25px rgba(255, 215, 0, 0.9), 0 0 50px rgba(255, 77, 210, 0.3)',
+              animation:
+                reducedMotion
+                  ? 'none'
+                  : 'splash-logo-burst 0.5s ease-out 0.3s forwards, splash-glow-pulse 1.2s ease-in-out 0.9s infinite',
               opacity: reducedMotion ? 1 : 0,
               willChange: 'transform, opacity',
             }}
           >
-            PRESS F
+            {t('app_title')}
+          </div>
+          <div
+            className="font-mono text-xs sm:text-sm mt-2 tracking-widest uppercase opacity-90"
+            style={{
+              color: 'var(--splash-muted, #b0b8c2)',
+              animation:
+                reducedMotion ? 'none' : 'splash-text-reveal 0.35s ease-out 0.5s forwards',
+              opacity: reducedMotion ? 0.9 : 0,
+            }}
+          >
+            {t('splash_pay_respects')}
           </div>
         </div>
       )}
 
-      {/* Gold flash overlay — двойная вспышка */}
+      {/* Gold flash overlay */}
       {showFlash && (
         <>
           <div
@@ -290,7 +361,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
             style={{
               backgroundColor: '#FFD700',
               opacity: 0,
-              animation: reducedMotion ? 'none' : 'splash-flash-strong 0.7s ease-out forwards',
+              animation: reducedMotion
+                ? 'none'
+                : 'splash-flash-strong 0.7s ease-out forwards',
               willChange: 'opacity',
             }}
           />
@@ -299,7 +372,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
             style={{
               backgroundColor: '#fff',
               opacity: 0,
-              animation: reducedMotion ? 'none' : 'splash-flash 0.25s ease-out 0.05s forwards',
+              animation: reducedMotion
+                ? 'none'
+                : 'splash-flash 0.25s ease-out 0.05s forwards',
               willChange: 'opacity',
             }}
           />
