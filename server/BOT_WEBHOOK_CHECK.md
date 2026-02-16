@@ -102,3 +102,30 @@ docker logs pressf-backend-1 --tail 50
 - В логах при старте должно быть: `Menu button (Web App) set for /start`. Если нет — в окружении backend не задан **WEB_APP_URL** (в Traefik-сборке он берётся из `${WEB_APP_URL}` в `.env`).
 - **WEB_APP_URL** должен быть **https**, например `https://pressfbot.ru` — тот же домен, где отдаётся фронтенд. Telegram не открывает Web App по http.
 - Проверьте в браузере: открывается ли `https://pressfbot.ru` и отдаёт ли страницу приложения. Если там 502/404 — сначала исправьте фронт и Traefik.
+
+### 6.3 Web App показывает «404 page not found»
+
+Это значит, что запрос `GET https://pressfbot.ru/` доходит до сервера, но вместо главной страницы приложения возвращается 404. Обычно так бывает, если **не запущен или не собран контейнер frontend**.
+
+**Что сделать:**
+
+1. Убедиться, что в стеке поднят **frontend** (вместе с Traefik):
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
+   docker ps
+   ```
+   Должны быть контейнеры: traefik, backend, **frontend**, db (и при необходимости redis).
+
+2. Пересобрать образ фронтенда и перезапустить:
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.traefik.yml build --no-cache frontend
+   docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d frontend
+   ```
+
+3. Проверить с сервера или с компьютера:
+   ```bash
+   curl -s -o /dev/null -w "%{http_code}" https://pressfbot.ru/
+   ```
+   Ожидается **200**. Если 404 — запрос идёт не во frontend (проверьте правила Traefik и что контейнер frontend в сети `pressf-net`).
+
+4. В Traefik для домена `pressfbot.ru` маршрут без пути (главная страница) должен вести на **frontend** (priority 0), а `/bot`, `/api`, `/static` — на backend (см. п. 5).
