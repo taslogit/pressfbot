@@ -15,8 +15,11 @@ const createAuthMiddleware = (pool) => {
   return async (req, res, next) => {
     try {
       // Security: Do not accept sessionId from query parameters (prevents logging/leakage)
-      const sessionId = req.headers['x-session-id'] || req.cookies?.sessionId;
-      
+      let sessionId = (req.headers['x-session-id'] || req.cookies?.sessionId || '').trim();
+      // Normalize: strip surrounding double quotes (client may send JSON-stringified value)
+      if (sessionId.length >= 2 && sessionId.startsWith('"') && sessionId.endsWith('"')) {
+        sessionId = sessionId.slice(1, -1);
+      }
       if (!sessionId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'Session ID required');
       }

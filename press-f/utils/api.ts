@@ -5,10 +5,17 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   console.log('[API] API_BASE:', API_BASE);
 }
 
-// Get session ID from storage
+// Get session ID from storage (value is JSON-stringified by storage.setSessionId)
 function getSessionId(): string | null {
   try {
-    return localStorage.getItem('lastmeme_session');
+    const raw = localStorage.getItem('lastmeme_session');
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      return typeof parsed === 'string' ? parsed : raw;
+    } catch {
+      return raw;
+    }
   } catch {
     return null;
   }
