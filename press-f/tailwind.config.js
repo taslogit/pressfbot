@@ -9,6 +9,7 @@ export default {
     extend: {
       fontFamily: {
         heading: ['"Rubik Wet Paint"', 'cursive'],
+        logo: ['"Caesar Dressing"', 'cursive'],
         body: ['"Pangolin"', 'cursive'],
         sans: ['"Pangolin"', 'cursive'],
         mono: ['"Pangolin"', 'cursive'],

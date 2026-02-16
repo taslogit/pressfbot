@@ -56,11 +56,16 @@ const Store = () => {
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [starsCatalogLoaded, setStarsCatalogLoaded] = useState(false);
   const [starsCatalogLoading, setStarsCatalogLoading] = useState(false);
+  const [starsCatalogError, setStarsCatalogError] = useState<string | null>(null);
+  const [starsRetryInSec, setStarsRetryInSec] = useState<number | null>(null);
   const [retryInSec, setRetryInSec] = useState<number | null>(null);
   const catalogRetryCountRef = useRef(0);
+  const starsRetryCountRef = useRef(0);
+  const starsRetryCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const retryCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
   const CATALOG_CACHE_KEY = 'lastmeme_store_catalog';
+  const STARS_CACHE_KEY = 'lastmeme_store_stars_catalog';
   const CACHE_MAX_AGE_MS = 10 * 60 * 1000; // 10 мин
 
   const applyCatalogFromCache = () => {
@@ -86,6 +91,28 @@ const Store = () => {
         flashSale,
         at: Date.now()
       }));
+    } catch (_) {}
+  };
+
+  const applyStarsCatalogFromCache = () => {
+    try {
+      const raw = localStorage.getItem(STARS_CACHE_KEY);
+      if (!raw) return false;
+      const { catalog = [], at = 0 } = JSON.parse(raw);
+      if (Date.now() - at > CACHE_MAX_AGE_MS) return false;
+      if (Array.isArray(catalog)) {
+        setStarsCatalog(catalog);
+        setStarsCatalogError(null);
+        setStarsCatalogLoaded(true);
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  };
+
+  const saveStarsCatalogToCache = (catalog: any[]) => {
+    try {
+      localStorage.setItem(STARS_CACHE_KEY, JSON.stringify({ catalog, at: Date.now() }));
     } catch (_) {}
   };
 
@@ -180,16 +207,57 @@ const Store = () => {
   };
 
   // Каталог Stars грузим только при переходе на вкладку «Stars»
-  const loadStarsCatalog = () => {
-    if (starsCatalogLoaded || starsCatalogLoading) return;
+  const loadStarsCatalog = (silentRetry = false) => {
+    if (starsCatalogLoaded && !silentRetry) return;
+    if (starsCatalogLoading) return;
+    if (applyStarsCatalogFromCache()) return;
     setStarsCatalogLoading(true);
-    starsAPI.getCatalog({ signal: getSignal() }).then((res) => {
-      if (!mountedRef.current) return;
-      if (res.ok && res.data?.catalog) setStarsCatalog(res.data.catalog);
-      setStarsCatalogLoaded(true);
-    }).finally(() => {
-      if (mountedRef.current) setStarsCatalogLoading(false);
-    });
+    setStarsCatalogError(null);
+    const doRequest = () => {
+      starsAPI.getCatalog({ signal: getSignal() })
+        .then((res) => {
+          if (!mountedRef.current) return;
+          if (res.ok && res.data?.catalog) {
+            const list = Array.isArray(res.data.catalog) ? res.data.catalog : [];
+            setStarsCatalog(list);
+            setStarsCatalogLoaded(true);
+            setStarsCatalogError(null);
+            starsRetryCountRef.current = 0;
+            saveStarsCatalogToCache(list);
+          } else {
+            const is429 = res.code === '429' || res.error?.toLowerCase?.().includes('too many') || res.error?.includes?.('429');
+            setStarsCatalogError(res.error || 'Network error');
+            if (is429 && starsRetryCountRef.current < 1) {
+              starsRetryCountRef.current += 1;
+              setStarsRetryInSec(6);
+              let sec = 6;
+              if (starsRetryCountdownRef.current) clearInterval(starsRetryCountdownRef.current);
+              starsRetryCountdownRef.current = setInterval(() => {
+                sec -= 1;
+                if (!mountedRef.current && starsRetryCountdownRef.current) {
+                  clearInterval(starsRetryCountdownRef.current);
+                  starsRetryCountdownRef.current = null;
+                  return;
+                }
+                setStarsRetryInSec(sec > 0 ? sec : null);
+                if (sec <= 0 && starsRetryCountdownRef.current) {
+                  clearInterval(starsRetryCountdownRef.current);
+                  starsRetryCountdownRef.current = null;
+                  loadStarsCatalog(true);
+                }
+              }, 1000);
+            }
+          }
+        })
+        .catch(() => {
+          if (mountedRef.current) setStarsCatalogError('Network error');
+        })
+        .finally(() => {
+          if (mountedRef.current) setStarsCatalogLoading(false);
+        });
+    };
+    const t = setTimeout(doRequest, 2000);
+    return () => clearTimeout(t);
   };
 
   useEffect(() => {
@@ -201,6 +269,10 @@ const Store = () => {
       if (retryCountdownRef.current) {
         clearInterval(retryCountdownRef.current);
         retryCountdownRef.current = null;
+      }
+      if (starsRetryCountdownRef.current) {
+        clearInterval(starsRetryCountdownRef.current);
+        starsRetryCountdownRef.current = null;
       }
     };
   }, []);
@@ -392,7 +464,29 @@ const Store = () => {
             className="space-y-4"
           >
             <div className="text-xs text-muted mb-2">{t('store_stars_hint')}</div>
-            {starsCatalogLoading ? (
+            {starsCatalogError ? (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
+                <p className="mb-2">{starsCatalogError}</p>
+                <button
+                  type="button"
+                  disabled={starsRetryInSec !== null && starsRetryInSec > 0}
+                  onClick={() => {
+                    setStarsCatalogError(null);
+                    setStarsRetryInSec(null);
+                    starsRetryCountRef.current = 0;
+                    if (starsRetryCountdownRef.current) {
+                      clearInterval(starsRetryCountdownRef.current);
+                      starsRetryCountdownRef.current = null;
+                    }
+                    setStarsCatalogLoaded(false);
+                    loadStarsCatalog(true);
+                  }}
+                  className="px-3 py-1.5 rounded-lg border border-amber-500/50 bg-amber-500/20 font-bold disabled:opacity-50"
+                >
+                  {starsRetryInSec !== null && starsRetryInSec > 0 ? t('store_retry_in', { sec: starsRetryInSec }) : (t('api_error_retry') || 'Retry')}
+                </button>
+              </div>
+            ) : starsCatalogLoading ? (
               <ListSkeleton rows={3} />
             ) : (
             <div className="grid gap-2">

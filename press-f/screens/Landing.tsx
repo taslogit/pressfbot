@@ -342,7 +342,7 @@ const Landing = () => {
       >
         <div>
            <motion.h1 
-             className="font-heading text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-accent-lime via-white to-accent-cyan drop-shadow-[0_0_15px_rgba(180,255,0,0.6)] motion-reduce:animate-none"
+             className="font-logo text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-accent-lime via-white to-accent-cyan drop-shadow-[0_0_15px_rgba(180,255,0,0.6)] motion-reduce:animate-none"
              animate={{
                opacity: [1, 0.8, 1, 1, 0.5, 1, 0.9, 1],
                textShadow: [
