@@ -355,11 +355,25 @@ const Landing = () => {
           );
         }, 700);
       } else {
-        const is429 = result.code === '429' || (result.error && (String(result.error).includes('429') || result.error.toLowerCase().includes('too many')));
-        showApiError(
-          is429 ? t('checkin_error_429') : (result.error || t('api_error_generic')),
-          handleCheckIn
-        );
+        const errMsg = (result.error || '').toLowerCase();
+        const errCode = result.code || '';
+        const is429 = errCode === '429' || errMsg.includes('429') || errMsg.includes('too many');
+        const isAlreadyChecked =
+          errCode === 'ALREADY_CHECKED_IN' ||
+          /already\s*checked|уже\s*отмечен|already\s*claimed/i.test(String(result.error || ''));
+
+        if (isAlreadyChecked) {
+          tg.showPopup({ message: t('checkin_already_done') });
+          imAlive();
+          return;
+        }
+        if (is429) {
+          showApiError(t('checkin_error_429'), handleCheckIn);
+        } else if (/try again later|попробуйте позже|позже|server busy|сервер занят/i.test(String(result.error || ''))) {
+          showApiError(t('checkin_try_later'), handleCheckIn);
+        } else {
+          showApiError(result.error || t('api_error_generic'), handleCheckIn);
+        }
       }
     } catch (error) {
       console.error('Check-in failed:', error);
