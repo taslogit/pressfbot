@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X, Package, Box } from 'lucide-react';
+import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X, Package, Box, ChevronDown, ChevronRight } from 'lucide-react';
 import { useTonAddress } from '@tonconnect/ui-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { starsAPI, storeAPI, profileAPI, getStaticUrl } from '../utils/api';
@@ -61,6 +61,7 @@ const Store = () => {
   const [starsCatalogError, setStarsCatalogError] = useState<string | null>(null);
   const [starsRetryInSec, setStarsRetryInSec] = useState<number | null>(null);
   const [retryInSec, setRetryInSec] = useState<number | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const catalogRetryCountRef = useRef(0);
   const starsRetryCountRef = useRef(0);
   const starsRetryCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -304,6 +305,14 @@ const Store = () => {
     setSegments?.([{ path: '/store', labelKey: 'nav_store' }, { labelKey: `store_tab_${tab}` as any }]);
     return () => setSegments?.(null);
   }, [tab, setSegments]);
+
+  // Открыть первую категорию по умолчанию во вкладке XP
+  useEffect(() => {
+    if (tab !== 'xp' || sortedCategoryEntries.length === 0) return;
+    if (expandedCategories.size === 0) {
+      setExpandedCategories(new Set([sortedCategoryEntries[0][0]]));
+    }
+  }, [tab, sortedCategoryEntries.length]);
 
   const userXP = profile?.spendableXp ?? profile?.experience ?? 0;
   const starsBalance = premiumStatus?.starsBalance ?? 0;
@@ -592,12 +601,40 @@ const Store = () => {
             <div className="text-xs text-muted mb-2">{t('store_xp_hint')}</div>
             {sortedCategoryEntries.length === 0 ? (
               <div className="text-center py-8 text-muted text-sm">{t('store_no_items') || 'No items available'}</div>
-            ) : sortedCategoryEntries.map(([category, items]) => (
-              <div key={category}>
-                <h4 className="font-heading text-xs font-black uppercase tracking-widest text-accent-pink mb-2">
-                  {t(CATEGORY_LABELS[category] as any) || category}
-                </h4>
-                <div className="grid gap-2">
+            ) : sortedCategoryEntries.map(([category, items]) => {
+              const isExpanded = expandedCategories.has(category);
+              return (
+              <div key={category} className="rounded-xl border border-border/60 overflow-hidden bg-black/20">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playSound('click');
+                    setExpandedCategories((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(category)) next.delete(category);
+                      else next.add(category);
+                      return next;
+                    });
+                  }}
+                  className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-white/5 transition-colors"
+                >
+                  <h4 className="font-heading text-xs font-black uppercase tracking-widest text-accent-pink">
+                    {t(CATEGORY_LABELS[category] as any) || category}
+                  </h4>
+                  <span className="text-muted flex-shrink-0">
+                    {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                  </span>
+                </button>
+                <AnimatePresence initial={false}>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: 'easeInOut' }}
+                      className="overflow-hidden"
+                    >
+                      <div className="grid gap-2 px-4 pb-4 pt-0">
                   {items.map((item: any) => {
                     const baseCost = item.cost_xp || item.cost_rep || 0;
                     const isFlash = flashSale?.itemId === item.id && !ownedItemIds.has(item.id);
@@ -648,9 +685,13 @@ const Store = () => {
                       </motion.button>
                     );
                   })}
-                </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-            ))}
+            );
+            })}
           </motion.div>
         )}
 

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, ShieldCheck, Skull, Zap, Info, ChevronRight, Moon, Sun, Hourglass, Activity, Target, Terminal, FileText, Swords, Users, RefreshCw, Lock, Share2, Signal, BookOpen, ShoppingBag, Settings } from 'lucide-react';
@@ -53,6 +53,40 @@ const Landing = () => {
   // System Log State
   const [currentLog, setCurrentLog] = useState(0);
   const logs = ['log_connected', 'log_sync', 'log_secure'];
+
+  // «Коротко о главном»: после первого просмотра сворачивается, по тапу выезжает обратно
+  const HOME_VALUE_SEEN_KEY = 'lastmeme_home_value_seen';
+  const [homeValueCollapsed, setHomeValueCollapsed] = useState(() => {
+    try { return sessionStorage.getItem(HOME_VALUE_SEEN_KEY) === '1'; } catch { return false; }
+  });
+  const homeValueRef = useRef<HTMLDivElement>(null);
+  const homeValueSeenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const el = homeValueRef.current;
+    if (!el || homeValueCollapsed) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) {
+          if (homeValueSeenTimerRef.current) {
+            clearTimeout(homeValueSeenTimerRef.current);
+            homeValueSeenTimerRef.current = null;
+          }
+          return;
+        }
+        homeValueSeenTimerRef.current = setTimeout(() => {
+          try { sessionStorage.setItem(HOME_VALUE_SEEN_KEY, '1'); } catch {}
+          setHomeValueCollapsed(true);
+          homeValueSeenTimerRef.current = null;
+        }, 1800);
+      },
+      { threshold: 0.5, rootMargin: '0px' }
+    );
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      if (homeValueSeenTimerRef.current) clearTimeout(homeValueSeenTimerRef.current);
+    };
+  }, [homeValueCollapsed]);
 
   // DEAD MAN SWITCH LOGIC: Redirect if dead
   useEffect(() => {
@@ -390,40 +424,74 @@ const Landing = () => {
           hidden: {}
         }}
       >
-      {/* Quick value + actions */}
-      <motion.div
-        className="card-terminal bg-card/60 border border-border rounded-xl p-4 text-xs text-muted overflow-hidden"
-        variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
-        transition={{ duration: 0.35 }}
-      >
-        <div className="label-terminal text-xs uppercase tracking-widest mb-2 text-muted truncate">{t('home_value_title')}</div>
-        <div className="space-y-1 break-words min-w-0 overflow-hidden">
-          <div>• {t('home_value_line1')}</div>
-          <div>• {t('home_value_line2')}</div>
-          <div>• {t('home_value_line3')}</div>
-        </div>
-        <div className="grid grid-cols-2 gap-2 mt-3">
-          <button
-            onClick={() => { playSound('click'); navigate('/create-letter'); }}
-            className="px-2 py-2 rounded-lg border border-accent-lime/40 text-accent-lime bg-accent-lime/10 hover:bg-accent-lime/20 transition-all font-bold tracking-widest text-xs uppercase"
+      {/* Quick value + actions — после первого просмотра сворачивается, по тапу выезжает */}
+      <motion.div variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }} transition={{ duration: 0.35 }}>
+      <AnimatePresence initial={false} mode="wait">
+        {homeValueCollapsed ? (
+          <motion.button
+            key="collapsed"
+            type="button"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25 }}
+            onClick={() => { playSound('click'); setHomeValueCollapsed(false); }}
+            className="w-full card-terminal bg-card/60 border border-border rounded-xl py-3 px-4 text-left flex items-center justify-between gap-2 hover:border-accent-cyan/40 hover:bg-card/80 transition-colors"
           >
-            {t('home_cta_create')}
-          </button>
-          <button
-            onClick={() => setShowGuide(true)}
-            className="px-2 py-2 rounded-lg border border-border text-muted hover:text-primary transition-all font-bold tracking-widest text-xs uppercase"
+            <span className="label-terminal text-xs uppercase tracking-widest text-muted">{t('home_value_title')}</span>
+            <ChevronRight size={18} className="text-muted flex-shrink-0" />
+          </motion.button>
+        ) : (
+          <motion.div
+            key="expanded"
+            ref={homeValueRef}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25 }}
+            className="card-terminal bg-card/60 border border-border rounded-xl p-4 text-xs text-muted overflow-hidden"
           >
-            {t('home_cta_guide')}
-          </button>
-        </div>
-        {showSharePulse && (
-          <button
-            onClick={handleSharePulse}
-            className="mt-3 w-full px-3 py-2 rounded-lg border border-accent-cyan/40 text-accent-cyan bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-all font-bold tracking-widest text-xs uppercase"
-          >
-            {t('share_pulse')}
-          </button>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="label-terminal text-xs uppercase tracking-widest text-muted truncate">{t('home_value_title')}</div>
+              <button
+                type="button"
+                onClick={() => { playSound('click'); setHomeValueCollapsed(true); }}
+                className="p-1 rounded text-muted hover:text-primary"
+                aria-label={t('home_value_title')}
+              >
+                <ChevronRight size={16} className="rotate-90" />
+              </button>
+            </div>
+            <div className="space-y-1 break-words min-w-0 overflow-hidden">
+              <div>• {t('home_value_line1')}</div>
+              <div>• {t('home_value_line2')}</div>
+              <div>• {t('home_value_line3')}</div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <button
+                onClick={() => { playSound('click'); navigate('/create-letter'); }}
+                className="px-2 py-2 rounded-lg border border-accent-lime/40 text-accent-lime bg-accent-lime/10 hover:bg-accent-lime/20 transition-all font-bold tracking-widest text-xs uppercase"
+              >
+                {t('home_cta_create')}
+              </button>
+              <button
+                onClick={() => setShowGuide(true)}
+                className="px-2 py-2 rounded-lg border border-border text-muted hover:text-primary transition-all font-bold tracking-widest text-xs uppercase"
+              >
+                {t('home_cta_guide')}
+              </button>
+            </div>
+            {showSharePulse && (
+              <button
+                onClick={handleSharePulse}
+                className="mt-3 w-full px-3 py-2 rounded-lg border border-accent-cyan/40 text-accent-cyan bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-all font-bold tracking-widest text-xs uppercase"
+              >
+                {t('share_pulse')}
+              </button>
+            )}
+          </motion.div>
         )}
+      </AnimatePresence>
       </motion.div>
 
       {/* Streak share */}
