@@ -9,10 +9,10 @@ export default {
     extend: {
       fontFamily: {
         heading: ['"Rubik Wet Paint"', 'cursive'],
-        logo: ['"Caesar Dressing"', 'cursive'],
-        body: ['"Pangolin"', 'cursive'],
-        sans: ['"Pangolin"', 'cursive'],
-        mono: ['"Pangolin"', 'cursive'],
+        logo: ['"Rye"', 'cursive'],
+        body: ['"Fondamento"', 'cursive'],
+        sans: ['"Fondamento"', 'cursive'],
+        mono: ['"Fondamento"', 'cursive'],
       },
       boxShadow: {
         'terminal': '0 0 0 1px rgba(0, 224, 255, 0.3), 0 0 12px rgba(0, 224, 255, 0.08)',

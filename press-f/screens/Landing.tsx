@@ -26,7 +26,7 @@ import { analytics } from '../utils/analytics';
 
 const Landing = () => {
   const navigate = useNavigate();
-  const { daysRemaining, isDead, imAlive } = useDeadManSwitch();
+  const { daysRemaining, hoursRemaining, is24hMode, isDead, imAlive } = useDeadManSwitch();
   const { t } = useTranslation();
   const { theme, toggleTheme } = useTheme();
   
@@ -309,8 +309,8 @@ const Landing = () => {
   };
 
 
-  const isUrgent = daysRemaining <= 3;
-  const isOverdue = daysRemaining <= 0;
+  const isUrgent = is24hMode ? hoursRemaining <= 3 : daysRemaining <= 3;
+  const isOverdue = is24hMode ? hoursRemaining <= 0 : daysRemaining <= 0;
   const triggerDate = new Date(settings.lastCheckIn + (settings.deadManSwitchDays * 24 * 60 * 60 * 1000)).toLocaleDateString();
   const lastScanDate = new Date(settings.lastCheckIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -435,7 +435,7 @@ const Landing = () => {
         <div className="flex items-center justify-between gap-2 mb-2 min-w-0">
           <div className="label-terminal text-xs uppercase tracking-widest text-muted truncate">{t('home_streak_title')}</div>
           <span className={`text-xs uppercase tracking-widest shrink-0 ${isOverdue ? 'text-red-400' : 'text-accent-lime'}`}>
-            {t('home_streak_days', { days: Math.max(daysRemaining, 0) })}
+            {is24hMode ? t('home_streak_hours', { hours: Math.max(hoursRemaining, 0) }) : t('home_streak_days', { days: Math.max(daysRemaining, 0) })}
           </span>
         </div>
         <div className="text-xs text-muted mb-3 truncate">
@@ -503,13 +503,13 @@ const Landing = () => {
                     )}
                 </motion.div>
 
-                {/* Days Text */}
+                {/* Countdown: hours in 24h mode, days otherwise */}
                 <div className="flex flex-col items-center z-10 mt-1">
                     <span className={`font-heading text-5xl font-black tracking-tighter leading-none ${isUrgent ? 'text-red-500' : 'text-white'}`}>
-                        {daysRemaining}
+                        {is24hMode ? hoursRemaining : daysRemaining}
                     </span>
                     <span className="font-heading text-xs font-bold uppercase text-muted tracking-[0.3em] mt-1">
-                        {t('days_left')}
+                        {is24hMode ? t('hours_left') : t('days_left')}
                     </span>
                 </div>
             </motion.div>

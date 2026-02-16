@@ -12,8 +12,8 @@
   --color-accent-pink: #FF4DD2;
   --color-accent-gold: #FFD700;
   --font-heading: "Rubik Wet Paint", cursive;
-  --font-body: "Pangolin", cursive;
-  --font-logo: "Caesar Dressing", cursive;
+  --font-body: "Fondamento", cursive;
+  --font-logo: "Rye", cursive;
   --animate-pulse-fast: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-spin-slow: spin 20s linear infinite;
   --animate-float: float 6s ease-in-out infinite;
@@ -71,7 +71,7 @@ body {
   font-family: var(--font-heading);
 }
 
-/* Логотип на главной: Caesar Dressing, без курсива */
+/* Логотип на главной: Rye */
 .font-logo {
   font-family: var(--font-logo);
   font-style: normal;

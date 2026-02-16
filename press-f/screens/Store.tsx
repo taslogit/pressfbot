@@ -65,6 +65,7 @@ const Store = () => {
   const starsRetryCountRef = useRef(0);
   const starsRetryCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const retryCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const starsCatalogTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
   const CATALOG_CACHE_KEY = 'lastmeme_store_catalog';
   const STARS_CACHE_KEY = 'lastmeme_store_stars_catalog';
@@ -168,9 +169,10 @@ const Store = () => {
           }
           doneLoading();
         })
-        .catch(() => {
+        .catch((err) => {
           clearTimeout(catalogTimeout);
           if (!mountedRef.current) return;
+          if (err?.name === 'AbortError') return;
           setCatalogError('Network error');
           doneLoading();
         });
@@ -187,6 +189,7 @@ const Store = () => {
         profileAPI.get(opts),
         storeAPI.getMyItems(opts)
       ]).then(([prem, profileRes, myRes]) => {
+        if (!mountedRef.current) return;
         const premVal = prem.status === 'fulfilled' ? prem.value : null;
         const profileVal = profileRes.status === 'fulfilled' ? profileRes.value : null;
         const myVal = myRes.status === 'fulfilled' ? myRes.value : null;
@@ -251,15 +254,17 @@ const Store = () => {
             }
           }
         })
-        .catch(() => {
-          if (mountedRef.current) setStarsCatalogError('Network error');
+        .catch((err) => {
+          if (!mountedRef.current) return;
+          if (err?.name === 'AbortError') return;
+          setStarsCatalogError('Network error');
         })
         .finally(() => {
           if (mountedRef.current) setStarsCatalogLoading(false);
         });
     };
-    const t = setTimeout(doRequest, 2000);
-    return () => clearTimeout(t);
+    if (starsCatalogTimeoutRef.current) clearTimeout(starsCatalogTimeoutRef.current);
+    starsCatalogTimeoutRef.current = setTimeout(doRequest, 2000);
   };
 
   useEffect(() => {
@@ -276,11 +281,23 @@ const Store = () => {
         clearInterval(starsRetryCountdownRef.current);
         starsRetryCountdownRef.current = null;
       }
+      if (starsCatalogTimeoutRef.current) {
+        clearTimeout(starsCatalogTimeoutRef.current);
+        starsCatalogTimeoutRef.current = null;
+      }
     };
   }, []);
 
   useEffect(() => {
-    if (tab === 'stars') loadStarsCatalog();
+    if (tab === 'stars') {
+      loadStarsCatalog();
+    } else {
+      if (starsCatalogTimeoutRef.current) {
+        clearTimeout(starsCatalogTimeoutRef.current);
+        starsCatalogTimeoutRef.current = null;
+      }
+      setStarsCatalogLoading(false);
+    }
   }, [tab]);
 
   useEffect(() => {
