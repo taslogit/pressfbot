@@ -54,7 +54,10 @@ const Store = () => {
   const [flashSale, setFlashSale] = useState<{ itemId: string; discount: number; endsAt: string } | null>(null);
   const [mysteryBoxLoading, setMysteryBoxLoading] = useState(false);
   const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [starsCatalogLoaded, setStarsCatalogLoaded] = useState(false);
+  const [starsCatalogLoading, setStarsCatalogLoading] = useState(false);
 
+  // Только витрина XP при открытии — один запрос, без звёзд и без пачки auth сразу
   const loadData = (silent = false) => {
     const opts = { signal: getSignal() };
     if (!silent) {
@@ -62,36 +65,22 @@ const Store = () => {
       setCatalogError(null);
     }
     const doneLoading = () => { if (!silent) setLoading(false); };
-    const catalogTimeout = setTimeout(doneLoading, 15000);
+    const catalogTimeout = setTimeout(doneLoading, 12000);
 
-    // Load catalogs sequentially to avoid 429 (rate limit). Main vitrine (XP) first, then stars.
-    const runCatalogs = async () => {
-      try {
-        const xpRes = await storeAPI.getCatalog(opts);
-        if (xpRes.ok) {
-          const catalog = xpRes.data?.catalog ?? xpRes.data?.items ?? [];
-          setXpCatalog(Array.isArray(catalog) ? catalog : []);
-          setFlashSale(xpRes.data?.flashSale || null);
-        }
-        await new Promise((r) => setTimeout(r, 400));
-        const starsRes = await starsAPI.getCatalog(opts);
-        if (starsRes.ok && starsRes.data?.catalog) setStarsCatalog(starsRes.data.catalog);
-
-        if (!xpRes.ok && !starsRes.ok) {
-          const msg = xpRes.error || starsRes.error || 'Network error';
-          setCatalogError(msg);
-        } else {
-          setCatalogError(null);
-        }
-      } finally {
-        clearTimeout(catalogTimeout);
-        doneLoading();
+    storeAPI.getCatalog(opts).then((xpRes) => {
+      clearTimeout(catalogTimeout);
+      if (xpRes.ok) {
+        const catalog = xpRes.data?.catalog ?? xpRes.data?.items ?? [];
+        setXpCatalog(Array.isArray(catalog) ? catalog : []);
+        setFlashSale(xpRes.data?.flashSale || null);
+        setCatalogError(null);
+      } else {
+        setCatalogError(xpRes.error || 'Network error');
       }
-    };
+      doneLoading();
+    });
 
-    runCatalogs();
-
-    // Auth-dependent data: start after a short delay to avoid bursting with catalog requests
+    // Профиль/премиум/мои предметы — с большой задержкой, чтобы не конкурировать с каталогом
     const authDelay = setTimeout(() => {
       Promise.allSettled([
         starsAPI.getPremiumStatus(opts),
@@ -110,7 +99,7 @@ const Store = () => {
           setAchievementsCount(myVal.data?.achievementsCount ?? 0);
         }
       });
-    }, 600);
+    }, 2200);
 
     return () => {
       clearTimeout(catalogTimeout);
@@ -118,10 +107,24 @@ const Store = () => {
     };
   };
 
+  // Каталог Stars грузим только при переходе на вкладку «Stars»
+  const loadStarsCatalog = () => {
+    if (starsCatalogLoaded || starsCatalogLoading) return;
+    setStarsCatalogLoading(true);
+    starsAPI.getCatalog({ signal: getSignal() }).then((res) => {
+      if (res.ok && res.data?.catalog) setStarsCatalog(res.data.catalog);
+      setStarsCatalogLoaded(true);
+    }).finally(() => setStarsCatalogLoading(false));
+  };
+
   useEffect(() => {
     const cleanup = loadData();
     return () => { if (typeof cleanup === 'function') cleanup(); };
   }, []);
+
+  useEffect(() => {
+    if (tab === 'stars') loadStarsCatalog();
+  }, [tab]);
 
   const userXP = profile?.spendableXp ?? profile?.experience ?? 0;
   const starsBalance = premiumStatus?.starsBalance ?? 0;
@@ -229,7 +232,7 @@ const Store = () => {
               if (catalogError.includes('429') || catalogError.toLowerCase().includes('too many')) {
                 setCatalogError(null);
                 setLoading(true);
-                setTimeout(() => loadData(), 2500);
+                setTimeout(() => loadData(), 5000);
               } else {
                 loadData();
               }
@@ -298,6 +301,9 @@ const Store = () => {
             className="space-y-4"
           >
             <div className="text-xs text-muted mb-2">{t('store_stars_hint')}</div>
+            {starsCatalogLoading ? (
+              <ListSkeleton rows={3} />
+            ) : (
             <div className="grid gap-2">
               {starsCatalog.map((item: any) => (
                 <motion.button
@@ -317,6 +323,7 @@ const Store = () => {
                 </motion.button>
               ))}
             </div>
+            )}
           </motion.div>
         )}
 

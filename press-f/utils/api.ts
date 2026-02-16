@@ -30,7 +30,8 @@ function getHeaders(): HeadersInit {
 // Retry configuration
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000; // Start with 1 second
-const RETRYABLE_STATUS_CODES = [408, 429, 500, 502, 503, 504];
+/* 429 excluded: retrying rate limit makes it worse */
+const RETRYABLE_STATUS_CODES = [408, 500, 502, 503, 504];
 const RETRYABLE_ERROR_CODES = ['TIMEOUT', 'NETWORK_ERROR'];
 
 // Exponential backoff retry helper
