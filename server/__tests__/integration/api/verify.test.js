@@ -32,7 +32,7 @@ describe('POST /api/verify', () => {
         entries.sort((a, b) => a[0].localeCompare(b[0]));
         const dataCheckString = entries.map(e => `${e[0]}=${e[1]}`).join('\n');
 
-        const secretKey = crypto.createHash('sha256').update(botToken).digest();
+        const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
         const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
         return hmac === hash.toLowerCase();
@@ -130,7 +130,7 @@ describe('POST /api/verify', () => {
     ];
     entries.sort((a, b) => a[0].localeCompare(b[0]));
     const dataCheckString = entries.map(e => `${e[0]}=${e[1]}`).join('\n');
-    const secretKey = crypto.createHash('sha256').update(BOT_TOKEN).digest();
+    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
     const hash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
     const validInitData = `user=${encodeURIComponent(user)}&auth_date=${authDate}&hash=${hash}`;
 

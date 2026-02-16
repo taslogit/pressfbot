@@ -1278,7 +1278,8 @@ function verifyInitData(initData, botToken) {
     entries.sort((a, b) => a[0].localeCompare(b[0]));
     const dataCheckString = entries.map(e => `${e[0]}=${e[1]}`).join('\n');
 
-    const secretKey = crypto.createHash('sha256').update(botToken).digest();
+    // Telegram: secret_key = HMAC-SHA256(key="WebAppData", message=bot_token)
+    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
     const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
     return hmac === hash.toLowerCase();
