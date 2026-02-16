@@ -289,3 +289,58 @@ select:focus-visible {
     animation-iteration-count: 1;
   }
 }
+
+/* ─── Splash screen keyframes (PRESS F заставка) ─────────────────────────── */
+.splash-screen {
+  --splash-bg: #0f0d16;
+  --splash-lime: #B4FF00;
+  --splash-cyan: #00E0FF;
+  --splash-pink: #FF4DD2;
+  --splash-gold: #FFD700;
+  --splash-muted: #b0b8c2;
+}
+
+@keyframes splash-scan {
+  0% { transform: translateY(-100%) translateZ(0); opacity: 1; }
+  100% { transform: translateY(100vh) translateZ(0); opacity: 1; }
+}
+
+@keyframes splash-glitch {
+  0%, 85%, 100% { transform: translate(0, 0) translateZ(0); filter: none; text-shadow: 0 0 20px rgba(180, 255, 0, 0.6); }
+  86% { transform: translate(-2px, 1px) translateZ(0); filter: hue-rotate(-8deg); text-shadow: 2px 0 0 var(--splash-pink), -2px 0 0 var(--splash-cyan); }
+  88% { transform: translate(2px, -1px) translateZ(0); filter: hue-rotate(8deg); text-shadow: -2px 0 0 var(--splash-cyan), 2px 0 0 var(--splash-pink); }
+  90% { transform: translate(0, 0) translateZ(0); filter: none; text-shadow: 0 0 20px rgba(180, 255, 0, 0.6); }
+  92% { transform: translate(1px, 0) translateZ(0); text-shadow: 0 0 25px var(--splash-gold); }
+  94% { transform: translate(0, 0) translateZ(0); }
+}
+
+@keyframes splash-flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+  75% { opacity: 1; }
+}
+
+@keyframes splash-fadeIn {
+  from { opacity: 0; transform: translateZ(0); }
+  to { opacity: 1; transform: translateZ(0); }
+}
+
+@keyframes splash-fadeOut {
+  from { opacity: 1; transform: translateZ(0); }
+  to { opacity: 0; transform: translateZ(0); }
+}
+
+@keyframes splash-flash {
+  0% { opacity: 0; }
+  20% { opacity: 0.4; }
+  100% { opacity: 0; }
+}
+
+@keyframes splash-skull-neon {
+  0%, 100% { text-shadow: 0 0 10px var(--splash-cyan), 0 0 20px var(--splash-cyan); }
+  50% { text-shadow: 0 0 15px var(--splash-lime), 0 0 30px var(--splash-cyan); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-screen [class*="splash-"] { animation: none !important; }
+}

@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense, lazy } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LanguageProvider } from './contexts/LanguageContext';
@@ -26,6 +26,7 @@ import { tg, initTelegramApp, isTgVersionWithoutOptionalUI, isTelegramWebApp } f
 import { useTelegramSession } from './hooks/useTelegramSession';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoadingState from './components/LoadingState';
+import SplashScreen from './components/SplashScreen';
 import { analytics } from './utils/analytics';
 import { storage } from './utils/storage';
 import { useTranslation } from './contexts/LanguageContext';
@@ -186,6 +187,7 @@ const AnimatedLayoutRoutes = () => {
 };
 
 const App = () => {
+  const [splashDone, setSplashDone] = useState(false);
   const manifestUrl = `${window.location.origin}/tonconnect-manifest.json`;
   
   if (typeof window !== 'undefined') {
@@ -213,6 +215,9 @@ const App = () => {
           <ApiErrorProvider>
           <TonConnectUIProvider manifestUrl={manifestUrl}>
             <HashRouter>
+              {!splashDone && (
+                <SplashScreen onFinish={() => setSplashDone(true)} />
+              )}
               <TelegramHandler />
               <SessionGate>
                 <Suspense fallback={<LoadingState terminal className="min-h-screen" />}>
