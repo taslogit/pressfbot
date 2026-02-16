@@ -39,6 +39,7 @@ const Landing = () => {
   const [settings, setSettings] = useState(storage.getSettings());
   const [showSharePulse, setShowSharePulse] = useState(false);
   const [xpNotification, setXpNotification] = useState<{ xp: number; level?: number; levelUp?: boolean; bonusLabel?: 'lucky' | 'comeback' | 'reengagement' | 'milestone' | 'daily' | 'guide' } | null>(null);
+  const [isCheckInLoading, setIsCheckInLoading] = useState(false);
 
   // Dashboard Data
   const [activeDuels, setActiveDuels] = useState(0);
@@ -173,16 +174,19 @@ const Landing = () => {
       // Keep localStorage data
     });
 
-    // Daily login loot — начисление XP за вход; обновляем кэш профиля
-    profileAPI.claimDailyLoginLoot().then((res) => {
-      if (isMounted && res.ok && res.data?.claimed && res.data?.xp) {
-        const xp = res.data.xp;
-        const profile = storage.getUserProfile();
-        storage.saveUserProfile({ ...profile, experience: (profile.experience ?? 0) + xp });
-        setXpNotification({ xp, bonusLabel: 'daily' });
-        setTimeout(() => setXpNotification(null), 2500);
-      }
-    });
+    // Daily login loot — начисление XP за вход; обновляем кэш профиля.
+    // Небольшая задержка, чтобы не слать запрос в одну секунду с чекином и не получать 429.
+    const dailyLootDelay = setTimeout(() => {
+      profileAPI.claimDailyLoginLoot().then((res) => {
+        if (isMounted && res.ok && res.data?.claimed && res.data?.xp) {
+          const xp = res.data.xp;
+          const profile = storage.getUserProfile();
+          storage.saveUserProfile({ ...profile, experience: (profile.experience ?? 0) + xp });
+          setXpNotification({ xp, bonusLabel: 'daily' });
+          setTimeout(() => setXpNotification(null), 2500);
+        }
+      });
+    }, 2200);
 
     // Auto-show guide if not seen
     if (!storage.getHasSeenGuide()) {
@@ -210,6 +214,7 @@ const Landing = () => {
       isMounted = false;
       clearInterval(interval);
       clearInterval(beefInterval);
+      clearTimeout(dailyLootDelay);
     };
   }, [justCheckedIn, duelsResolvingToday]);
 
@@ -247,7 +252,9 @@ const Landing = () => {
   };
 
   const handleCheckIn = async () => {
+    if (isCheckInLoading) return;
     playSound('charge');
+    setIsCheckInLoading(true);
     
     try {
       // Call API for check-in
@@ -346,11 +353,17 @@ const Landing = () => {
           );
         }, 700);
       } else {
-        showApiError(result.error || t('api_error_generic'), handleCheckIn);
+        const is429 = result.code === '429' || (result.error && (String(result.error).includes('429') || result.error.toLowerCase().includes('too many')));
+        showApiError(
+          is429 ? t('checkin_error_429') : (result.error || t('api_error_generic')),
+          handleCheckIn
+        );
       }
     } catch (error) {
       console.error('Check-in failed:', error);
       showApiError(t('api_error_generic'), handleCheckIn);
+    } finally {
+      setIsCheckInLoading(false);
     }
   };
 
@@ -546,7 +559,8 @@ const Landing = () => {
         {/* Central Interaction Area */}
         <button
           type="button"
-          className="relative group cursor-pointer w-full border-0 bg-transparent p-0 flex justify-center items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-lime focus-visible:ring-offset-2 focus-visible:ring-offset-bg rounded-full"
+          disabled={isCheckInLoading}
+          className="relative group cursor-pointer w-full border-0 bg-transparent p-0 flex justify-center items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-lime focus-visible:ring-offset-2 focus-visible:ring-offset-bg rounded-full disabled:opacity-70 disabled:cursor-not-allowed"
           onClick={handleCheckIn}
           aria-label={t('im_alive_btn')}
         >
