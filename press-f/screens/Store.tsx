@@ -306,14 +306,6 @@ const Store = () => {
     return () => setSegments?.(null);
   }, [tab, setSegments]);
 
-  // Открыть первую категорию по умолчанию во вкладке XP
-  useEffect(() => {
-    if (tab !== 'xp' || sortedCategoryEntries.length === 0) return;
-    if (expandedCategories.size === 0) {
-      setExpandedCategories(new Set([sortedCategoryEntries[0][0]]));
-    }
-  }, [tab, sortedCategoryEntries.length]);
-
   const userXP = profile?.spendableXp ?? profile?.experience ?? 0;
   const starsBalance = premiumStatus?.starsBalance ?? 0;
 
@@ -357,6 +349,14 @@ const Store = () => {
   const sortedCategoryEntries = Object.entries(xpByCategory).sort(
     ([a], [b]) => (CATEGORY_ORDER.indexOf(a) >= 0 ? CATEGORY_ORDER.indexOf(a) : 99) - (CATEGORY_ORDER.indexOf(b) >= 0 ? CATEGORY_ORDER.indexOf(b) : 99)
   );
+
+  // Открыть первую категорию по умолчанию во вкладке XP (после того как sortedCategoryEntries доступен)
+  useEffect(() => {
+    if (tab !== 'xp' || sortedCategoryEntries.length === 0) return;
+    if (expandedCategories.size === 0) {
+      setExpandedCategories(new Set([sortedCategoryEntries[0][0]]));
+    }
+  }, [tab, sortedCategoryEntries.length]);
 
   const ownedItemIds = new Set(myItems.map((i) => i.item_id));
 
