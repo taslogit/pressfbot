@@ -76,10 +76,12 @@ const TelegramHandler = () => {
       }
     }
 
+    // Редирект на главную только при первом монте без deep link (не при каждом изменении pathname)
     if (!startParam && location.pathname !== '/') {
       navigate('/', { replace: true });
     }
-  }, [navigate, location.pathname]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- только при монте
+  }, []);
 
   // Handle Back Button
   useEffect(() => {
