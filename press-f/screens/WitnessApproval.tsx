@@ -1,10 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { UserCheck, Copy, Share2, ScanEye, ShieldCheck, Plus, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { tg } from '../utils/telegram';
 import { useTranslation } from '../contexts/LanguageContext';
+import { useApiAbort } from '../hooks/useApiAbort';
 import InfoSection from '../components/InfoSection';
 import LoadingState from '../components/LoadingState';
 import { witnessesAPI } from '../utils/api';
@@ -20,38 +21,56 @@ interface Witness {
 }
 
 const WitnessApproval = () => {
+  const { t } = useTranslation();
+  const getSignal = useApiAbort();
+  const isMountedRef = useRef(true);
   const [witnesses, setWitnesses] = useState<Witness[]>([]);
   const [showQR, setShowQR] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [newWitnessName, setNewWitnessName] = useState('');
-  const { t } = useTranslation();
+  const [isAddingLoading, setIsAddingLoading] = useState(false);
+  const [confirmingIds, setConfirmingIds] = useState<Set<string>>(new Set());
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
   const userId = tg.initDataUnsafe?.user?.id?.toString() || 'demo';
   const inviteLink = `https://t.me/LastMemeBot?start=witness_${userId}`;
 
   useEffect(() => {
+    isMountedRef.current = true;
     loadWitnesses();
     
     // Check for pending witness confirmation from invite link
-    const pendingWitnessId = localStorage.getItem('lastmeme_pending_witness');
-    if (pendingWitnessId) {
-      localStorage.removeItem('lastmeme_pending_witness');
-      handleConfirmWitness(pendingWitnessId);
+    let pendingWitnessId: string | null = null;
+    try {
+      pendingWitnessId = localStorage.getItem('lastmeme_pending_witness');
+      if (pendingWitnessId) {
+        localStorage.removeItem('lastmeme_pending_witness');
+        handleConfirmWitness(pendingWitnessId);
+      }
+    } catch (err) {
+      console.error('Failed to read localStorage:', err);
     }
+    
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   const loadWitnesses = async () => {
     try {
+      if (!isMountedRef.current) return;
       setLoading(true);
-      const result = await witnessesAPI.getAll();
+      const result = await witnessesAPI.getAll(undefined, { signal: getSignal() });
+      if (!isMountedRef.current) return;
       if (result.ok && result.data?.witnesses) {
         setWitnesses(result.data.witnesses);
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (!isMountedRef.current || error?.name === 'AbortError') return;
       console.error('Failed to load witnesses:', error);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   };
 
@@ -62,10 +81,11 @@ const WitnessApproval = () => {
   };
 
   const handleAddWitness = async () => {
-    if (!newWitnessName.trim()) return;
-    
+    if (!newWitnessName.trim() || isAddingLoading) return;
+    setIsAddingLoading(true);
     try {
-      const result = await witnessesAPI.create(null, newWitnessName.trim());
+      const result = await witnessesAPI.create(null, newWitnessName.trim(), { signal: getSignal() });
+      if (!isMountedRef.current) return;
       if (result.ok && result.data?.witness) {
         setWitnesses(prev => [result.data.witness, ...prev]);
         setNewWitnessName('');
@@ -74,15 +94,21 @@ const WitnessApproval = () => {
       } else {
         tg.showPopup({ message: result.error || 'Failed to add witness' });
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (!isMountedRef.current || error?.name === 'AbortError') return;
       console.error('Failed to add witness:', error);
       tg.showPopup({ message: 'Failed to add witness' });
+    } finally {
+      if (isMountedRef.current) setIsAddingLoading(false);
     }
   };
 
   const handleConfirmWitness = async (witnessId: string) => {
+    if (confirmingIds.has(witnessId)) return;
+    setConfirmingIds(prev => new Set(prev).add(witnessId));
     try {
-      const result = await witnessesAPI.confirm(witnessId);
+      const result = await witnessesAPI.confirm(witnessId, { signal: getSignal() });
+      if (!isMountedRef.current) return;
       if (result.ok) {
         setWitnesses(prev => prev.map(w => w.id === witnessId ? { ...w, status: 'confirmed' as const } : w));
         playSound('success');
@@ -90,26 +116,41 @@ const WitnessApproval = () => {
       } else {
         tg.showPopup({ message: result.error || 'Failed to confirm witness' });
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (!isMountedRef.current || error?.name === 'AbortError') return;
       console.error('Failed to confirm witness:', error);
       tg.showPopup({ message: 'Failed to confirm witness' });
+    } finally {
+      if (isMountedRef.current) setConfirmingIds(prev => {
+        const next = new Set(prev);
+        next.delete(witnessId);
+        return next;
+      });
     }
   };
 
   const handleDeleteWitness = async (witnessId: string) => {
-    if (!confirm(t('confirm_delete') || 'Delete witness?')) return;
-    
+    if (!confirm(t('confirm_delete') || 'Delete witness?') || deletingIds.has(witnessId)) return;
+    setDeletingIds(prev => new Set(prev).add(witnessId));
     try {
-      const result = await witnessesAPI.delete(witnessId);
+      const result = await witnessesAPI.delete(witnessId, { signal: getSignal() });
+      if (!isMountedRef.current) return;
       if (result.ok) {
         setWitnesses(prev => prev.filter(w => w.id !== witnessId));
         playSound('success');
       } else {
         tg.showPopup({ message: result.error || 'Failed to delete witness' });
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (!isMountedRef.current || error?.name === 'AbortError') return;
       console.error('Failed to delete witness:', error);
       tg.showPopup({ message: 'Failed to delete witness' });
+    } finally {
+      if (isMountedRef.current) setDeletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(witnessId);
+        return next;
+      });
     }
   };
 
@@ -193,9 +234,10 @@ const WitnessApproval = () => {
             />
             <button
               onClick={handleAddWitness}
-              className="w-full px-4 py-2 bg-accent-pink/10 text-accent-pink font-bold rounded-lg border border-accent-pink/30 hover:bg-accent-pink/20 transition-colors"
+              disabled={isAddingLoading}
+              className="w-full px-4 py-2 bg-accent-pink/10 text-accent-pink font-bold rounded-lg border border-accent-pink/30 hover:bg-accent-pink/20 transition-colors disabled:opacity-50"
             >
-              {t('add') || 'Add'}
+              {isAddingLoading ? '...' : (t('add') || 'Add')}
             </button>
           </div>
         )}
@@ -229,7 +271,8 @@ const WitnessApproval = () => {
                   {w.status === 'pending' && (
                     <button
                       onClick={() => handleConfirmWitness(w.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent-lime/10 rounded transition-all"
+                      disabled={confirmingIds.has(w.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent-lime/10 rounded transition-all disabled:opacity-50"
                       title={t('confirm') || 'Confirm'}
                     >
                       <UserCheck size={14} className="text-accent-lime" />
@@ -237,7 +280,8 @@ const WitnessApproval = () => {
                   )}
                   <button
                     onClick={() => handleDeleteWitness(w.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 rounded transition-all"
+                    disabled={deletingIds.has(w.id)}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 rounded transition-all disabled:opacity-50"
                     title={t('delete') || 'Delete'}
                   >
                     <X size={14} className="text-red-500" />

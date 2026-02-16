@@ -71,6 +71,8 @@ const Store = () => {
   const CATALOG_CACHE_KEY = 'lastmeme_store_catalog';
   const STARS_CACHE_KEY = 'lastmeme_store_stars_catalog';
   const CACHE_MAX_AGE_MS = 10 * 60 * 1000; // 10 мин
+  const RATE_LIMIT_RETRY_SEC = 18; // при 429 ждать дольше, чтобы не нагружать сервер
+  const BACKGROUND_REVALIDATE_MS = 45 * 1000; // фоновое обновление кэша через 45 сек
 
   const applyCatalogFromCache = () => {
     try {
@@ -120,7 +122,23 @@ const Store = () => {
     } catch (_) {}
   };
 
-  // Один запрос витрины: задержка перед запросом + кэш + авто-повтор при 429
+  // Загрузка профиля и «мои предметы» (без каталога; getPremiumStatus — только на вкладке Stars)
+  const loadProfileAndMyItems = (opts: RequestInit) => {
+    Promise.allSettled([profileAPI.get(opts), storeAPI.getMyItems(opts)]).then(([profileRes, myRes]) => {
+      if (!mountedRef.current) return;
+      const profileVal = profileRes.status === 'fulfilled' ? profileRes.value : null;
+      const myVal = myRes.status === 'fulfilled' ? myRes.value : null;
+      if (profileVal?.ok && profileVal.data?.profile) setProfile(profileVal.data.profile);
+      if (myVal?.ok) {
+        setMyItems(myVal.data?.items || []);
+        setFirstPurchaseEligible(myVal.data?.firstPurchaseEligible ?? false);
+        setAchievementDiscountPercent(myVal.data?.achievementDiscountPercent ?? 0);
+        setAchievementsCount(myVal.data?.achievementsCount ?? 0);
+      }
+    });
+  };
+
+  // Витрина: при валидном кэше — не бьём API, только profile+myItems; при 429 — увеличенная пауза
   const loadData = (silent = false) => {
     const opts = { signal: getSignal() };
     if (!silent) {
@@ -130,6 +148,7 @@ const Store = () => {
     }
     const doneLoading = () => { if (!silent) setLoading(false); };
     const catalogTimeout = setTimeout(doneLoading, 15000);
+    let backgroundRevalidateId: ReturnType<typeof setTimeout> | null = null;
 
     const doFetch = () => {
       storeAPI.getCatalog(opts)
@@ -144,13 +163,14 @@ const Store = () => {
             setCatalogError(null);
             catalogRetryCountRef.current = 0;
             saveCatalogToCache(list, xpRes.data?.flashSale || null);
+            loadProfileAndMyItems(opts);
           } else {
             const is429 = xpRes.code === '429' || xpRes.error?.includes?.('429') || xpRes.error?.toLowerCase?.().includes('too many');
             setCatalogError(xpRes.error || t('api_error_network'));
             if (is429 && catalogRetryCountRef.current < 1) {
               catalogRetryCountRef.current += 1;
-              setRetryInSec(6);
-              let sec = 6;
+              setRetryInSec(RATE_LIMIT_RETRY_SEC);
+              let sec = RATE_LIMIT_RETRY_SEC;
               if (retryCountdownRef.current) clearInterval(retryCountdownRef.current);
               retryCountdownRef.current = setInterval(() => {
                 sec -= 1;
@@ -166,6 +186,8 @@ const Store = () => {
                   loadData(true);
                 }
               }, 1000);
+            } else {
+              loadProfileAndMyItems(opts);
             }
           }
           doneLoading();
@@ -175,54 +197,59 @@ const Store = () => {
           if (!mountedRef.current) return;
           if (err?.name === 'AbortError') return;
           setCatalogError(t('api_error_network'));
+          loadProfileAndMyItems(opts);
           doneLoading();
         });
     };
 
     const hasCache = applyCatalogFromCache();
-    if (hasCache && !silent) doneLoading();
-    const startDelay = hasCache ? 0 : 2000;
-    const t = setTimeout(doFetch, startDelay);
-
-    const authDelay = setTimeout(() => {
-      Promise.allSettled([
-        starsAPI.getPremiumStatus(opts),
-        profileAPI.get(opts),
-        storeAPI.getMyItems(opts)
-      ]).then(([prem, profileRes, myRes]) => {
+    if (hasCache) {
+      if (!silent) doneLoading();
+      loadProfileAndMyItems(opts);
+      backgroundRevalidateId = setTimeout(() => {
         if (!mountedRef.current) return;
-        const premVal = prem.status === 'fulfilled' ? prem.value : null;
-        const profileVal = profileRes.status === 'fulfilled' ? profileRes.value : null;
-        const myVal = myRes.status === 'fulfilled' ? myRes.value : null;
-        if (premVal?.ok && premVal.data) setPremiumStatus(premVal.data);
-        if (profileVal?.ok && profileVal.data?.profile) setProfile(profileVal.data.profile);
-        if (myVal?.ok) {
-          setMyItems(myVal.data?.items || []);
-          setFirstPurchaseEligible(myVal.data?.firstPurchaseEligible ?? false);
-          setAchievementDiscountPercent(myVal.data?.achievementDiscountPercent ?? 0);
-          setAchievementsCount(myVal.data?.achievementsCount ?? 0);
-        }
-      });
-    }, 5000);
+        doFetch();
+      }, BACKGROUND_REVALIDATE_MS);
+    } else {
+      const startDelay = 2000;
+      const t = setTimeout(doFetch, startDelay);
+      return () => {
+        clearTimeout(catalogTimeout);
+        clearTimeout(t);
+        if (backgroundRevalidateId) clearTimeout(backgroundRevalidateId);
+      };
+    }
 
     return () => {
       clearTimeout(catalogTimeout);
-      clearTimeout(t);
-      clearTimeout(authDelay);
+      if (backgroundRevalidateId) clearTimeout(backgroundRevalidateId);
     };
   };
 
-  // Каталог Stars грузим только при переходе на вкладку «Stars»
+  // Каталог Stars + баланс Stars — только при переходе на вкладку «Stars»; при 429 — увеличенная пауза
   const loadStarsCatalog = (silentRetry = false) => {
     if (starsCatalogLoaded && !silentRetry) return;
     if (starsCatalogLoading) return;
-    if (applyStarsCatalogFromCache()) return;
+    if (applyStarsCatalogFromCache()) {
+      starsAPI.getPremiumStatus({ signal: getSignal() }).then((r) => {
+        if (mountedRef.current && r?.ok && r.data) setPremiumStatus(r.data);
+      }).catch(() => {});
+      return;
+    }
     setStarsCatalogLoading(true);
     setStarsCatalogError(null);
     const doRequest = () => {
-      starsAPI.getCatalog({ signal: getSignal() })
-        .then((res) => {
+      const opts = { signal: getSignal() };
+      Promise.allSettled([starsAPI.getCatalog(opts), starsAPI.getPremiumStatus(opts)])
+        .then(([catRes, premRes]) => {
           if (!mountedRef.current) return;
+          const res = catRes.status === 'fulfilled' ? catRes.value : null;
+          const premVal = premRes.status === 'fulfilled' ? premRes.value : null;
+          if (premVal?.ok && premVal.data) setPremiumStatus(premVal.data);
+          if (!res) {
+            setStarsCatalogError(t('api_error_network'));
+            return;
+          }
           if (res.ok && res.data?.catalog) {
             const list = Array.isArray(res.data.catalog) ? res.data.catalog : [];
             setStarsCatalog(list);
@@ -235,8 +262,8 @@ const Store = () => {
             setStarsCatalogError(res.error || t('api_error_network'));
             if (is429 && starsRetryCountRef.current < 1) {
               starsRetryCountRef.current += 1;
-              setStarsRetryInSec(6);
-              let sec = 6;
+              setStarsRetryInSec(RATE_LIMIT_RETRY_SEC);
+              let sec = RATE_LIMIT_RETRY_SEC;
               if (starsRetryCountdownRef.current) clearInterval(starsRetryCountdownRef.current);
               starsRetryCountdownRef.current = setInterval(() => {
                 sec -= 1;
@@ -652,7 +679,14 @@ const Store = () => {
                       >
                         {category === 'avatar' ? (
                           <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 border border-border bg-black/60">
-                            <img src={getStaticUrl(`/api/static/avatars/${item.avatarFile || item.id.replace('avatar_', '') + '.svg'}`)} alt={item.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = getStaticUrl(`/api/static/avatars/pressf.svg`); }} />
+                            <img
+                              src={getStaticUrl(`/api/static/avatars/${item.avatarFile || item.id.replace('avatar_', '') + '.svg'}`)}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              decoding="async"
+                              onError={(e) => { (e.target as HTMLImageElement).src = getStaticUrl(`/api/static/avatars/pressf.svg`); }}
+                            />
                           </div>
                         ) : category === 'avatar_frame' ? (
                           <div className={`w-12 h-12 rounded-xl flex-shrink-0 bg-black/60 flex items-center justify-center ${

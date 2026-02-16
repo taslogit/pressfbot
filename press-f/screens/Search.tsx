@@ -1,40 +1,69 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Search, Mail, Swords, Skull } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { searchAPI } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
+import { useApiAbort } from '../hooks/useApiAbort';
 import InfoSection from '../components/InfoSection';
 
 const SearchScreen = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const getSignal = useApiAbort();
   const [query, setQuery] = useState('');
   const [letters, setLetters] = useState<any[]>([]);
   const [duels, setDuels] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const isMountedRef = useRef(true);
+  const requestIdRef = useRef(0);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
       const trimmed = query.trim();
+      const currentRequestId = ++requestIdRef.current;
+      
       if (trimmed.length < 2) {
+        if (!isMountedRef.current) return;
         setLetters([]);
         setDuels([]);
         setLoading(false);
         return;
       }
+      
+      if (!isMountedRef.current) return;
       setLoading(true);
-      const result = await searchAPI.search(trimmed, 10);
-      if (result.ok && result.data) {
-        setLetters(result.data.letters || []);
-        setDuels(result.data.duels || []);
-      } else {
+      
+      try {
+        const result = await searchAPI.search(trimmed, 10, { signal: getSignal() });
+        if (!isMountedRef.current) return;
+        if (currentRequestId !== requestIdRef.current) return; // Игнорируем устаревшие ответы
+        
+        if (result.ok && result.data) {
+          setLetters(result.data.letters || []);
+          setDuels(result.data.duels || []);
+        } else {
+          setLetters([]);
+          setDuels([]);
+        }
+      } catch (err: any) {
+        if (!isMountedRef.current || err?.name === 'AbortError') return;
         setLetters([]);
         setDuels([]);
+      } finally {
+        if (isMountedRef.current && currentRequestId === requestIdRef.current) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
     }, 300);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, getSignal]);
 
   return (
     <div className="pt-4 pb-24 relative min-h-[80vh]">

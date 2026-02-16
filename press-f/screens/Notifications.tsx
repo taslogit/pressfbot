@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, X, Mail, Swords, Gift, Trophy, Users, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { notificationsAPI } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
+import { useApiAbort } from '../hooks/useApiAbort';
 import { playSound } from '../utils/sound';
 import InfoSection from '../components/InfoSection';
 import ListSkeleton from '../components/ListSkeleton';
@@ -19,52 +20,67 @@ interface NotificationEvent {
 
 const Notifications = () => {
   const { t } = useTranslation();
+  const getSignal = useApiAbort();
   const [notifications, setNotifications] = useState<NotificationEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
     loadNotifications();
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   const loadNotifications = async () => {
     try {
+      if (!isMountedRef.current) return;
       setLoading(true);
-      const result = await notificationsAPI.list();
+      const result = await notificationsAPI.list({ signal: getSignal() });
+      if (!isMountedRef.current) return;
       if (result.ok && result.data?.events) {
         const events = result.data.events;
         setNotifications(events);
         setUnreadCount(events.filter((n: NotificationEvent) => !n.is_read).length);
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (!isMountedRef.current || error?.name === 'AbortError') return;
       console.error('Failed to load notifications:', error);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   };
 
   const markAsRead = async (id: string) => {
+    if (!isMountedRef.current) return;
     try {
       const result = await notificationsAPI.markRead([id]);
+      if (!isMountedRef.current) return;
       if (result.ok) {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
         setUnreadCount(prev => Math.max(0, prev - 1));
         playSound('click');
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (!isMountedRef.current || error?.name === 'AbortError') return;
       console.error('Failed to mark notification as read:', error);
     }
   };
 
   const markAllAsRead = async () => {
+    if (!isMountedRef.current) return;
     try {
       const result = await notificationsAPI.markRead();
+      if (!isMountedRef.current) return;
       if (result.ok) {
         setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
         setUnreadCount(0);
         playSound('success');
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (!isMountedRef.current || error?.name === 'AbortError') return;
       console.error('Failed to mark all as read:', error);
     }
   };

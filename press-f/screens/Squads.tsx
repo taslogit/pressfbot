@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Users, ShieldCheck, Trophy, ScanEye, Plus, UserPlus, Zap, Skull, Crown, Activity, TrendingUp, TrendingDown, Minus, Share2, Copy, Trash2, Power, BellRing, Lock, Unlock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { tg } from '../utils/telegram';
 import { useTranslation } from '../contexts/LanguageContext';
+import { useApiAbort } from '../hooks/useApiAbort';
 import InfoSection from '../components/InfoSection';
 import { playSound } from '../utils/sound';
 import { Squad, SquadMember, LeaderboardEntry } from '../types';
@@ -15,6 +16,8 @@ type Tab = 'pact' | 'leaderboard';
 
 const Squads = () => {
     const { t } = useTranslation();
+    const getSignal = useApiAbort();
+    const isMountedRef = useRef(true);
     const [activeTab, setActiveTab] = useState<Tab>('pact');
     const [squad, setSquad] = useState<Squad | null>(null);
     const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -22,29 +25,42 @@ const Squads = () => {
     // Create Squad Form
     const [isCreating, setIsCreating] = useState(false);
     const [squadName, setSquadName] = useState('');
+    const [isCreatingLoading, setIsCreatingLoading] = useState(false);
 
     // Payload State
     const [payloadInput, setPayloadInput] = useState('');
     const [isPactLocked, setIsPactLocked] = useState(true);
+    const [isSavingPayload, setIsSavingPayload] = useState(false);
     
     // Invite
     const inviteLink = `https://t.me/LastMemeBot?start=squad_${squad?.id || 'new'}`;
 
     useEffect(() => {
+        isMountedRef.current = true;
         loadSquad();
         loadLeaderboard();
         
         // Check for pending squad join from invite link
-        const pendingSquadId = localStorage.getItem('lastmeme_pending_squad_join');
-        if (pendingSquadId) {
-            localStorage.removeItem('lastmeme_pending_squad_join');
-            handleJoinSquad(pendingSquadId);
+        let pendingSquadId: string | null = null;
+        try {
+            pendingSquadId = localStorage.getItem('lastmeme_pending_squad_join');
+            if (pendingSquadId) {
+                localStorage.removeItem('lastmeme_pending_squad_join');
+                handleJoinSquad(pendingSquadId);
+            }
+        } catch (err) {
+            console.error('Failed to read localStorage:', err);
         }
+        
+        return () => {
+            isMountedRef.current = false;
+        };
     }, []);
 
     const loadSquad = async () => {
         try {
-            const result = await squadsAPI.get();
+            const result = await squadsAPI.get({ signal: getSignal() });
+            if (!isMountedRef.current) return;
             if (result.ok && result.data?.squad) {
                 const loadedSquad = result.data.squad;
                 setSquad(loadedSquad);
@@ -54,7 +70,8 @@ const Squads = () => {
             } else {
                 setSquad(null);
             }
-        } catch (error) {
+        } catch (error: any) {
+            if (!isMountedRef.current || error?.name === 'AbortError') return;
             console.error('Failed to load squad:', error);
             setSquad(null);
         }
@@ -62,21 +79,25 @@ const Squads = () => {
 
     const loadLeaderboard = async () => {
         try {
-            const result = await squadsAPI.getLeaderboard(50, 0);
+            const result = await squadsAPI.getLeaderboard(50, 0, { signal: getSignal() });
+            if (!isMountedRef.current) return;
             if (result.ok && result.data?.leaderboard) {
                 setLeaderboard(result.data.leaderboard);
             } else {
                 setLeaderboard([]);
             }
-        } catch (error) {
+        } catch (error: any) {
+            if (!isMountedRef.current || error?.name === 'AbortError') return;
             console.error('Failed to load leaderboard:', error);
             setLeaderboard([]);
         }
     };
 
     const handleJoinSquad = async (squadId: string) => {
+        if (!isMountedRef.current) return;
         try {
-            const result = await squadsAPI.join(squadId);
+            const result = await squadsAPI.join(squadId, { signal: getSignal() });
+            if (!isMountedRef.current) return;
             if (result.ok && result.data?.squad) {
                 setSquad(result.data.squad);
                 playSound('success');
@@ -84,16 +105,19 @@ const Squads = () => {
             } else {
                 tg.showPopup({ message: result.error || 'Failed to join squad' });
             }
-        } catch (error) {
+        } catch (error: any) {
+            if (!isMountedRef.current || error?.name === 'AbortError') return;
             console.error('Failed to join squad:', error);
             tg.showPopup({ message: 'Failed to join squad' });
         }
     };
 
     const handleCreateSquad = async () => {
-        if (!squadName) return;
+        if (!squadName || isCreatingLoading) return;
+        setIsCreatingLoading(true);
         try {
-            const result = await squadsAPI.create(squadName);
+            const result = await squadsAPI.create(squadName, { signal: getSignal() });
+            if (!isMountedRef.current) return;
             if (result.ok && result.data?.squad) {
                 playSound('success');
                 setSquad(result.data.squad);
@@ -102,16 +126,21 @@ const Squads = () => {
             } else {
                 tg.showPopup({ message: result.error || 'Failed to create squad' });
             }
-        } catch (error) {
+        } catch (error: any) {
+            if (!isMountedRef.current || error?.name === 'AbortError') return;
             console.error('Failed to create squad:', error);
             tg.showPopup({ message: 'Failed to create squad' });
+        } finally {
+            if (isMountedRef.current) setIsCreatingLoading(false);
         }
     };
 
     const handlePayloadSave = async () => {
-        if (!squad) return;
+        if (!squad || isSavingPayload) return;
+        setIsSavingPayload(true);
         try {
-            const result = await squadsAPI.update(squad.id, { sharedPayload: payloadInput });
+            const result = await squadsAPI.update(squad.id, { sharedPayload: payloadInput }, { signal: getSignal() });
+            if (!isMountedRef.current) return;
             if (result.ok && result.data?.squad) {
                 setSquad(result.data.squad);
                 setIsPactLocked(true);
@@ -119,9 +148,12 @@ const Squads = () => {
             } else {
                 tg.showPopup({ message: result.error || 'Failed to save payload' });
             }
-        } catch (error) {
+        } catch (error: any) {
+            if (!isMountedRef.current || error?.name === 'AbortError') return;
             console.error('Failed to save payload:', error);
             tg.showPopup({ message: 'Failed to save payload' });
+        } finally {
+            if (isMountedRef.current) setIsSavingPayload(false);
         }
     };
 
@@ -144,7 +176,8 @@ const Squads = () => {
         if (!userId) return;
 
         try {
-            const result = await squadsAPI.removeMember(squad.id, userId);
+            const result = await squadsAPI.removeMember(squad.id, userId, { signal: getSignal() });
+            if (!isMountedRef.current) return;
             if (result.ok) {
                 setSquad(null);
                 setSquadName('');
@@ -153,7 +186,8 @@ const Squads = () => {
             } else {
                 tg.showPopup({ message: result.error || 'Failed to leave squad' });
             }
-        } catch (error) {
+        } catch (error: any) {
+            if (!isMountedRef.current || error?.name === 'AbortError') return;
             console.error('Failed to leave squad:', error);
             tg.showPopup({ message: 'Failed to leave squad' });
         }
@@ -232,8 +266,8 @@ const Squads = () => {
                                             autoFocus
                                         />
                                         <div className="flex gap-2">
-                                            <button onClick={() => setIsCreating(false)} className="flex-1 py-3 bg-white/5 text-muted font-bold text-xs rounded-xl hover:bg-white/10">{t('add_enemy')}</button>
-                                            <button onClick={handleCreateSquad} className="flex-1 py-3 bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg">{t('create_squad_btn')}</button>
+                                            <button onClick={() => setIsCreating(false)} disabled={isCreatingLoading} className="flex-1 py-3 bg-white/5 text-muted font-bold text-xs rounded-xl hover:bg-white/10 disabled:opacity-50">{t('add_enemy')}</button>
+                                            <button onClick={handleCreateSquad} disabled={isCreatingLoading} className="flex-1 py-3 bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg disabled:opacity-50">{isCreatingLoading ? '...' : t('create_squad_btn')}</button>
                                         </div>
                                     </div>
                                 )}
@@ -313,11 +347,12 @@ const Squads = () => {
                                                     value={payloadInput}
                                                     onChange={(e) => setPayloadInput(e.target.value)}
                                                     onBlur={handlePayloadSave}
+                                                    disabled={isSavingPayload}
                                                     placeholder={t('pact_payload_ph')}
-                                                    className="w-full bg-black/40 border border-red-900/50 rounded-lg p-3 text-xs text-red-200 placeholder:text-red-500/30 outline-none focus:border-red-500 transition-colors font-mono min-h-[80px]"
+                                                    className="w-full bg-black/40 border border-red-900/50 rounded-lg p-3 text-xs text-red-200 placeholder:text-red-500/30 outline-none focus:border-red-500 transition-colors font-mono min-h-[80px] disabled:opacity-50"
                                                   />
                                                   <div className="absolute bottom-2 right-2 text-xs text-red-500 font-mono opacity-50">
-                                                      AUTO-SAVE ENABLED
+                                                      {isSavingPayload ? 'SAVING...' : 'AUTO-SAVE ENABLED'}
                                                   </div>
                                              </div>
                                          )}

@@ -52,7 +52,9 @@ const TelegramHandler = () => {
 
     if (startParam) {
       if (startParam.startsWith('witness_')) {
-        localStorage.setItem('lastmeme_pending_witness', startParam.replace('witness_', ''));
+        try {
+          localStorage.setItem('lastmeme_pending_witness', startParam.replace('witness_', ''));
+        } catch (_) {}
         navigate('/witness-approval', { replace: true });
         return;
       }
@@ -62,7 +64,9 @@ const TelegramHandler = () => {
       }
       if (startParam.startsWith('squad_')) {
         const squadId = startParam.replace('squad_', '');
-        localStorage.setItem('lastmeme_pending_squad_join', squadId);
+        try {
+          localStorage.setItem('lastmeme_pending_squad_join', squadId);
+        } catch (_) {}
         navigate('/squads', { replace: true });
         return;
       }

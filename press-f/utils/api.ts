@@ -443,75 +443,84 @@ export const activityAPI = {
 
 // Squads API
 export const squadsAPI = {
-  get: async () => {
-    return apiRequest<{ squad: any }>('/api/squads');
+  get: async (options?: RequestInit) => {
+    return apiRequest<{ squad: any }>('/api/squads', options);
   },
-  create: async (name: string) => {
+  create: async (name: string, options?: RequestInit) => {
     return apiRequest<{ squad: any }>('/api/squads', {
+      ...options,
       method: 'POST',
       body: JSON.stringify({ name }),
     });
   },
-  update: async (id: string, updates: { name?: string; sharedPayload?: string; pactHealth?: number }) => {
+  update: async (id: string, updates: { name?: string; sharedPayload?: string; pactHealth?: number }, options?: RequestInit) => {
     return apiRequest<{ squad: any }>(`/api/squads/${id}`, {
+      ...options,
       method: 'PUT',
       body: JSON.stringify(updates),
     });
   },
-  addMember: async (id: string, memberId: string, memberName?: string, avatarId?: string) => {
+  addMember: async (id: string, memberId: string, memberName?: string, avatarId?: string, options?: RequestInit) => {
     return apiRequest<{ member: any }>(`/api/squads/${id}/members`, {
+      ...options,
       method: 'POST',
       body: JSON.stringify({ memberId, memberName, avatarId }),
     });
   },
-  removeMember: async (id: string, memberId: string) => {
+  removeMember: async (id: string, memberId: string, options?: RequestInit) => {
     return apiRequest(`/api/squads/${id}/members/${memberId}`, {
+      ...options,
       method: 'DELETE',
     });
   },
-  join: async (id: string) => {
+  join: async (id: string, options?: RequestInit) => {
     return apiRequest<{ squad: any }>(`/api/squads/${id}/join`, {
+      ...options,
       method: 'POST',
     });
   },
-  getLeaderboard: async (limit = 50, offset = 0) => {
-    return apiRequest<{ leaderboard: any[] }>(`/api/squads/leaderboard?limit=${limit}&offset=${offset}`);
+  getLeaderboard: async (limit = 50, offset = 0, options?: RequestInit) => {
+    return apiRequest<{ leaderboard: any[] }>(`/api/squads/leaderboard?limit=${limit}&offset=${offset}`, options);
   },
 };
 
 // Witnesses API
 export const witnessesAPI = {
-  getAll: async (letterId?: string) => {
+  getAll: async (letterId?: string, options?: RequestInit) => {
     const query = letterId ? `?letterId=${letterId}` : '';
-    return apiRequest<{ witnesses: any[] }>(`/api/witnesses${query}`);
+    return apiRequest<{ witnesses: any[] }>(`/api/witnesses${query}`, options);
   },
-  getOne: async (id: string) => {
-    return apiRequest<{ witness: any }>(`/api/witnesses/${id}`);
+  getOne: async (id: string, options?: RequestInit) => {
+    return apiRequest<{ witness: any }>(`/api/witnesses/${id}`, options);
   },
-  create: async (letterId: string | null, name: string) => {
+  create: async (letterId: string | null, name: string, options?: RequestInit) => {
     return apiRequest<{ witness: any }>('/api/witnesses', {
+      ...options,
       method: 'POST',
       body: JSON.stringify({ letterId, name }),
     });
   },
-  update: async (id: string, updates: { name?: string; status?: string }) => {
+  update: async (id: string, updates: { name?: string; status?: string }, options?: RequestInit) => {
     return apiRequest<{ witness: any }>(`/api/witnesses/${id}`, {
+      ...options,
       method: 'PUT',
       body: JSON.stringify(updates),
     });
   },
-  confirm: async (id: string) => {
+  confirm: async (id: string, options?: RequestInit) => {
     return apiRequest(`/api/witnesses/${id}/confirm`, {
+      ...options,
       method: 'POST',
     });
   },
-  delete: async (id: string) => {
+  delete: async (id: string, options?: RequestInit) => {
     return apiRequest(`/api/witnesses/${id}`, {
+      ...options,
       method: 'DELETE',
     });
   },
-  getByLetter: async (letterId: string) => {
-    return apiRequest<{ witnesses: any[] }>(`/api/witnesses/letter/${letterId}`);
+  getByLetter: async (letterId: string, options?: RequestInit) => {
+    return apiRequest<{ witnesses: any[] }>(`/api/witnesses/letter/${letterId}`, options);
   },
 };
 
