@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, TrendingUp } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { useTranslation } from '../contexts/LanguageContext';
 
 interface XPNotificationProps {
@@ -14,6 +15,17 @@ interface XPNotificationProps {
 const XPNotification: React.FC<XPNotificationProps> = ({ xp, level, levelUp = false, bonusLabel, onComplete }) => {
   const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(true);
+  const confettiFired = useRef(false);
+
+  useEffect(() => {
+    if (levelUp && !confettiFired.current) {
+      confettiFired.current = true;
+      const fire = (opts: confetti.Options) => confetti({ origin: { y: 0.6 }, ...opts });
+      fire({ particleCount: 60, spread: 70 });
+      setTimeout(() => fire({ particleCount: 40, angle: 60, spread: 55 }), 150);
+      setTimeout(() => fire({ particleCount: 40, angle: 120, spread: 55 }), 300);
+    }
+  }, [levelUp]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

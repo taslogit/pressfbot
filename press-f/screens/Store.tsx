@@ -11,6 +11,7 @@ import ListSkeleton from '../components/ListSkeleton';
 import EmptyState from '../components/EmptyState';
 import { playSound } from '../utils/sound';
 import { tg } from '../utils/telegram';
+import { useBreadcrumb } from '../contexts/BreadcrumbContext';
 
 type TabId = 'stars' | 'xp' | 'ton' | 'my';
 
@@ -38,6 +39,7 @@ const Store = () => {
   const address = useTonAddress();
   const walletConnected = !!address;
   const getSignal = useApiAbort();
+  const { setSegments } = useBreadcrumb() ?? {};
 
   const [tab, setTab] = useState<TabId>('xp');
   const [starsCatalog, setStarsCatalog] = useState<any[]>([]);
@@ -280,6 +282,11 @@ const Store = () => {
   useEffect(() => {
     if (tab === 'stars') loadStarsCatalog();
   }, [tab]);
+
+  useEffect(() => {
+    setSegments?.([{ path: '/store', labelKey: 'nav_store' }, { labelKey: `store_tab_${tab}` as any }]);
+    return () => setSegments?.(null);
+  }, [tab, setSegments]);
 
   const userXP = profile?.spendableXp ?? profile?.experience ?? 0;
   const starsBalance = premiumStatus?.starsBalance ?? 0;

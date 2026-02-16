@@ -380,8 +380,22 @@ const Landing = () => {
         </div>
       </motion.header>
 
+      {/* Stagger container for cards */}
+      <motion.div
+        className="space-y-4"
+        initial="hidden"
+        animate="visible"
+        variants={{
+          visible: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+          hidden: {}
+        }}
+      >
       {/* Quick value + actions */}
-      <div className="card-terminal bg-card/60 border border-border rounded-xl p-4 text-xs text-muted overflow-hidden">
+      <motion.div
+        className="card-terminal bg-card/60 border border-border rounded-xl p-4 text-xs text-muted overflow-hidden"
+        variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+        transition={{ duration: 0.35 }}
+      >
         <div className="label-terminal text-xs uppercase tracking-widest mb-2 text-muted truncate">{t('home_value_title')}</div>
         <div className="space-y-1 break-words min-w-0 overflow-hidden">
           <div>• {t('home_value_line1')}</div>
@@ -410,10 +424,14 @@ const Landing = () => {
             {t('share_pulse')}
           </button>
         )}
-      </div>
+      </motion.div>
 
       {/* Streak share */}
-      <div className="card-terminal bg-card/60 border border-border rounded-xl p-4 text-xs text-muted overflow-hidden">
+      <motion.div
+        className="card-terminal bg-card/60 border border-border rounded-xl p-4 text-xs text-muted overflow-hidden"
+        variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+        transition={{ duration: 0.35 }}
+      >
         <div className="flex items-center justify-between gap-2 mb-2 min-w-0">
           <div className="label-terminal text-xs uppercase tracking-widest text-muted truncate">{t('home_streak_title')}</div>
           <span className={`text-xs uppercase tracking-widest shrink-0 ${isOverdue ? 'text-red-400' : 'text-accent-lime'}`}>
@@ -429,10 +447,14 @@ const Landing = () => {
         >
           {t('share_pulse')}
         </button>
-      </div>
+      </motion.div>
 
       {/* MAIN HUD: SKULL & TIMER */}
-      <div className="relative z-10 flex flex-col items-center">
+      <motion.div
+        className="relative z-10 flex flex-col items-center"
+        variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+        transition={{ duration: 0.35 }}
+      >
         <div className="flex justify-between items-center w-full mb-2">
            <h2 className="font-heading text-sm font-bold text-muted flex items-center gap-2">
              <Activity size={16} className="text-accent-lime" />
@@ -548,7 +570,8 @@ const Landing = () => {
                  <p className="text-xs font-mono font-bold text-red-400">{triggerDate.split('.')[0] + '.' + triggerDate.split('.')[1]}</p>
              </div>
         </div>
-      </div>
+      </motion.div>
+      </motion.div>
       
       {/* NOTIFICATIONS CONTAINER */}
       <div className="space-y-2 relative z-20">

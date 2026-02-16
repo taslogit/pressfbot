@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useBlocker } from 'react-router-dom';
 import { Mic, Image as ImageIcon, Video, X, Trash2, StopCircle, FileAudio, Play, AtSign, User, Calendar, AlertCircle, Save, Shield, Flame, Key, Heart, Skull, Terminal, EyeOff, Lock, Network, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { storage } from '../utils/storage';
@@ -107,6 +107,51 @@ const CreateLetter = () => {
   const handleDiscardDraft = () => {
     storage.clearDraft();
     setHasDraft(false);
+  };
+
+  const hasUnsavedChanges = Boolean(
+    (title || content || recipients.trim() || unlockDate || attachments.length > 0) &&
+    !isSending &&
+    encryptionStep === 0
+  );
+
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) e.preventDefault();
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  const blocker = useBlocker(hasUnsavedChanges);
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return;
+    tg.showPopup?.({
+      message: t('confirm_leave_draft'),
+      buttons: [
+        { id: 'leave', type: 'destructive', text: t('confirm_leave_yes') },
+        { id: 'stay', type: 'default', text: t('confirm_leave_stay') }
+      ]
+    }, (btnId) => {
+      if (btnId === 'leave') blocker.proceed();
+      else blocker.reset();
+    });
+  }, [blocker.state, blocker.proceed, blocker.reset, t]);
+
+  const handleBack = () => {
+    if (hasUnsavedChanges) {
+      tg.showPopup?.({
+        message: t('confirm_leave_draft'),
+        buttons: [
+          { id: 'leave', type: 'destructive', text: t('confirm_leave_yes') },
+          { id: 'stay', type: 'default', text: t('confirm_leave_stay') }
+        ]
+      }, (btnId) => {
+        if (btnId === 'leave') navigate(-1);
+      });
+    } else {
+      navigate(-1);
+    }
   };
 
   const validateLetter = (): { valid: boolean; error?: string } => {
@@ -479,7 +524,7 @@ const CreateLetter = () => {
         </h1>
         <div className="flex items-center gap-2">
           <InfoSection title={t('new_letter')} description={t('help_create_letter')} id="create_letter_help" autoOpen />
-          <button onClick={() => navigate(-1)} className="p-2 bg-input rounded-full text-primary hover:bg-input/80 transition-colors">
+          <button onClick={handleBack} className="p-2 bg-input rounded-full text-primary hover:bg-input/80 transition-colors" aria-label={t('confirm_leave_stay')}>
             <X size={20} />
           </button>
         </div>

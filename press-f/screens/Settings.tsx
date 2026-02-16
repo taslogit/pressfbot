@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings as SettingsIcon, Bell, Globe2, Wallet, Sparkles, BookOpen, ChevronRight } from 'lucide-react';
+import { Settings as SettingsIcon, Bell, Globe2, Wallet, Sparkles, BookOpen, ChevronRight, Newspaper } from 'lucide-react';
 import { TonConnectButton, useTonAddress, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { storage } from '../utils/storage';
 import { tonAPI, starsAPI, storeAPI } from '../utils/api';
@@ -28,6 +28,7 @@ const Settings = () => {
   const [escrowAmount, setEscrowAmount] = useState(0);
   const [storeOpen, setStoreOpen] = useState(false);
   const [wikiOpen, setWikiOpen] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
   const [premiumStatus, setPremiumStatus] = useState<{ isPremium: boolean; starsBalance?: number; expiresAt?: string | null } | null>(null);
   const [storeCatalog, setStoreCatalog] = useState<any[]>([]);
   const [myStoreItems, setMyStoreItems] = useState<any[]>([]);
@@ -495,6 +496,33 @@ const Settings = () => {
                       {t('ton_create_escrow')}
                     </button>
                   </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <button
+              onClick={() => setChangelogOpen((v) => !v)}
+              className="w-full flex items-center justify-between mt-4"
+            >
+              <div className="flex items-center gap-2 text-xs text-muted uppercase tracking-widest">
+                <Newspaper size={14} className="text-accent-cyan" />
+                {t('settings_changelog_title')}
+              </div>
+              <span className="text-xs text-muted uppercase">{changelogOpen ? t('ton_ops_hide') : t('ton_ops_show')}</span>
+            </button>
+            <AnimatePresence>
+              {changelogOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden mt-3 space-y-3"
+                >
+                  <div className="text-xs text-muted">{t('settings_changelog_intro')}</div>
+                  <ul className="space-y-2 text-xs">
+                    <li className="border-l-2 border-accent-cyan/50 pl-3 py-1"><strong>v1.1</strong> — {t('changelog_v1_1')}</li>
+                    <li className="border-l-2 border-accent-cyan/50 pl-3 py-1"><strong>v1.0</strong> — {t('changelog_v1_0')}</li>
+                  </ul>
                 </motion.div>
               )}
             </AnimatePresence>

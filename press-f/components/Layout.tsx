@@ -6,6 +6,8 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { playSound } from '../utils/sound';
 import OfflineIndicator from './OfflineIndicator';
+import Breadcrumbs from './Breadcrumbs';
+import { BreadcrumbProvider } from '../contexts/BreadcrumbContext';
 
 interface Props {
   children: React.ReactNode;
@@ -36,12 +38,16 @@ const Layout: React.FC<Props> = ({ children }) => {
     { path: '/profile', icon: User, label: t('nav_profile'), color: 'text-purple-500', glow: 'drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]' },
   ];
 
+  const showBreadcrumb = location.pathname !== '/';
+
   return (
     <div className={`min-h-screen pb-content-bottom text-primary font-sans selection:bg-accent-pink selection:text-white transition-colors duration-300 ${theme === 'light' ? 'light-theme-bg' : 'bg-bg'}`}>
       <OfflineIndicator />
-      <main className="content-scan p-4 max-w-md mx-auto relative z-10" id="main-content">
-        {children}
-      </main>
+      <BreadcrumbProvider>
+        <main className="content-scan p-4 max-w-md mx-auto relative z-10" id="main-content">
+          {showBreadcrumb && <Breadcrumbs className="mb-2 min-h-[1.25rem]" />}
+          {children}
+        </main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-xl border-t border-border z-40 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.3)] font-body" aria-label={t('nav_aria_label')}>
         <div className="flex justify-around items-center h-20 max-w-md mx-auto">
@@ -52,7 +58,7 @@ const Layout: React.FC<Props> = ({ children }) => {
               <button
                 key={item.path}
                 onClick={() => handleNav(item.path)}
-                className={`flex flex-col items-center justify-center w-full h-full transition-all duration-300 relative group`}
+                className={`flex flex-col items-center justify-center w-full h-full min-h-[48px] min-w-[48px] py-2 transition-all duration-300 relative group`}
                 aria-label={item.label}
                 aria-current={isActive ? 'page' : undefined}
               >
@@ -79,6 +85,7 @@ const Layout: React.FC<Props> = ({ children }) => {
           })}
         </div>
       </nav>
+      </BreadcrumbProvider>
     </div>
   );
 };

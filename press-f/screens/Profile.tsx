@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit2, Save, Fingerprint, Target, Sparkles, Shield, Zap, Hourglass, Brain, Share2, Activity, Gift, Settings, Trophy, Flame, Music, Pause } from 'lucide-react';
+import { Edit2, Save, Fingerprint, Target, Sparkles, Shield, Zap, Hourglass, Brain, Share2, Activity, Gift, Settings, Trophy, Flame, Music, Pause, Award } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { tg } from '../utils/telegram';
 import { storage } from '../utils/storage';
@@ -987,6 +987,32 @@ const Profile = () => {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
+               {/* Badges / Achievements */}
+               <div>
+                 <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1 flex items-center gap-2">
+                   <Award size={14} className="text-accent-gold" />
+                   {t('badges_title') || 'Badges'}
+                 </h3>
+                 <div className="flex flex-wrap gap-2">
+                   {[
+                     { key: 'first_letter', done: (profile.stats?.leaksDropped ?? 0) >= 1, labelKey: 'badge_first_letter' },
+                     { key: '10_letters', done: (profile.stats?.leaksDropped ?? 0) >= 10, labelKey: 'badge_10_letters' },
+                     { key: 'first_duel', done: (profile.stats?.beefsWon ?? 0) >= 1, labelKey: 'badge_first_duel' },
+                     { key: 'week_survivor', done: (profile.stats?.daysAlive ?? 0) >= 7, labelKey: 'badge_7_days' },
+                   ].map(({ key, done, labelKey }) => (
+                     <div
+                       key={key}
+                       className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 ${
+                         done ? 'bg-accent-gold/10 border-accent-gold/50 text-accent-gold' : 'bg-card/30 border-border text-muted opacity-60'
+                       }`}
+                       title={t(labelKey as any)}
+                     >
+                       {done ? '✓' : '○'} {t(labelKey as any)}
+                     </div>
+                   ))}
+                 </div>
+               </div>
+
                {/* Received Gifts */}
                <div>
                  <div className="flex justify-between items-center mb-3">
