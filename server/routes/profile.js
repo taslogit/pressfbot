@@ -36,7 +36,8 @@ const settingsUpdateSchema = z.object({
   notificationsEnabled: z.boolean().optional(),
   telegramNotificationsEnabled: z.boolean().optional(),
   checkinReminderIntervalMinutes: z.number().int().min(5).max(1440).optional(),
-  avatarFrame: z.enum(VALID_AVATAR_FRAMES).optional()
+  avatarFrame: z.enum(VALID_AVATAR_FRAMES).optional(),
+  duelTauntMessage: z.string().max(500).nullable().optional()
 });
 
 const createProfileRoutes = (pool) => {
@@ -80,6 +81,8 @@ const createProfileRoutes = (pool) => {
           us.last_streak_date,
           us.streak_free_skip,
           us.avatar_frame,
+          us.free_gift_balance,
+          us.duel_taunt_message,
           us.created_at as settings_created_at,
           us.updated_at as settings_updated_at
          FROM profiles p
@@ -112,6 +115,8 @@ const createProfileRoutes = (pool) => {
         delete profileData.last_streak_date;
         delete profileData.streak_free_skip;
         delete profileData.avatar_frame;
+        delete profileData.free_gift_balance;
+        delete profileData.duel_taunt_message;
         delete profileData.settings_created_at;
         delete profileData.settings_updated_at;
         
@@ -135,6 +140,9 @@ const createProfileRoutes = (pool) => {
             longest_streak: row.longest_streak,
             last_streak_date: row.last_streak_date,
             streak_free_skip: row.streak_free_skip,
+            avatar_frame: row.avatar_frame,
+            free_gift_balance: row.free_gift_balance,
+            duel_taunt_message: row.duel_taunt_message,
             created_at: row.settings_created_at,
             updated_at: row.settings_updated_at
           };
@@ -241,6 +249,12 @@ const createProfileRoutes = (pool) => {
         const updateValues = [];
         let paramIndex = 1;
 
+        // For bio length we need current achievements (bio_extended = 500 else 150)
+        const profileRow = await pool.query('SELECT achievements FROM profiles WHERE user_id = $1', [userId]);
+        const currentAchievements = profileRow.rows[0]?.achievements || {};
+        const hasBioExtended = !!(currentAchievements.bio_extended || (Array.isArray(currentAchievements) && currentAchievements.includes('bio_extended')));
+        const maxBioLen = hasBioExtended ? 500 : 150;
+
         // Only allow whitelisted fields to be updated
         if (avatar !== undefined && allowedFields.avatar) {
           // Security: Validate that avatar exists on server
@@ -281,12 +295,19 @@ const createProfileRoutes = (pool) => {
           updateValues.push(avatar);
         }
         if (bio !== undefined && allowedFields.bio) {
+          if (typeof bio === 'string' && bio.length > maxBioLen) {
+            return sendError(res, 400, 'BIO_TOO_LONG', `Bio must be at most ${maxBioLen} characters`);
+          }
           updateFields.push(`bio = $${paramIndex++}`);
           updateValues.push(bio);
         }
         if (title !== undefined && allowedFields.title) {
+          const hasTitleCustom = !!(currentAchievements.title_custom || (Array.isArray(currentAchievements) && currentAchievements.includes('title_custom')));
+          if (!hasTitleCustom) {
+            return sendError(res, 403, 'TITLE_CUSTOM_NOT_OWNED', 'You must purchase Custom Title in the Store first');
+          }
           updateFields.push(`title = $${paramIndex++}`);
-          updateValues.push(title);
+          updateValues.push(typeof title === 'string' ? title.slice(0, 100) : '');
         }
         if (tonAddress !== undefined && allowedFields.ton_address) {
           updateFields.push(`ton_address = $${paramIndex++}`);
@@ -618,7 +639,8 @@ const createProfileRoutes = (pool) => {
         notificationsEnabled,
         telegramNotificationsEnabled,
         checkinReminderIntervalMinutes,
-        avatarFrame
+        avatarFrame,
+        duelTauntMessage
       } = req.body;
 
       // Check if settings exist
@@ -658,7 +680,8 @@ const createProfileRoutes = (pool) => {
           notifications_enabled: 'notifications_enabled',
           telegram_notifications_enabled: 'telegram_notifications_enabled',
           checkin_reminder_interval_minutes: 'checkin_reminder_interval_minutes',
-          avatar_frame: 'avatar_frame'
+          avatar_frame: 'avatar_frame',
+          duel_taunt_message: 'duel_taunt_message'
         };
 
         const updateFields = [];
@@ -710,6 +733,18 @@ const createProfileRoutes = (pool) => {
           }
           updateFields.push(`avatar_frame = $${paramIndex++}`);
           updateValues.push(avatarFrame);
+        }
+        if (duelTauntMessage !== undefined && allowedFields.duel_taunt_message) {
+          const hasDuelTaunt = await pool.query(
+            'SELECT 1 FROM store_purchases WHERE user_id = $1 AND item_id = $2',
+            [userId, 'duel_taunt']
+          );
+          if (hasDuelTaunt.rowCount === 0) {
+            return sendError(res, 403, 'DUEL_TAUNT_NOT_OWNED', 'You must purchase Duel Taunt in the Store first');
+          }
+          const val = typeof duelTauntMessage === 'string' ? duelTauntMessage.slice(0, 500) : '';
+          updateFields.push(`duel_taunt_message = $${paramIndex++}`);
+          updateValues.push(val || null);
         }
 
         if (updateFields.length > 0) {

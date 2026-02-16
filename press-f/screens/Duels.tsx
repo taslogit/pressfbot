@@ -241,8 +241,16 @@ const Duels = () => {
 
     setTimeout(async () => {
       if (editingDuelId) {
-        await storage.updateDuelAsync(editingDuelId, newDuel);
+        const result = await storage.updateDuelAsync(editingDuelId, newDuel);
         analytics.track('duel_updated', { duelId: editingDuelId });
+        if (result?.data?.winnerTauntMessage) {
+          tg.showPopup({
+            message: result.data.winnerTauntMessage,
+            title: t('duel_winner_taunt_title') || 'Winner says'
+          });
+        } else {
+          tg.showPopup({ message: t('duel_updated') || t('duel_created') });
+        }
       } else {
         const result = await storage.saveDuelAsync(newDuel);
         // Track analytics
@@ -264,6 +272,7 @@ const Duels = () => {
           const levelUp = newLevel > oldLevel;
           setXpNotification({ xp: result.xp, level: levelUp ? newLevel : undefined, levelUp });
         }
+        tg.showPopup({ message: t('duel_created') });
       }
       
       storage.getDuelsAsync(buildQueryParams()).then((nextDuels) => setDuels(nextDuels));
@@ -277,7 +286,6 @@ const Duels = () => {
       setIsPublic(false);
       setIsTeam(false);
       setShowWitnessInvite(false);
-      tg.showPopup({ message: t('duel_created') });
     }, 1500);
   };
 

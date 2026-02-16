@@ -236,7 +236,7 @@ export const duelsAPI = {
     });
   },
   update: async (id: string, duel: Partial<any>) => {
-    return apiRequest<{ id: string }>(`/api/duels/${id}`, {
+    return apiRequest<{ id: string; winnerTauntMessage?: string }>(`/api/duels/${id}`, {
       method: 'PUT',
       body: JSON.stringify(duel),
     });

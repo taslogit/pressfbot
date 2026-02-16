@@ -9,6 +9,8 @@ const fs = require('fs');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { activateBoost } = require('../utils/boosts');
+const { addExtraDailyQuest } = require('./dailyQuests');
+const { cache } = require('../utils/cache');
 
 const AVATARS_DIR = path.join(__dirname, '..', 'static', 'avatars');
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
@@ -407,10 +409,23 @@ const createStoreRoutes = (pool) => {
                ON CONFLICT (user_id) DO UPDATE SET streak_free_skip = user_settings.streak_free_skip + 1`,
               [userId]
             );
+          } else if (itemId === 'extra_daily_quest') {
+            await addExtraDailyQuest(client, userId);
+          } else if (itemId === 'free_gift_pack') {
+            await client.query(
+              `INSERT INTO user_settings (user_id, free_gift_balance) VALUES ($1, 3)
+               ON CONFLICT (user_id) DO UPDATE SET free_gift_balance = user_settings.free_gift_balance + 3`,
+              [userId]
+            );
           }
         }
 
         await client.query('COMMIT');
+
+        if (itemId === 'extra_daily_quest') {
+          const today = new Date().toISOString().split('T')[0];
+          cache.del(`daily-quests:${userId}:${today}`).catch(() => {});
+        }
 
         logger.info('Store purchase', { userId, itemId, costXp: actualCostXp, costRep: actualCostRep, firstPurchase: isFirstPurchase });
 
@@ -513,6 +528,14 @@ const createStoreRoutes = (pool) => {
                ON CONFLICT (user_id) DO UPDATE SET streak_free_skip = user_settings.streak_free_skip + 1`,
               [userId]
             );
+          } else if (itemId === 'extra_daily_quest') {
+            await addExtraDailyQuest(client, userId);
+          } else if (itemId === 'free_gift_pack') {
+            await client.query(
+              `INSERT INTO user_settings (user_id, free_gift_balance) VALUES ($1, 3)
+               ON CONFLICT (user_id) DO UPDATE SET free_gift_balance = user_settings.free_gift_balance + 3`,
+              [userId]
+            );
           }
         }
         await client.query('COMMIT');
@@ -521,6 +544,11 @@ const createStoreRoutes = (pool) => {
         throw txError;
       } finally {
         client.release();
+      }
+
+      if (itemId === 'extra_daily_quest') {
+        const today = new Date().toISOString().split('T')[0];
+        cache.del(`daily-quests:${userId}:${today}`).catch(() => {});
       }
 
       logger.info('Mystery box purchase', { userId, itemId });

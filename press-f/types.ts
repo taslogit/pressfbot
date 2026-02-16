@@ -62,6 +62,8 @@ export interface UserSettings {
   notificationsEnabled?: boolean;
   telegramNotificationsEnabled?: boolean;
   checkinReminderIntervalMinutes?: number;
+  freeGiftBalance?: number;
+  duelTauntMessage?: string | null;
 }
 
 export interface Witness {

@@ -524,7 +524,26 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck) => {
         updateValues
       );
 
-      return res.json({ ok: true, id: duelId });
+      let winnerTauntMessage = null;
+      if (loser !== undefined && loser != null) {
+        const duelRow = await pool.query(
+          'SELECT challenger_id, opponent_id, loser_id FROM duels WHERE id = $1',
+          [duelId]
+        );
+        if (duelRow.rows[0]) {
+          const { challenger_id, opponent_id, loser_id } = duelRow.rows[0];
+          const winnerId = loser_id === challenger_id ? opponent_id : challenger_id;
+          if (winnerId) {
+            const tauntRes = await pool.query(
+              'SELECT duel_taunt_message FROM user_settings WHERE user_id = $1',
+              [winnerId]
+            );
+            winnerTauntMessage = tauntRes.rows[0]?.duel_taunt_message || null;
+          }
+        }
+      }
+
+      return res.json({ ok: true, id: duelId, winnerTauntMessage: winnerTauntMessage || undefined });
     } catch (error) {
       logger.error('Update duel error:', error);
       return sendError(res, 500, 'DUEL_UPDATE_FAILED', 'Failed to update duel');

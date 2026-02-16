@@ -161,21 +161,50 @@ const createGiftsRoutes = (pool, giftLimitCheck) => {
       // Start transaction
       await client.query('BEGIN');
 
-      // Check if user has enough reputation (with lock for race condition prevention)
-      const profileResult = await client.query(
-        'SELECT reputation FROM profiles WHERE user_id = $1 FOR UPDATE',
+      // Prefer free gift balance (from store free_gift_pack) over reputation
+      const settingsResult = await client.query(
+        'SELECT free_gift_balance FROM user_settings WHERE user_id = $1 FOR UPDATE',
         [userId]
       );
+      const freeGiftBalance = (settingsResult.rows[0]?.free_gift_balance || 0);
+      const useFreeGift = freeGiftBalance >= 1;
 
-      if (profileResult.rowCount === 0) {
-        await client.query('ROLLBACK');
-        return sendError(res, 404, 'PROFILE_NOT_FOUND', 'Profile not found');
-      }
+      if (useFreeGift) {
+        await client.query(
+          `UPDATE user_settings SET free_gift_balance = free_gift_balance - 1, updated_at = now() WHERE user_id = $1`,
+          [userId]
+        );
+      } else {
+        // Check if user has enough reputation (with lock for race condition prevention)
+        const profileResult = await client.query(
+          'SELECT reputation FROM profiles WHERE user_id = $1 FOR UPDATE',
+          [userId]
+        );
 
-      const currentRep = profileResult.rows[0].reputation || 0;
-      if (currentRep < giftConfig.cost) {
-        await client.query('ROLLBACK');
-        return sendError(res, 400, 'INSUFFICIENT_REPUTATION', `Not enough reputation. Need ${giftConfig.cost}, have ${currentRep}`);
+        if (profileResult.rowCount === 0) {
+          await client.query('ROLLBACK');
+          return sendError(res, 404, 'PROFILE_NOT_FOUND', 'Profile not found');
+        }
+
+        const currentRep = profileResult.rows[0].reputation || 0;
+        if (currentRep < giftConfig.cost) {
+          await client.query('ROLLBACK');
+          return sendError(res, 400, 'INSUFFICIENT_REPUTATION', `Not enough reputation. Need ${giftConfig.cost}, have ${currentRep}`);
+        }
+
+        // Deduct reputation from sender (atomic with check)
+        const deductResult = await client.query(
+          `UPDATE profiles 
+           SET reputation = reputation - $1, updated_at = now()
+           WHERE user_id = $2 AND reputation >= $1
+           RETURNING reputation`,
+          [giftConfig.cost, userId]
+        );
+
+        if (deductResult.rowCount === 0) {
+          await client.query('ROLLBACK');
+          return sendError(res, 400, 'INSUFFICIENT_REPUTATION', 'Not enough reputation (race condition detected)');
+        }
       }
 
       // Check if recipient exists
@@ -189,20 +218,6 @@ const createGiftsRoutes = (pool, giftLimitCheck) => {
         return sendError(res, 404, 'RECIPIENT_NOT_FOUND', 'Recipient not found');
       }
 
-      // Deduct reputation from sender (atomic with check)
-      const deductResult = await client.query(
-        `UPDATE profiles 
-         SET reputation = reputation - $1, updated_at = now()
-         WHERE user_id = $2 AND reputation >= $1
-         RETURNING reputation`,
-        [giftConfig.cost, userId]
-      );
-
-      if (deductResult.rowCount === 0) {
-        await client.query('ROLLBACK');
-        return sendError(res, 400, 'INSUFFICIENT_REPUTATION', 'Not enough reputation (race condition detected)');
-      }
-
       // Security: Validate effect structure before saving
       if (!giftConfig.effect || typeof giftConfig.effect !== 'object' || !giftConfig.effect.type) {
         await client.query('ROLLBACK');
@@ -211,7 +226,8 @@ const createGiftsRoutes = (pool, giftLimitCheck) => {
         return sendError(res, 500, 'INVALID_GIFT_CONFIG', 'Invalid gift effect configuration');
       }
 
-      // Create gift
+      // Create gift (cost 0 when sent via free_gift_balance)
+      const actualCost = useFreeGift ? 0 : giftConfig.cost;
       const giftId = uuidv4();
       await client.query(
         `INSERT INTO gifts 
@@ -225,7 +241,7 @@ const createGiftsRoutes = (pool, giftLimitCheck) => {
           giftConfig.name,
           giftConfig.icon,
           giftConfig.rarity,
-          giftConfig.cost,
+          actualCost,
           JSON.stringify(giftConfig.effect),
           message || null
         ]
@@ -246,9 +262,9 @@ const createGiftsRoutes = (pool, giftLimitCheck) => {
         logger.debug('Failed to log activity for gift', { error: activityError?.message });
       }
 
-      logger.info('Gift sent', { giftId, senderId: userId, recipientId, giftType, cost: giftConfig.cost });
+      logger.info('Gift sent', { giftId, senderId: userId, recipientId, giftType, cost: actualCost, usedFreeBalance: useFreeGift });
 
-      return res.json({ ok: true, giftId, cost: giftConfig.cost });
+      return res.json({ ok: true, giftId, cost: actualCost, usedFreeBalance: useFreeGift });
     } catch (error) {
       // Security: Ensure transaction is rolled back before releasing client
       try {

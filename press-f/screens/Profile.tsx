@@ -46,6 +46,7 @@ const Profile = () => {
   const [profile, setProfile] = useState(() => storage.getUserProfile());
   const [isEditing, setIsEditing] = useState(false);
   const [tempBio, setTempBio] = useState(() => storage.getUserProfile().bio);
+  const [tempTitle, setTempTitle] = useState(() => storage.getUserProfile().title || '');
   const [activeTab, setActiveTab] = useState<'stats' | 'trophies' | 'system'>('stats');
   const [scanning, setScanning] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -88,6 +89,7 @@ const Profile = () => {
         const merged = { ...storage.getUserProfile(), ...apiProfile, avatar: apiProfile.avatar || 'pressf' };
         setProfile(merged);
         setTempBio(apiProfile.bio || 'No bio yet.');
+        setTempTitle(apiProfile.title || '');
         storage.saveUserProfile(merged);
       }
       if (res.data?.settings) {
@@ -143,6 +145,18 @@ const Profile = () => {
   // Calculate level progress and title
   const levelProgress = getLevelProgress(currentXP);
   const levelTitle = getTitleForLevel(currentLevel);
+
+  // Achievements can be object (store/backend) or array (legacy)
+  const hasAchievement = (key: string) => {
+    const a = profile.achievements;
+    if (Array.isArray(a)) return a.includes(key);
+    return !!(a && typeof a === 'object' && (a as Record<string, unknown>)[key]);
+  };
+  const hasTitleCustom = hasAchievement('title_custom');
+  const displayTitle = (hasTitleCustom && profile.title && String(profile.title).trim()) ? String(profile.title).trim() : levelTitle;
+  const maxBioLen = hasAchievement('bio_extended') ? 500 : 150;
+  const profileThemeNeon = hasAchievement('profile_theme_neon');
+  const profileThemeGold = hasAchievement('profile_theme_gold');
   
   // Check for level up
   useEffect(() => {
@@ -180,6 +194,9 @@ const Profile = () => {
   const handleSave = () => {
     playSound('success');
     const updated = { ...profile, bio: tempBio };
+    if (hasTitleCustom) {
+      (updated as Record<string, unknown>).title = tempTitle.slice(0, 100);
+    }
     storage.saveUserProfileAsync(updated);
     setProfile(updated);
     setIsEditing(false);
@@ -307,7 +324,7 @@ const Profile = () => {
   const handleShareProfile = () => {
     const username = tg.initDataUnsafe?.user?.username;
     const url = username ? `https://t.me/${username}` : window.location.href;
-    const text = `PRESS F // LVL ${currentLevel} // ${levelTitle}`;
+    const text = `PRESS F // LVL ${currentLevel} // ${displayTitle}`;
     tg.openLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
     setShowShareModal(false);
   };
@@ -379,7 +396,7 @@ const Profile = () => {
                             />
                         </div>
                         <h2 className="font-heading text-2xl font-black text-white">{tg.initDataUnsafe?.user?.first_name}</h2>
-                        <p className="font-heading text-accent-cyan tracking-widest text-xs mb-4">LVL {currentLevel} // {levelTitle}</p>
+                        <p className="font-heading text-accent-cyan tracking-widest text-xs mb-4">LVL {currentLevel} // {displayTitle}</p>
                         
                         <div className="grid grid-cols-2 gap-2 mb-6">
                             <div className="bg-white/5 p-2 rounded">
@@ -678,7 +695,7 @@ const Profile = () => {
         </div>
 
         {/* Identity Card */}
-        <div className={`bg-card/70 backdrop-blur-xl border rounded-2xl p-6 shadow-2xl relative overflow-hidden mb-8 group gpu-accelerated ${isDead ? 'border-red-500/50 border-2' : 'border-border'}`}>
+        <div className={`bg-card/70 backdrop-blur-xl border rounded-2xl p-6 shadow-2xl relative overflow-hidden mb-8 group gpu-accelerated ${isDead ? 'border-red-500/50 border-2' : 'border-border'} ${profileThemeGold ? 'ring-2 ring-amber-400/50 shadow-[0_0_30px_rgba(251,191,36,0.25)]' : profileThemeNeon ? 'ring-2 ring-accent-cyan/50 shadow-[0_0_30px_rgba(0,224,255,0.2)]' : ''}`}>
            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent skew-x-12 group-hover:via-white/10 transition-colors pointer-events-none" />
            {isDead && (
              <div className="absolute inset-0 bg-black/40 pointer-events-none z-10" />
@@ -728,7 +745,7 @@ const Profile = () => {
                       showLevelUpAnimation ? 'shadow-[0_0_30px_rgba(168,85,247,0.8)]' : ''
                     }`}
                   >
-                      LVL {currentLevel} • {levelTitle}
+                      LVL {currentLevel} • {displayTitle}
                   </motion.span>
                   
                   {/* XP Progress Bar */}
@@ -761,6 +778,19 @@ const Profile = () => {
                  @{tg.initDataUnsafe?.user?.username || 'unknown'}
               </p>
 
+              {/* Custom title edit (only when title_custom owned and editing) */}
+              {hasTitleCustom && isEditing && (
+                <div className="w-full mb-3">
+                  <input
+                    value={tempTitle}
+                    onChange={(e) => setTempTitle(e.target.value)}
+                    maxLength={100}
+                    className="w-full bg-input border border-purple-500/50 rounded-xl px-3 py-2 text-sm text-center outline-none"
+                    placeholder={t('profile_title_ph') || 'Custom title'}
+                  />
+                </div>
+              )}
+
               {/* Bio Section */}
               <div className="w-full relative">
                  {isEditing ? (
@@ -768,6 +798,7 @@ const Profile = () => {
                      <textarea 
                        value={tempBio}
                        onChange={(e) => setTempBio(e.target.value)}
+                       maxLength={maxBioLen}
                        className="w-full bg-input border border-purple-500/50 rounded-xl p-3 text-sm text-center outline-none h-20 resize-none"
                        placeholder={t('profile_bio_ph')}
                        autoFocus
@@ -1001,6 +1032,8 @@ const Profile = () => {
                      { key: '10_letters', done: (profile.stats?.leaksDropped ?? 0) >= 10, labelKey: 'badge_10_letters' },
                      { key: 'first_duel', done: (profile.stats?.beefsWon ?? 0) >= 1, labelKey: 'badge_first_duel' },
                      { key: 'week_survivor', done: (profile.stats?.daysAlive ?? 0) >= 7, labelKey: 'badge_7_days' },
+                     { key: 'exclusive_badge_veteran', done: hasAchievement('exclusive_badge_veteran'), labelKey: 'badge_veteran' },
+                     { key: 'exclusive_badge_legend', done: hasAchievement('exclusive_badge_legend'), labelKey: 'badge_legend' },
                    ].map(({ key, done, labelKey }) => (
                      <div
                        key={key}

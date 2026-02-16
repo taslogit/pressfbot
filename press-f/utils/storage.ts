@@ -34,7 +34,9 @@ const defaultSettings: UserSettings = {
   soundEnabled: true,
   notificationsEnabled: true,
   telegramNotificationsEnabled: true,
-  checkinReminderIntervalMinutes: 60
+  checkinReminderIntervalMinutes: 60,
+  freeGiftBalance: 0,
+  duelTauntMessage: null
 };
 
 // Base Empty Structures
@@ -195,9 +197,10 @@ export const storage = {
     storage.saveDuel(duel);
   },
   updateDuelAsync: async (id: string, duel: Partial<Duel>) => {
-    await duelsAPI.update(id, duel);
+    const result = await duelsAPI.update(id, duel);
     const duels = storage.getDuels().map(d => (d.id === id ? { ...d, ...duel } : d));
     safeSave(KEYS.DUELS, duels);
+    return result;
   },
   deleteDuelAsync: async (id: string) => {
     const result = await duelsAPI.delete(id);
@@ -278,7 +281,9 @@ export const storage = {
         soundEnabled: apiSettings.soundEnabled !== false,
         notificationsEnabled: apiSettings.notificationsEnabled !== false,
         telegramNotificationsEnabled: apiSettings.telegramNotificationsEnabled !== false,
-        checkinReminderIntervalMinutes: apiSettings.checkinReminderIntervalMinutes || 60
+        checkinReminderIntervalMinutes: apiSettings.checkinReminderIntervalMinutes || 60,
+        freeGiftBalance: apiSettings.freeGiftBalance ?? 0,
+        duelTauntMessage: apiSettings.duelTauntMessage ?? null
       };
       safeSave(KEYS.SETTINGS, settings);
       return settings;
@@ -310,6 +315,8 @@ export const storage = {
     if (partial.notificationsEnabled !== undefined) settingsToUpdate.notificationsEnabled = partial.notificationsEnabled;
     if (partial.telegramNotificationsEnabled !== undefined) settingsToUpdate.telegramNotificationsEnabled = partial.telegramNotificationsEnabled;
     if (partial.checkinReminderIntervalMinutes !== undefined) settingsToUpdate.checkinReminderIntervalMinutes = partial.checkinReminderIntervalMinutes;
+    if (partial.avatarFrame !== undefined) settingsToUpdate.avatarFrame = partial.avatarFrame;
+    if (partial.duelTauntMessage !== undefined) settingsToUpdate.duelTauntMessage = partial.duelTauntMessage;
     
     if (Object.keys(settingsToUpdate).length > 0) {
       await profileAPI.updateSettings(settingsToUpdate);

@@ -292,6 +292,8 @@ const createTables = async (pool) => {
     await pool.query(`ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS last_daily_login_loot DATE`);
     await pool.query(`ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS guide_reward_claimed BOOLEAN DEFAULT false`);
     await pool.query(`ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS avatar_frame VARCHAR(50) DEFAULT 'default'`);
+    await pool.query(`ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS free_gift_balance INTEGER DEFAULT 0`);
+    await pool.query(`ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS duel_taunt_message VARCHAR(500)`);
 
     // Squads table
     await pool.query(`

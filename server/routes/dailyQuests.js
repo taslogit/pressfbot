@@ -394,4 +394,22 @@ async function generateDailyQuestsForAllUsers(pool, date) {
   }
 }
 
-module.exports = { createDailyQuestsRoutes, generateDailyQuestsForAllUsers, generateDailyQuests, QUEST_TYPES };
+/**
+ * Add one extra daily quest for today (e.g. when user buys extra_daily_quest in store).
+ * @param {object} db - pool or client (use client when in transaction)
+ * @param {number} userId
+ */
+async function addExtraDailyQuest(db, userId) {
+  const today = new Date().toISOString().split('T')[0];
+  const quest = QUEST_TYPES[Math.floor(Math.random() * QUEST_TYPES.length)];
+  const id = uuidv4();
+  await db.query(
+    `INSERT INTO daily_quests 
+     (id, user_id, quest_type, title, description, target_count, current_count, reward, quest_date, is_completed, is_claimed)
+     VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, false, false)`,
+    [id, userId, quest.type, quest.title, quest.description, quest.target, quest.reward, today]
+  );
+  logger.info('Extra daily quest added', { userId, questType: quest.type, date: today });
+}
+
+module.exports = { createDailyQuestsRoutes, generateDailyQuestsForAllUsers, generateDailyQuests, addExtraDailyQuest, QUEST_TYPES };

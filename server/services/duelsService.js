@@ -13,7 +13,8 @@ const normalizeDuel = (row) => ({
   loser: row.loser_id ? row.loser_id.toString() : undefined,
   isFavorite: row.is_favorite || false,
   challengerId: row.challenger_id,
-  opponentId: row.opponent_id
+  opponentId: row.opponent_id,
+  winnerTauntMessage: row.winner_taunt_message || undefined
 });
 
 module.exports = { normalizeDuel };

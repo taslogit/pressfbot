@@ -26,7 +26,9 @@ const normalizeSettings = (row) => ({
   soundEnabled: row.sound_enabled !== false,
   notificationsEnabled: row.notifications_enabled !== false,
   telegramNotificationsEnabled: row.telegram_notifications_enabled !== false,
-  checkinReminderIntervalMinutes: row.checkin_reminder_interval_minutes || 60
+  checkinReminderIntervalMinutes: row.checkin_reminder_interval_minutes || 60,
+  freeGiftBalance: row.free_gift_balance ?? 0,
+  duelTauntMessage: row.duel_taunt_message || null
 });
 
 module.exports = { normalizeProfile, normalizeSettings };

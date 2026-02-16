@@ -45,6 +45,9 @@ const Settings = () => {
         setSettings(apiSettings);
       }
     });
+    storeAPI.getMyItems().then((r) => {
+      if (isMounted && r.ok && r.data?.items) setMyStoreItems(r.data.items);
+    });
     return () => {
       isMounted = false;
     };
@@ -281,6 +284,29 @@ const Settings = () => {
               </div>
             </div>
           </div>
+
+          {myStoreItems.some((i: { id: string }) => i.id === 'duel_taunt') && (
+            <div className="bg-black/30 border border-border rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles size={16} className="text-accent-cyan" />
+                <div className="text-xs uppercase tracking-widest text-muted">{t('settings_duel_taunt_title') || 'Duel win message'}</div>
+              </div>
+              <input
+                value={settings.duelTauntMessage ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value.slice(0, 500);
+                  setSettings((prev) => ({ ...prev, duelTauntMessage: v || null }));
+                  storage.updateSettingsAsync({ duelTauntMessage: v || null }).catch(() => {});
+                }}
+                maxLength={500}
+                placeholder={t('settings_duel_taunt_ph') || 'Message shown when you win a duel...'}
+                className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-accent-cyan"
+              />
+              <div className="mt-1 text-xs text-muted">
+                {t('settings_duel_taunt_hint') || 'Up to 500 characters. Shown to opponent when you win.'}
+              </div>
+            </div>
+          )}
 
           <div className="bg-black/30 border border-border rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
