@@ -291,6 +291,14 @@ bot.on('message', async (ctx, next) => {
 
 // Telegram webhook callback (MUST be first, before any other middleware)
 if (USE_WEBHOOK) {
+  // Log incoming webhook POSTs so we can see if Telegram reaches the backend
+  app.use('/bot', (req, res, next) => {
+    if (req.method === 'POST') {
+      logger.info('[/bot] Webhook update received', { updateId: req.body?.update_id });
+    }
+    next();
+  });
+
   // Add a simple handler for HEAD/GET requests to /bot for debugging (BEFORE webhookCallback)
   app.head('/bot', (req, res) => {
     logger.debug('HEAD /bot received');
@@ -300,7 +308,7 @@ if (USE_WEBHOOK) {
     logger.debug('GET /bot received');
     res.status(200).json({ ok: true, message: 'Webhook endpoint is active' });
   });
-  
+
   // Error handling middleware for webhook
   app.use((err, req, res, next) => {
     if (req.path === '/bot') {
