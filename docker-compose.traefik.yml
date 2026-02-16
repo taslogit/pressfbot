@@ -64,6 +64,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+    # No ports: Traefik routes Host(pressfbot.ru) to this service; avoid conflict with traefik's 8080
+    ports: []
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.pressf-frontend.rule=Host(`pressfbot.ru`)"
