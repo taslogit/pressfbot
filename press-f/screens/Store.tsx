@@ -59,6 +59,7 @@ const Store = () => {
   const [retryInSec, setRetryInSec] = useState<number | null>(null);
   const catalogRetryCountRef = useRef(0);
   const retryCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mountedRef = useRef(true);
   const CATALOG_CACHE_KEY = 'lastmeme_store_catalog';
   const CACHE_MAX_AGE_MS = 10 * 60 * 1000; // 10 мин
 
@@ -100,37 +101,50 @@ const Store = () => {
     const catalogTimeout = setTimeout(doneLoading, 15000);
 
     const doFetch = () => {
-      storeAPI.getCatalog(opts).then((xpRes) => {
-        clearTimeout(catalogTimeout);
-        if (xpRes.ok) {
-          const catalog = xpRes.data?.catalog ?? xpRes.data?.items ?? [];
-          const list = Array.isArray(catalog) ? catalog : [];
-          setXpCatalog(list);
-          setFlashSale(xpRes.data?.flashSale || null);
-          setCatalogError(null);
-          catalogRetryCountRef.current = 0;
-          saveCatalogToCache(list, xpRes.data?.flashSale || null);
-        } else {
-          const is429 = xpRes.error?.includes?.('429') || xpRes.error?.toLowerCase?.().includes('too many') || xpRes.code === '429';
-          setCatalogError(xpRes.error || 'Network error');
-          if (is429 && catalogRetryCountRef.current < 1) {
-            catalogRetryCountRef.current += 1;
-            setRetryInSec(6);
-            let sec = 6;
-            if (retryCountdownRef.current) clearInterval(retryCountdownRef.current);
-            retryCountdownRef.current = setInterval(() => {
-              sec -= 1;
-              setRetryInSec(sec > 0 ? sec : null);
-              if (sec <= 0 && retryCountdownRef.current) {
-                clearInterval(retryCountdownRef.current);
-                retryCountdownRef.current = null;
-                loadData(true);
-              }
-            }, 1000);
+      storeAPI.getCatalog(opts)
+        .then((xpRes) => {
+          clearTimeout(catalogTimeout);
+          if (!mountedRef.current) return;
+          if (xpRes.ok) {
+            const catalog = xpRes.data?.catalog ?? xpRes.data?.items ?? [];
+            const list = Array.isArray(catalog) ? catalog : [];
+            setXpCatalog(list);
+            setFlashSale(xpRes.data?.flashSale || null);
+            setCatalogError(null);
+            catalogRetryCountRef.current = 0;
+            saveCatalogToCache(list, xpRes.data?.flashSale || null);
+          } else {
+            const is429 = xpRes.code === '429' || xpRes.error?.includes?.('429') || xpRes.error?.toLowerCase?.().includes('too many');
+            setCatalogError(xpRes.error || 'Network error');
+            if (is429 && catalogRetryCountRef.current < 1) {
+              catalogRetryCountRef.current += 1;
+              setRetryInSec(6);
+              let sec = 6;
+              if (retryCountdownRef.current) clearInterval(retryCountdownRef.current);
+              retryCountdownRef.current = setInterval(() => {
+                sec -= 1;
+                if (!mountedRef.current && retryCountdownRef.current) {
+                  clearInterval(retryCountdownRef.current);
+                  retryCountdownRef.current = null;
+                  return;
+                }
+                setRetryInSec(sec > 0 ? sec : null);
+                if (sec <= 0 && retryCountdownRef.current) {
+                  clearInterval(retryCountdownRef.current);
+                  retryCountdownRef.current = null;
+                  loadData(true);
+                }
+              }, 1000);
+            }
           }
-        }
-        doneLoading();
-      });
+          doneLoading();
+        })
+        .catch(() => {
+          clearTimeout(catalogTimeout);
+          if (!mountedRef.current) return;
+          setCatalogError('Network error');
+          doneLoading();
+        });
     };
 
     const hasCache = applyCatalogFromCache();
@@ -170,14 +184,19 @@ const Store = () => {
     if (starsCatalogLoaded || starsCatalogLoading) return;
     setStarsCatalogLoading(true);
     starsAPI.getCatalog({ signal: getSignal() }).then((res) => {
+      if (!mountedRef.current) return;
       if (res.ok && res.data?.catalog) setStarsCatalog(res.data.catalog);
       setStarsCatalogLoaded(true);
-    }).finally(() => setStarsCatalogLoading(false));
+    }).finally(() => {
+      if (mountedRef.current) setStarsCatalogLoading(false);
+    });
   };
 
   useEffect(() => {
+    mountedRef.current = true;
     const cleanup = loadData();
     return () => {
+      mountedRef.current = false;
       if (typeof cleanup === 'function') cleanup();
       if (retryCountdownRef.current) {
         clearInterval(retryCountdownRef.current);
@@ -295,9 +314,15 @@ const Store = () => {
           <button
             type="button"
             onClick={() => {
+              if (retryCountdownRef.current) {
+                clearInterval(retryCountdownRef.current);
+                retryCountdownRef.current = null;
+              }
+              setRetryInSec(null);
               if (catalogError.includes('429') || catalogError.toLowerCase().includes('too many')) {
                 setCatalogError(null);
                 setLoading(true);
+                catalogRetryCountRef.current = 0;
                 setTimeout(() => loadData(), 5000);
               } else {
                 loadData();
@@ -429,7 +454,7 @@ const Store = () => {
                   setSelectedItem(res.data.item);
                   setItemType('xp');
                 } else {
-                  tg.showPopup?.({ message: res.error?.message || t('store_buy_failed') });
+                  tg.showPopup?.({ message: res.error || t('store_buy_failed') });
                 }
               }}
               disabled={userXP < 120 || mysteryBoxLoading}
@@ -460,7 +485,7 @@ const Store = () => {
                     const isFlash = flashSale?.itemId === item.id && !ownedItemIds.has(item.id);
                     const isFirst = firstPurchaseEligible && !ownedItemIds.has(item.id) && !isFlash;
                     let discount = isFlash ? 0.5 : (isFirst ? 0.8 : 1);
-                    discount *= 1 - achievementDiscountPercent / 100;
+                    discount *= Math.max(0, 1 - achievementDiscountPercent / 100);
                     const cost = Math.floor(baseCost * discount);
                     const costStr = item.cost_rep ? `${cost} REP` : `${cost} XP`;
                     return (
@@ -571,11 +596,11 @@ const Store = () => {
               />
             ) : (
               <div className="grid gap-2">
-                {myItems.map((p: any) => {
+                {myItems.map((p: any, idx: number) => {
                   const label = getItemLabel(p.item_id, xpCatalog.find((x: any) => x.id === p.item_id)?.name || p.item_id);
                   return (
                     <div
-                      key={`${p.item_id}-${p.created_at}`}
+                      key={`${p.item_id}-${p.created_at ?? idx}`}
                       className="flex items-center gap-3 p-4 rounded-xl border border-border bg-black/40"
                     >
                       <div className="w-12 h-12 rounded-xl bg-accent-lime/20 flex items-center justify-center flex-shrink-0">
@@ -640,7 +665,8 @@ const Store = () => {
                         const isFirst = firstPurchaseEligible && !ownedItemIds.has(selectedItem.id) && !isFlash;
                         const disc = isFlash ? 0.5 : (isFirst ? 0.8 : 1);
                         const base = selectedItem.cost_rep || selectedItem.cost_xp || 0;
-                        const cost = Math.floor(base * disc);
+                        const pct = Math.max(0, 1 - achievementDiscountPercent / 100);
+                        const cost = Math.floor(base * disc * pct);
                         const suffix = selectedItem.cost_rep ? ' REP' : ' XP';
                         return (
                           <>
@@ -662,7 +688,8 @@ const Store = () => {
                       const isFirst = firstPurchaseEligible && !ownedItemIds.has(selectedItem.id) && !isFlash;
                       const disc = isFlash ? 0.5 : (isFirst ? 0.8 : 1);
                       const base = selectedItem.cost_rep || selectedItem.cost_xp || 0;
-                      const cost = Math.floor(base * disc);
+                      const pct = Math.max(0, 1 - achievementDiscountPercent / 100);
+                      const cost = Math.floor(base * disc * pct);
                       const isXp = !selectedItem.cost_rep;
                       const insufficient = isXp && userXP < cost && !ownedItemIds.has(selectedItem.id);
                       return insufficient ? <span className="text-red-400 text-xs">{t('store_insufficient_xp')}</span> : null;

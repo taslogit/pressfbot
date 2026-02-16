@@ -43,7 +43,7 @@ const Layout: React.FC<Props> = ({ children }) => {
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-xl border-t border-border z-40 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.3)] font-heading" aria-label={t('nav_aria_label')}>
+      <nav className="fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-xl border-t border-border z-40 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.3)] font-body" aria-label={t('nav_aria_label')}>
         <div className="flex justify-around items-center h-20 max-w-md mx-auto">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;

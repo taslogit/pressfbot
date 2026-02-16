@@ -11,8 +11,8 @@
   --color-accent-cyan: #00E0FF;
   --color-accent-pink: #FF4DD2;
   --color-accent-gold: #FFD700;
-  --font-heading: "Share Tech Mono", ui-monospace, monospace;
-  --font-body: "JetBrains Mono", "Share Tech Mono", ui-monospace, monospace;
+  --font-heading: "Rubik Wet Paint", cursive;
+  --font-body: "Pangolin", cursive;
   --animate-pulse-fast: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-spin-slow: spin 20s linear infinite;
   --animate-float: float 6s ease-in-out infinite;
@@ -65,7 +65,7 @@ body {
   font-family: var(--font-body);
 }
 
-/* Заголовки: терминальный хакерский шрифт */
+/* Заголовки страниц: Rubik Wet Paint */
 .font-heading {
   font-family: var(--font-heading);
 }
@@ -86,9 +86,9 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 224, 255, 0.03);
 }
-/* Метки в хакерском стиле: верхний регистр, разреженный трекинг */
+/* Метки: верхний регистр, разреженный трекинг */
 .label-terminal {
-  font-family: var(--font-heading);
+  font-family: var(--font-body);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -96,7 +96,7 @@ body {
 /* ─── Кнопки (дизайн-система) ──────────────────────────────────────────── */
 /* Контраст: btn-primary использует text-black на accent-lime (WCAG AA). */
 .btn-primary {
-  font-family: var(--font-heading);
+  font-family: var(--font-body);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -112,7 +112,7 @@ body {
 }
 
 .btn-secondary {
-  font-family: var(--font-heading);
+  font-family: var(--font-body);
   font-weight: 700;
   letter-spacing: 0.03em;
   border-radius: 0.75rem;
@@ -127,7 +127,7 @@ body {
 }
 
 .btn-ghost {
-  font-family: var(--font-heading);
+  font-family: var(--font-body);
   font-weight: 600;
   transition: background-color 0.2s, opacity 0.2s, transform 0.15s;
 }

@@ -96,7 +96,7 @@ async function apiRequest<T>(
       return { 
         ok: false, 
         error: errorData.error || errorData.message || 'Request failed',
-        code: errorData.code,
+        code: errorData.code ?? (res.status === 429 ? '429' : undefined),
         details: errorData.details
       };
     }

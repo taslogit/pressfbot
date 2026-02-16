@@ -8,10 +8,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        mono: ['"Share Tech Mono"', 'ui-monospace', 'monospace'],
-        sans: ['"JetBrains Mono"', '"Share Tech Mono"', 'ui-monospace', 'monospace'],
-        heading: ['"Share Tech Mono"', 'ui-monospace', 'monospace'],
-        body: ['"JetBrains Mono"', '"Share Tech Mono"', 'ui-monospace', 'monospace'],
+        heading: ['"Rubik Wet Paint"', 'cursive'],
+        body: ['"Pangolin"', 'cursive'],
+        sans: ['"Pangolin"', 'cursive'],
+        mono: ['"Pangolin"', 'cursive'],
       },
       boxShadow: {
         'terminal': '0 0 0 1px rgba(0, 224, 255, 0.3), 0 0 12px rgba(0, 224, 255, 0.08)',
