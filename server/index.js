@@ -30,11 +30,12 @@ cache.del('avatars:list').catch(() => {});
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBHOOK_URL = process.env.WEBHOOK_URL; // https://your-backend-domain
-const WEB_APP_URL =
+const WEB_APP_URL = (
   process.env.WEB_APP_URL ||
   process.env.WEBAPP_URL ||
   process.env.FRONTEND_URL ||
-  '';
+  ''
+).trim();
 const USE_WEBHOOK = Boolean(WEBHOOK_URL) && process.env.BOT_USE_WEBHOOK !== 'false';
 logger.info('Webhook config:', { WEBHOOK_URL, BOT_USE_WEBHOOK: process.env.BOT_USE_WEBHOOK, USE_WEBHOOK });
 // Constants - Configuration values
@@ -91,7 +92,7 @@ const BOT_INFO_TEXT =
   'Нажми НАЧАТЬ и заходи в WebApp.';
 
 const buildStartKeyboard = () => ({
-    reply_markup: {
+  reply_markup: {
     inline_keyboard: [[{ text: 'НАЧАТЬ', web_app: { url: WEB_APP_URL } }]]
   }
 });
@@ -1228,6 +1229,20 @@ app.get('/api/session/:id', authMiddleware, async (req, res) => {
       // Graceful shutdown
       process.once('SIGINT', () => bot.stop('SIGINT'));
       process.once('SIGTERM', () => bot.stop('SIGTERM'));
+    }
+
+    // Кнопка меню бота: при открытии чата пользователь видит "Открыть приложение" — открывает Web App
+    if (WEB_APP_URL) {
+      try {
+        await bot.telegram.setChatMenuButton({
+          type: 'web_app',
+          text: 'Открыть приложение',
+          web_app: { url: WEB_APP_URL }
+        });
+        logger.info('Menu button (Web App) set for /start');
+      } catch (err) {
+        logger.warn('Could not set menu button', { error: err?.message });
+      }
     }
   } catch (e) {
     logger.error('❌ Failed to set webhook or launch bot', { 

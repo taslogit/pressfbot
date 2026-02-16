@@ -376,8 +376,8 @@ const Landing = () => {
       >
         <div>
            <motion.h1
-             className="font-logo text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-accent-lime via-white to-accent-cyan drop-shadow-[0_0_15px_rgba(180,255,0,0.6)] motion-reduce:animate-none"
-             animate={{ opacity: [1, 0.85, 1] }}
+             className="font-logo text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-accent-lime via-white to-accent-cyan title-logo-glitch motion-reduce:animate-none"
+             animate={{ opacity: [1, 0.92, 1] }}
              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
            >
              PRESS F

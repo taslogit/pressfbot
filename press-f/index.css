@@ -65,6 +65,11 @@
   contain: layout paint;
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 @keyframes float {
   0%, 100% { transform: translateY(0) translateZ(0); }
   50% { transform: translateY(-20px) translateZ(0); }
@@ -106,6 +111,26 @@ html {
 .font-logo {
   font-family: var(--font-logo);
   font-style: normal;
+}
+
+/* Заголовок PRESS F на главной: свечение + лёгкий глитч */
+.title-logo-glitch {
+  text-shadow:
+    0 0 10px rgba(180, 255, 0, 0.9),
+    0 0 20px rgba(180, 255, 0, 0.6),
+    0 0 30px rgba(0, 224, 255, 0.4),
+    0 0 40px rgba(180, 255, 0, 0.3);
+  animation: title-glitch 4s ease-in-out infinite;
+}
+@keyframes title-glitch {
+  0%, 90%, 100% { filter: none; transform: translate(0, 0) skewX(0); }
+  92% { filter: hue-rotate(-5deg); transform: translate(-1px, 0) skewX(-0.5deg); }
+  94% { filter: hue-rotate(5deg); transform: translate(1px, 0) skewX(0.5deg); }
+  96% { filter: none; transform: translate(0, 0) skewX(0); }
+  98% { filter: hue-rotate(3deg); transform: translate(0, 1px) skewX(0.3deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .title-logo-glitch { animation: none; }
 }
 
 /* ─── Hacker / Terminal UI ───────────────────────────────────────────── */
