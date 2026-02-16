@@ -81,3 +81,24 @@ docker logs pressf-backend-1 --tail 50
 - `PathPrefix(/bot)` с приоритетом выше, чем у других роутеров для того же хоста.
 
 Иначе запросы на `https://pressfbot.ru/bot` могут уходить не в backend, а в frontend, и бот не будет получать апдейты.
+
+## 6. Не запускается «с команды»
+
+### 6.1 Бэкенд не поднимается по `docker compose up`
+
+- Запускайте стек **с Traefik**, чтобы на 443 был HTTPS:
+  ```bash
+  docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
+  ```
+- Проверьте `.env`: `TELEGRAM_BOT_TOKEN`, `DATABASE_URL` (или `POSTGRES_*`), при необходимости `WEBHOOK_URL`, `WEB_APP_URL`.
+- Логи бэкенда:
+  ```bash
+  docker logs pressf-backend-1 --tail 100
+  ```
+  Если контейнер сразу падает — смотрите ошибку в логах (БД недоступна, нет токена и т.п.).
+
+### 6.2 Web App не открывается по кнопке «НАЧАТЬ» / меню
+
+- В логах при старте должно быть: `Menu button (Web App) set for /start`. Если нет — в окружении backend не задан **WEB_APP_URL** (в Traefik-сборке он берётся из `${WEB_APP_URL}` в `.env`).
+- **WEB_APP_URL** должен быть **https**, например `https://pressfbot.ru` — тот же домен, где отдаётся фронтенд. Telegram не открывает Web App по http.
+- Проверьте в браузере: открывается ли `https://pressfbot.ru` и отдаёт ли страницу приложения. Если там 502/404 — сначала исправьте фронт и Traefik.
