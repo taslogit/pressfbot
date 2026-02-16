@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, useBlocker } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Mic, Image as ImageIcon, Video, X, Trash2, StopCircle, FileAudio, Play, AtSign, User, Calendar, AlertCircle, Save, Shield, Flame, Key, Heart, Skull, Terminal, EyeOff, Lock, Network, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { storage } from '../utils/storage';
@@ -122,21 +122,6 @@ const CreateLetter = () => {
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [hasUnsavedChanges]);
-
-  const blocker = useBlocker(hasUnsavedChanges);
-  useEffect(() => {
-    if (blocker.state !== 'blocked') return;
-    tg.showPopup?.({
-      message: t('confirm_leave_draft'),
-      buttons: [
-        { id: 'leave', type: 'destructive', text: t('confirm_leave_yes') },
-        { id: 'stay', type: 'default', text: t('confirm_leave_stay') }
-      ]
-    }, (btnId) => {
-      if (btnId === 'leave') blocker.proceed();
-      else blocker.reset();
-    });
-  }, [blocker.state, blocker.proceed, blocker.reset, t]);
 
   const handleBack = () => {
     if (hasUnsavedChanges) {

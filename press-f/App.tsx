@@ -134,14 +134,14 @@ const TelegramHandler = () => {
 const AnimatedLayoutRoutes = () => {
   const location = useLocation();
   const reduceMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const transition = reduceMotion ? { duration: 0 } : { duration: 0.2, ease: 'easeInOut' as const };
+  const transition = reduceMotion ? { duration: 0 } : { duration: 0.22, ease: [0.25, 0.1, 0.25, 1] };
   return (
     <AnimatePresence mode="wait">
       <motion.div
         key={location.pathname}
-        initial={{ opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : 6 }}
+        initial={{ opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : 8 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : -6 }}
+        exit={{ opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : -8 }}
         transition={transition}
       >
         <Routes location={location}>

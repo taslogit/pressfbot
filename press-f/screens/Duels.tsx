@@ -3,7 +3,7 @@
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Sword, Trophy, Swords, Plus, ChevronDown, User, Copy, QrCode, X, Globe, Flame, Users, Flag, AlertOctagon, Trash2, Edit2, Search, ArrowDownUp, Star, Share2 } from 'lucide-react';
-import { useNavigate, useBlocker } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { storage } from '../utils/storage';
@@ -320,29 +320,6 @@ const Duels = () => {
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [hasUnsavedDuelForm]);
-
-  const blocker = useBlocker(hasUnsavedDuelForm);
-  useEffect(() => {
-    if (blocker.state !== 'blocked') return;
-    tg.showPopup?.({
-      message: t('confirm_leave_draft'),
-      buttons: [
-        { id: 'leave', type: 'destructive', text: t('confirm_leave_yes') },
-        { id: 'stay', type: 'default', text: t('confirm_leave_stay') }
-      ]
-    }, (btnId) => {
-      if (btnId === 'leave') {
-        setIsCreating(false);
-        setTitle('');
-        setOpponent('');
-        setStake('');
-        setEditingDuelId(null);
-        blocker.proceed();
-      } else {
-        blocker.reset();
-      }
-    });
-  }, [blocker.state, blocker.proceed, blocker.reset, t]);
 
   const closeCreateForm = () => {
     if (hasUnsavedDuelForm) {

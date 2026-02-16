@@ -375,24 +375,10 @@ const Landing = () => {
         className="flex justify-between items-center relative z-10 mb-2"
       >
         <div>
-           <motion.h1 
+           <motion.h1
              className="font-logo text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-accent-lime via-white to-accent-cyan drop-shadow-[0_0_15px_rgba(180,255,0,0.6)] motion-reduce:animate-none"
-             animate={{
-               opacity: [1, 0.8, 1, 1, 0.5, 1, 0.9, 1],
-               textShadow: [
-                 "0 0 10px rgba(180,255,0,0.5)",
-                 "0 0 20px rgba(180,255,0,0.8)",
-                 "0 0 10px rgba(180,255,0,0.5)",
-                 "2px 2px 0px rgba(255,0,0,0.3)",
-                 "0 0 10px rgba(180,255,0,0.5)"
-               ]
-             }}
-             transition={{
-               duration: 2.5,
-               repeat: Infinity,
-               ease: "linear",
-               times: [0, 0.1, 0.2, 0.5, 0.55, 0.6, 0.8, 1]
-             }}
+             animate={{ opacity: [1, 0.85, 1] }}
+             transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
            >
              PRESS F
            </motion.h1>

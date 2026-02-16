@@ -44,9 +44,30 @@
 .light .text-muted { color: var(--color-text-muted); }
 .light .bg-decor { opacity: 0.14; }
 
+/* GPU-слой для анимаций: меньше лагов за счёт отдельного композитного слоя */
+[class*="animate-spin-slow"],
+[class*="animate-float"] {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+[class*="animate-pulse"]:not([class*="motion-reduce:animate-none"]) {
+  will-change: opacity;
+  transform: translateZ(0);
+}
+[class*="animate-scan"] {
+  will-change: top;
+  transform: translateZ(0);
+}
+
+/* Фоновые декорации (иконки за контентом) — изоляция перерисовки */
+.bg-decor {
+  contain: layout paint;
+}
+
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-20px); }
+  0%, 100% { transform: translateY(0) translateZ(0); }
+  50% { transform: translateY(-20px) translateZ(0); }
 }
 
 @keyframes scan {
@@ -64,6 +85,16 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-family: var(--font-body);
+}
+
+/* Плавность скролла и отзывчивость тапов */
+html {
+  scroll-behavior: smooth;
+}
+@media (hover: none) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 /* Заголовки страниц: Rubik Wet Paint */
