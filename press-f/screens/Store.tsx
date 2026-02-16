@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X, Package, Box } from 'lucide-react';
@@ -56,31 +56,88 @@ const Store = () => {
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [starsCatalogLoaded, setStarsCatalogLoaded] = useState(false);
   const [starsCatalogLoading, setStarsCatalogLoading] = useState(false);
+  const [retryInSec, setRetryInSec] = useState<number | null>(null);
+  const catalogRetryCountRef = useRef(0);
+  const retryCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const CATALOG_CACHE_KEY = 'lastmeme_store_catalog';
+  const CACHE_MAX_AGE_MS = 10 * 60 * 1000; // 10 мин
 
-  // Только витрина XP при открытии — один запрос, без звёзд и без пачки auth сразу
+  const applyCatalogFromCache = () => {
+    try {
+      const raw = localStorage.getItem(CATALOG_CACHE_KEY);
+      if (!raw) return false;
+      const { catalog = [], flashSale = null, at = 0 } = JSON.parse(raw);
+      if (Date.now() - at > CACHE_MAX_AGE_MS) return false;
+      if (Array.isArray(catalog) && catalog.length >= 0) {
+        setXpCatalog(catalog);
+        setFlashSale(flashSale);
+        setCatalogError(null);
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  };
+
+  const saveCatalogToCache = (catalog: any[], flashSale: any) => {
+    try {
+      localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify({
+        catalog,
+        flashSale,
+        at: Date.now()
+      }));
+    } catch (_) {}
+  };
+
+  // Один запрос витрины: задержка перед запросом + кэш + авто-повтор при 429
   const loadData = (silent = false) => {
     const opts = { signal: getSignal() };
     if (!silent) {
       setLoading(true);
       setCatalogError(null);
+      setRetryInSec(null);
     }
     const doneLoading = () => { if (!silent) setLoading(false); };
-    const catalogTimeout = setTimeout(doneLoading, 12000);
+    const catalogTimeout = setTimeout(doneLoading, 15000);
 
-    storeAPI.getCatalog(opts).then((xpRes) => {
-      clearTimeout(catalogTimeout);
-      if (xpRes.ok) {
-        const catalog = xpRes.data?.catalog ?? xpRes.data?.items ?? [];
-        setXpCatalog(Array.isArray(catalog) ? catalog : []);
-        setFlashSale(xpRes.data?.flashSale || null);
-        setCatalogError(null);
-      } else {
-        setCatalogError(xpRes.error || 'Network error');
-      }
-      doneLoading();
-    });
+    const doFetch = () => {
+      storeAPI.getCatalog(opts).then((xpRes) => {
+        clearTimeout(catalogTimeout);
+        if (xpRes.ok) {
+          const catalog = xpRes.data?.catalog ?? xpRes.data?.items ?? [];
+          const list = Array.isArray(catalog) ? catalog : [];
+          setXpCatalog(list);
+          setFlashSale(xpRes.data?.flashSale || null);
+          setCatalogError(null);
+          catalogRetryCountRef.current = 0;
+          saveCatalogToCache(list, xpRes.data?.flashSale || null);
+        } else {
+          const is429 = xpRes.error?.includes?.('429') || xpRes.error?.toLowerCase?.().includes('too many') || xpRes.code === '429';
+          setCatalogError(xpRes.error || 'Network error');
+          if (is429 && catalogRetryCountRef.current < 1) {
+            catalogRetryCountRef.current += 1;
+            setRetryInSec(6);
+            let sec = 6;
+            if (retryCountdownRef.current) clearInterval(retryCountdownRef.current);
+            retryCountdownRef.current = setInterval(() => {
+              sec -= 1;
+              setRetryInSec(sec > 0 ? sec : null);
+              if (sec <= 0 && retryCountdownRef.current) {
+                clearInterval(retryCountdownRef.current);
+                retryCountdownRef.current = null;
+                loadData(true);
+              }
+            }, 1000);
+          }
+        }
+        doneLoading();
+      });
+    };
 
-    // Профиль/премиум/мои предметы — с большой задержкой, чтобы не конкурировать с каталогом
+    const hasCache = applyCatalogFromCache();
+    if (hasCache && !silent) doneLoading();
+    const startDelay = hasCache ? 0 : 2000;
+    const t = setTimeout(doFetch, startDelay);
+
     const authDelay = setTimeout(() => {
       Promise.allSettled([
         starsAPI.getPremiumStatus(opts),
@@ -99,10 +156,11 @@ const Store = () => {
           setAchievementsCount(myVal.data?.achievementsCount ?? 0);
         }
       });
-    }, 2200);
+    }, 5000);
 
     return () => {
       clearTimeout(catalogTimeout);
+      clearTimeout(t);
       clearTimeout(authDelay);
     };
   };
@@ -119,7 +177,13 @@ const Store = () => {
 
   useEffect(() => {
     const cleanup = loadData();
-    return () => { if (typeof cleanup === 'function') cleanup(); };
+    return () => {
+      if (typeof cleanup === 'function') cleanup();
+      if (retryCountdownRef.current) {
+        clearInterval(retryCountdownRef.current);
+        retryCountdownRef.current = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -222,9 +286,11 @@ const Store = () => {
       {catalogError && (
         <div className="mb-4 p-3 rounded-xl border border-red-500/50 bg-red-500/10 flex items-center justify-between gap-3">
           <span className="text-xs text-red-200 flex-1">
-            {catalogError.includes('429') || catalogError.toLowerCase().includes('too many')
-              ? (t('store_error_rate_limit') || 'Too many requests. Wait a moment and try again.')
-              : catalogError}
+            {retryInSec != null
+              ? t('store_retry_in', { sec: retryInSec })
+              : catalogError.includes('429') || catalogError.toLowerCase().includes('too many')
+                ? (t('store_error_rate_limit') || 'Too many requests. Wait a moment and try again.')
+                : catalogError}
           </span>
           <button
             type="button"
