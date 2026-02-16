@@ -539,10 +539,7 @@ const createTables = async (pool) => {
       CREATE INDEX IF NOT EXISTS idx_letters_user_status_created 
         ON letters(user_id, status, created_at DESC)
     `);
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_duels_user_status_created 
-        ON duels(user_id, status, created_at DESC)
-    `);
+    // duels has challenger_id/opponent_id, not user_id; idx_duels_challenger_status already exists above
 
     // ─── Monetization tables ────────────────────────────
 
