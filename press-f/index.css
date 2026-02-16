@@ -84,6 +84,20 @@
   .skull-ring-rotate { animation: none; }
 }
 
+/* Фоновая иконка (часы, сумка и т.д.): вращение без конфликта с GPU-правилами */
+@keyframes bg-decor-spin {
+  from { transform: rotate(0deg) translateZ(0); }
+  to { transform: rotate(360deg) translateZ(0); }
+}
+.bg-decor-spin {
+  animation: bg-decor-spin 20s linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bg-decor-spin { animation: none; }
+}
+
 @keyframes float {
   0%, 100% { transform: translateY(0) translateZ(0); }
   50% { transform: translateY(-20px) translateZ(0); }

@@ -360,9 +360,9 @@ const Landing = () => {
         />
       )}
 
-      {/* Background Animation */}
+      {/* Background Animation — часы */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 flex items-center justify-center">
-        <div className="bg-decor opacity-[0.05] text-accent-cyan drop-shadow-[0_0_30px_rgba(0,224,255,0.3)] animate-spin-slow">
+        <div className="bg-decor opacity-[0.05] text-accent-cyan drop-shadow-[0_0_30px_rgba(0,224,255,0.3)] bg-decor-spin motion-reduce:animate-none">
           <Hourglass size={450} strokeWidth={0.5} />
         </div>
       </div>
