@@ -44,6 +44,7 @@ const Landing = () => {
   // Dashboard Data
   const [activeDuels, setActiveDuels] = useState(0);
   const [duelsResolvingToday, setDuelsResolvingToday] = useState<any[]>([]);
+  const duelsResolvingTodayRef = useRef<any[]>([]); // ref so beef interval sees latest without re-running effect
   const [draftLetters, setDraftLetters] = useState(0);
   const [witnessCount, setWitnessCount] = useState(0); 
   const [nextUnlockDate, setNextUnlockDate] = useState<string | null>(null);
@@ -130,6 +131,7 @@ const Landing = () => {
           return dlStr === todayStr;
         });
         setDuelsResolvingToday(resolving);
+        duelsResolvingTodayRef.current = resolving;
         // Compute hours until first duel deadline
         if (resolving.length > 0 && resolving[0].deadline) {
           const dl = new Date(resolving[0].deadline);
@@ -199,10 +201,11 @@ const Landing = () => {
         }
     }, 4000);
 
-    // Beef countdown: update every minute
+    // Beef countdown: update every minute (use ref so we see latest without duelsResolvingToday in deps)
     const beefInterval = setInterval(() => {
-      if (isMounted && duelsResolvingToday.length > 0 && duelsResolvingToday[0]?.deadline) {
-        const dl = new Date(duelsResolvingToday[0].deadline);
+      const resolving = duelsResolvingTodayRef.current;
+      if (isMounted && resolving.length > 0 && resolving[0]?.deadline) {
+        const dl = new Date(resolving[0].deadline);
         const ms = dl.getTime() - Date.now();
         setBeefHoursLeft(ms > 0 ? Math.max(1, Math.ceil(ms / (1000 * 60 * 60))) : null);
       }
@@ -216,7 +219,8 @@ const Landing = () => {
       clearInterval(beefInterval);
       clearTimeout(dailyLootDelay);
     };
-  }, [justCheckedIn, duelsResolvingToday]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on mount and after check-in; duelsResolvingToday must NOT be in deps (it is set inside this effect → would cause infinite request loop)
+  }, [justCheckedIn]);
 
   const handleCloseGuide = async (completed?: boolean) => {
     setShowGuide(false);

@@ -50,11 +50,11 @@ const SESSION_CLEANUP_INTERVAL_SECONDS = Number(
 const NOTIFY_INTERVAL_SECONDS = Number(process.env.NOTIFY_INTERVAL_SECONDS || 300);
 const NOTIFY_UNLOCK_AHEAD_SECONDS = Number(process.env.NOTIFY_UNLOCK_AHEAD_SECONDS || 0);
 
-// Rate Limiting Constants
+// Rate Limiting Constants (env overrides for Docker/proxy where many users share one IP)
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const RATE_LIMIT_MAX_REQUESTS = 300;
+const RATE_LIMIT_MAX_REQUESTS = Number(process.env.RATE_LIMIT_GLOBAL_MAX) || 1200; // global per window (was 300; increase if 429 under load)
 const RATE_LIMIT_GET_WINDOW_MS = 15 * 60 * 1000; // 15 minutes for GET requests
-const RATE_LIMIT_GET_MAX = Number(process.env.RATE_LIMIT_GET_MAX) || 400; // GET per window (per session or IP)
+const RATE_LIMIT_GET_MAX = Number(process.env.RATE_LIMIT_GET_MAX) || 800; // GET per window (per session or IP; was 400)
 const RATE_LIMIT_POST_WINDOW_MS = 15 * 60 * 1000; // 15 minutes for POST requests
 const RATE_LIMIT_POST_MAX = 50; // 50 POST requests per window
 const RATE_LIMIT_VERIFY_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
