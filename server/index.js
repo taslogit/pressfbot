@@ -172,6 +172,9 @@ bot.command('info', async (ctx) => {
 
 const app = express();
 
+// Trust proxy (required when behind reverse proxy: Traefik, nginx, etc.) so req.ip and X-Forwarded-* are correct; avoids express-rate-limit ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+app.set('trust proxy', 1);
+
 // Body size limit middleware (before express.json)
 const bodySizeLimit = require('./middleware/bodySizeLimit');
 app.use(bodySizeLimit);

@@ -20,6 +20,12 @@ const createTournamentsRoutes = (pool) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
+      const cacheKey = `tournaments:${status || 'all'}:${userId}`;
+      const cached = await cache.get(cacheKey).catch(() => null);
+      if (cached) {
+        return res.json(cached);
+      }
+
       const now = new Date();
       let query = '';
       let params = [];
@@ -111,10 +117,10 @@ const createTournamentsRoutes = (pool) => {
       });
 
       const response = { ok: true, tournaments };
-      
+
       // Cache for 5 minutes (tournaments don't change often)
-      await cache.set(cacheKey, response, 300);
-      
+      await cache.set(cacheKey, response, 300).catch(() => {});
+
       return res.json(response);
     } catch (error) {
       logger.error('Get tournaments error:', { error: error?.message || error });
