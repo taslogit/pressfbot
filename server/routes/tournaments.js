@@ -82,7 +82,43 @@ const createTournamentsRoutes = (pool) => {
       const sql = optimizedQuery.includes('GROUP BY')
         ? optimizedQuery
         : optimizedQuery.replace(/\s+ORDER BY\s+/i, groupByClause + ' ORDER BY ');
-      const tournamentsResult = await pool.query(sql, finalParams);
+
+      let tournamentsResult;
+      try {
+        tournamentsResult = await pool.query(sql, finalParams);
+      } catch (queryError) {
+        logger.error('Get tournaments error:', queryError);
+        // Fallback: simple list without participant counts if optimized query fails (e.g. missing table)
+        try {
+          const simpleResult = await pool.query(query, params);
+          const tournaments = (simpleResult.rows || []).map((row) => ({
+            id: row.id,
+            name: row.name,
+            description: row.description,
+            startDate: row.start_date?.toISOString(),
+            endDate: row.end_date?.toISOString(),
+            registrationStart: row.registration_start?.toISOString(),
+            registrationEnd: row.registration_end?.toISOString(),
+            maxParticipants: row.max_participants,
+            minParticipants: row.min_participants,
+            status: row.status,
+            format: row.format,
+            prizePool: row.prize_pool || {},
+            rules: row.rules || {},
+            bannerUrl: row.banner_url,
+            icon: row.icon,
+            participantCount: 0,
+            isRegistered: false,
+            userParticipant: null
+          }));
+          const response = { ok: true, tournaments };
+          await cache.set(cacheKey, response, 300).catch(() => {});
+          return res.json(response);
+        } catch (fallbackError) {
+          logger.error('Get tournaments fallback error:', fallbackError);
+          return sendError(res, 500, 'TOURNAMENTS_FETCH_FAILED', 'Failed to fetch tournaments');
+        }
+      }
 
       const tournaments = tournamentsResult.rows.map((row) => {
         const participantCount = parseInt(row.participant_count || 0);
@@ -124,7 +160,7 @@ const createTournamentsRoutes = (pool) => {
 
       return res.json(response);
     } catch (error) {
-      logger.error('Get tournaments error:', { error: error?.message || error });
+      logger.error('Get tournaments error:', error);
       return sendError(res, 500, 'TOURNAMENTS_FETCH_FAILED', 'Failed to fetch tournaments');
     }
   });
@@ -250,7 +286,7 @@ const createTournamentsRoutes = (pool) => {
         userParticipant
       });
     } catch (error) {
-      logger.error('Get tournament error:', { error: error?.message || error });
+      logger.error('Get tournament error:', error);
       return sendError(res, 500, 'TOURNAMENT_FETCH_FAILED', 'Failed to fetch tournament');
     }
   });
@@ -354,7 +390,7 @@ const createTournamentsRoutes = (pool) => {
       return res.json({ ok: true, participantId, seed });
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
-      logger.error('Tournament registration error:', { error: error?.message || error });
+      logger.error('Tournament registration error:', error);
       return sendError(res, 500, 'REGISTRATION_FAILED', 'Failed to register for tournament');
     } finally {
       client.release();
@@ -407,7 +443,7 @@ const createTournamentsRoutes = (pool) => {
 
       return res.json({ ok: true, leaderboard });
     } catch (error) {
-      logger.error('Get leaderboard error:', { error: error?.message || error });
+      logger.error('Get leaderboard error:', error);
       return sendError(res, 500, 'LEADERBOARD_FETCH_FAILED', 'Failed to fetch leaderboard');
     }
   });

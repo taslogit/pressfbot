@@ -25,10 +25,10 @@ const formatMessage = (level, message, data = null) => {
 const logger = {
   error: (message, error = null) => {
     if (CURRENT_LEVEL >= LOG_LEVELS.ERROR) {
-      const data = error ? {
-        message: error.message,
-        stack: error.stack,
-        ...(error.code && { code: error.code })
+      const data = error != null ? {
+        message: error?.message ?? (typeof error === 'string' ? error : String(error)),
+        stack: error?.stack,
+        ...(error?.code && { code: error.code })
       } : null;
       console.error(formatMessage('ERROR', message, data));
     }
