@@ -59,7 +59,7 @@ const createTournamentsRoutes = (pool) => {
       }
 
       // Optimization: Use JOIN to get participant counts and user registration in single query
-      const optimizedQuery = query.replace(
+      const optimizedQueryRaw = query.replace(
         'SELECT * FROM tournaments',
         `SELECT 
           t.*,
@@ -76,6 +76,15 @@ const createTournamentsRoutes = (pool) => {
         'GROUP BY',
         'GROUP BY t.id, t.name, t.description, t.start_date, t.end_date, t.registration_start, t.registration_end, t.max_participants, t.min_participants, t.status, t.format, t.prize_pool, t.rules, t.banner_url, t.icon, t.created_at, t.updated_at'
       );
+      // Disambiguate columns: both tournaments and tournament_participants have "status", etc.
+      const optimizedQuery = optimizedQueryRaw
+        .replace(/\bWHERE\s+status\b/g, 'WHERE t.status')
+        .replace(/\bAND\s+start_date\b/g, 'AND t.start_date')
+        .replace(/\bAND\s+end_date\b/g, 'AND t.end_date')
+        .replace(/\bOR\s+end_date\b/g, 'OR t.end_date')
+        .replace(/\bAND\s+registration_start\b/g, 'AND t.registration_start')
+        .replace(/\bORDER BY\s+start_date\b/g, 'ORDER BY t.start_date')
+        .replace(/\bORDER BY\s+end_date\b/g, 'ORDER BY t.end_date');
 
       const finalParams = userId ? [...params, userId] : params;
       const groupByClause = ' GROUP BY t.id, t.name, t.description, t.start_date, t.end_date, t.registration_start, t.registration_end, t.max_participants, t.min_participants, t.status, t.format, t.prize_pool, t.rules, t.banner_url, t.icon, t.created_at, t.updated_at';
