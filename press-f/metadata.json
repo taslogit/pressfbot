@@ -1,7 +1,0 @@
-{
-  "name": "PRESS F",
-  "description": "Telegram Mini App for digital wills, dead man switches, and meme legacy.",
-  "requestFramePermissions": [
-    "camera"
-  ]
-}

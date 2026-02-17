@@ -66,7 +66,19 @@ export function playOrSound() {
   } catch (_) {}
 }
 
-/** Хор ангелов для PRESS F и перехода (как при смерти в играх — в рай) */
+/** Хор ангелов для PRESS F — воспроизведение angel.mp3 из public/sound/ */
+export function playAngelMp3() {
+  if (typeof window === 'undefined') return;
+  try {
+    const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+    const src = `${base}/sound/angel.mp3`;
+    const audio = new Audio(src);
+    audio.volume = 0.8;
+    audio.play().catch(() => {});
+  } catch (_) {}
+}
+
+/** Хор ангелов (синтез) — запасной вариант, если mp3 недоступен */
 export function playAngelChoir() {
   const ctx = getContext();
   if (!ctx) return;
@@ -78,7 +90,7 @@ export function playAngelChoir() {
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.2);
     const t0 = ctx.currentTime;
     const freqs = [523.25, 659.25, 783.99, 1046.5, 1318.5];
-    freqs.forEach((freq, i) => {
+    freqs.forEach((freq) => {
       const osc = ctx.createOscillator();
       osc.connect(gain);
       osc.type = 'sine';

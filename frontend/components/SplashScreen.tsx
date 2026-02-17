@@ -4,7 +4,7 @@ import {
   playTerminalBeep,
   playTerminalSuccess,
   playOrSound,
-  playAngelChoir,
+  playAngelMp3,
 } from '../utils/splashSound';
 
 const INTRO_MS = 900;
@@ -64,7 +64,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     if (phase === 3) playTerminalSuccess();
     if (phase === 4) playTerminalSuccess();
     if (phase === 5) playOrSound();
-    if (phase === 6) playAngelChoir();
+    if (phase === 6) playAngelMp3();
   }, [phase]);
 
   // Бип при появлении "no response" (конец набора второй строки в фазе 0)

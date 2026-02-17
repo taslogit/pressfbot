@@ -1,2 +1,2 @@
 # Add .mp3 files: astronomia.mp3, sax.mp3, ussr.mp3, sad.mp3
-# Or use fallback URLs in press-f/constants/funeralTracks.ts
+# Or use fallback URLs in frontend/constants/funeralTracks.ts
