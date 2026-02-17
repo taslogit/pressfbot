@@ -607,8 +607,6 @@ const Store = () => {
                 if (res.ok && res.data) {
                   if (res.data.remainingXp != null) {
                     setProfile((p: any) => p ? { ...p, spendableXp: res.data.remainingXp } : p);
-                    const cached = storage.getUserProfile();
-                    storage.saveUserProfile({ ...cached, experience: res.data.remainingXp });
                   }
                   loadData(true);
                   setSelectedItem(res.data.item);

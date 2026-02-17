@@ -243,7 +243,7 @@ const Duels = () => {
       if (editingDuelId) {
         const result = await storage.updateDuelAsync(editingDuelId, newDuel);
         analytics.track('duel_updated', { duelId: editingDuelId });
-        if (result?.data?.winnerTauntMessage) {
+        if (result?.ok && result?.data?.winnerTauntMessage) {
           tg.showPopup({
             message: result.data.winnerTauntMessage,
             title: t('duel_winner_taunt_title') || 'Winner says'

@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Шрифт для русской локали (TTF) — положите файл в public/fonts/StieglitzSP.ttf */
+@font-face {
+  font-family: 'Stieglitz SP';
+  src: url('/fonts/StieglitzSP.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   --color-bg: #0f0d16;
   --color-card: #1a1720;
@@ -204,9 +213,9 @@ html {
   text-transform: uppercase;
 }
 
-/* Русская локаль: основной текст — Reggae One (кириллица) */
+/* Русская локаль: основной текст — Stieglitz SP (кириллица) */
 .lang-ru {
-  --font-body: "Reggae One", cursive;
+  --font-body: "Stieglitz SP", cursive;
 }
 
 /* ─── Кнопки (дизайн-система) ──────────────────────────────────────────── */
