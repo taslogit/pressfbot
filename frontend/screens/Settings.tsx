@@ -209,6 +209,25 @@ const Settings = () => {
           </div>
 
           <div className="bg-black/30 border border-border rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs uppercase tracking-widest text-muted mb-1">{t('settings_short_splash')}</div>
+                <div className="text-xs text-muted">{t('settings_short_splash_hint')}</div>
+              </div>
+              <button
+                onClick={() => {
+                  const v = !settings.shortSplashEnabled;
+                  setSettings((s) => ({ ...s, shortSplashEnabled: v }));
+                  storage.updateSettings({ shortSplashEnabled: v });
+                }}
+                className={`w-10 h-5 rounded-full relative transition-colors flex-shrink-0 ml-3 ${settings.shortSplashEnabled === true ? 'bg-accent-cyan' : 'bg-input'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${settings.shortSplashEnabled === true ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-black/30 border border-border rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <Bell size={16} className="text-accent-cyan" />
               <div className="text-xs uppercase tracking-widest text-muted">{t('profile_notifications_title')}</div>

@@ -37,7 +37,8 @@ const defaultSettings: UserSettings = {
   telegramNotificationsEnabled: true,
   checkinReminderIntervalMinutes: 60,
   freeGiftBalance: 0,
-  duelTauntMessage: null
+  duelTauntMessage: null,
+  shortSplashEnabled: false,
 };
 
 // Base Empty Structures

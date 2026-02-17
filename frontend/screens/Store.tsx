@@ -914,8 +914,6 @@ const Store = () => {
                         tg.showPopup?.({ message: isAvatarOrFrame ? t('store_buy_success_equip') : t('store_buy_success') });
                         if (res.data.remainingXp != null) {
                           setProfile((p: any) => p ? { ...p, spendableXp: res.data.remainingXp } : p);
-                          const cached = storage.getUserProfile();
-                          storage.saveUserProfile({ ...cached, experience: res.data.remainingXp });
                         }
                         loadData(true);
                         closeItemModal();

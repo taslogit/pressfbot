@@ -46,7 +46,8 @@ interface SplashScreenProps {
  */
 const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const { t } = useTranslation();
-  const shortMode = useRef(storage.getHasSeenSplash()).current;
+  const shortSplashEnabled = storage.getSettings().shortSplashEnabled === true;
+  const shortMode = useRef(storage.getHasSeenSplash() && shortSplashEnabled).current;
   const soundEnabled = storage.getSettings().soundEnabled;
   const [phase, setPhase] = useState(shortMode ? 6 : -1);
   const [line1Len, setLine1Len] = useState(0);

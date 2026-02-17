@@ -64,6 +64,7 @@ export interface UserSettings {
   checkinReminderIntervalMinutes?: number;
   freeGiftBalance?: number;
   duelTauntMessage?: string | null;
+  shortSplashEnabled?: boolean;
 }
 
 export interface Witness {

@@ -389,12 +389,16 @@ const createStoreRoutes = (pool) => {
           [userId, item.category, itemId, actualCostXp, actualCostRep]
         );
 
-        // Apply permanent items to profile
+        // Apply permanent items to profile (unlock perk: bio_extended, title_custom, avatar_*, etc.)
+        // achievements may be [] (default) or {} (object); only merge when object to avoid JSONB type error
         if (item.type === 'permanent') {
           await client.query(
-            `UPDATE profiles SET achievements = 
-              COALESCE(achievements, '{}')::jsonb || jsonb_build_object($2, true)
-             WHERE user_id = $1`,
+            `UPDATE profiles SET achievements = (
+              CASE WHEN jsonb_typeof(COALESCE(achievements, '{}')) = 'array'
+                THEN jsonb_build_object($2, true)
+                ELSE COALESCE(achievements, '{}')::jsonb || jsonb_build_object($2, true)
+              END
+            ) WHERE user_id = $1`,
             [userId, itemId]
           );
         }
@@ -514,8 +518,12 @@ const createStoreRoutes = (pool) => {
         );
         if (item.type === 'permanent') {
           await client.query(
-            `UPDATE profiles SET achievements = COALESCE(achievements, '{}')::jsonb || jsonb_build_object($2, true)
-             WHERE user_id = $1`,
+            `UPDATE profiles SET achievements = (
+              CASE WHEN jsonb_typeof(COALESCE(achievements, '{}')) = 'array'
+                THEN jsonb_build_object($2, true)
+                ELSE COALESCE(achievements, '{}')::jsonb || jsonb_build_object($2, true)
+              END
+            ) WHERE user_id = $1`,
             [userId, itemId]
           );
         }

@@ -305,6 +305,8 @@ export const translations = {
     settings_title: "Settings",
     settings_language: "Language",
     settings_language_hint: "Flip RU/EN. No restart.",
+    settings_short_splash: "Short splash after first view",
+    settings_short_splash_hint: "If on, the app shows a short splash (2.5s) after you've seen the full one once.",
     settings_wallet: "Wallet",
     settings_wallet_connected: "Connected",
     settings_wallet_not_connected: "Not connected",
@@ -750,6 +752,14 @@ export const translations = {
     help_settings: "# SETTINGS\n\nPut the system in order.\n\n[NOTE] Notifications are configurable here.\n\n• Language: RU/EN.\n• Notifications: app + Telegram.\n• Wallet: connect/disconnect for TON.",
     wiki_title: "Wiki",
     wiki_intro: "What's what, why, and how. Read before you ask.",
+    wiki_section_settings: "App settings",
+    wiki_section_gamification: "Pulse & gamification",
+    wiki_section_shop: "Store & customization",
+    wiki_section_content: "Content",
+    wiki_section_social: "Social",
+    wiki_section_legacy: "Legacy",
+    wiki_topic_settings: "App settings",
+    wiki_settings: "# APP SETTINGS\n\nEverything that controls how the app behaves. All in **Settings** (gear icon).\n\n**Language**: RU/EN. Flip anytime. No restart.\n\n**Short splash**: After first view, you can turn on \"Short splash after first view\". Next launches will show a 2.5s splash instead of the full one. Off by default — full splash every time until you enable it.\n\n**Sound**: In-app sounds (clicks, loot, splash). Toggle on/off.\n\n**Notifications**: App reminders + Telegram. How often to remind you to tap the skull (15m, 1h, 3h, 12h, 24h). Presets: Quiet (no TG), Balanced, Hardcore.\n\n**Pulse timer**: 1 day, 1 week, or 1 month. How long before you're \"dead\" if you don't tap. Settings > notification block.\n\n**Wallet (TON)**: Connect/disconnect for Storage, Inheritance, Duel escrow. Inheritance widget on home when you have plans.\n\n**Duel taunt**: If you bought the item — set a message shown when you win a beef.\n\n[NOTE] Changes save locally and sync to the server where applicable. Language and notifications sync; splash and sound are local.",
     wiki_avatars: "# AVATARS & FRAMES\n\nCustomize your Profile. Buy with XP in Store.\n\n**Avatars**: Default (pressf) free. Skull, Ghost, Robot, Crown — 80–120 XP. Profile > tap avatar > pick from what you own. New stuff in Store, selector shows only purchased.\n\n**Frames**: Border around avatar. Default free. Fire (100 XP), Diamond (150), Neon (200), Gold (250). Profile > frame button (◫) next to avatar > pick owned.\n\n**Flow**: Store > cop it → Profile > throw it on. Can't wear what you didn't buy.",
 
     wiki_checkin: "# TAP SKULL IF ALIVE\n\nThat big skull on home? Your pulse button. Whole app = Dead Man's Switch. Go silent = letters & secrets might drip to recipients. Tap skull regularly to prove you're still breathing.\n\n**Why**: Each tap resets countdown. No tap = timer zeros = you're \"dead\". Witnesses get pinged, letters can unlock. Don't ghost yourself.\n\n[NOTE] **Interval**: 1 day, 1 week, or 1 month. Daily = max engagement, monthly = chill. Settings > timer.\n[WARN] **Timer hit zero?** Go to Resurrection, tap to respawn. Streak resets but you're back.\n\n**Rewards**:\n• **Base**: +10 XP per tap — free money\n• **Streak**: Consecutive days = REP bonus. 3d +5, 7d +15, 14d +30, 30d +100, 100d +500. Longer alive = richer.\n• **Comeback**: Gone 3+ days? Return = +30 XP\n• **Re-engagement**: 7+ days offline = +50 XP, 3–6 = +30 XP\n• **Milestone**: 7d streak = +50 XP, 30d = +100 XP\n• **Lucky**: 1% chance +100 XP on any check-in. Pray to RNG.\n• **Streak Shield**: Store item. Skip ONE day without breaking streak. Lifesaver.",
@@ -769,7 +779,7 @@ export const translations = {
     wiki_topic_squads: "Squads",
     wiki_topic_legacy: "Legacy",
     wiki_topic_witnesses: "Witnesses",
-    
+
     // Referral System
     referral_system: "INVITE FRIENDS",
     your_referral_link: "Your Referral Link",
@@ -1139,6 +1149,8 @@ export const translations = {
     settings_title: "Настройки",
     settings_language: "Язык",
     settings_language_hint: "Переключай RU/EN. Без перезапуска.",
+    settings_short_splash: "Короткая заставка после первого просмотра",
+    settings_short_splash_hint: "Включи — после первого просмотра полной заставки при следующих входах будет короткая (2.5 с).",
     settings_wallet: "Кошелек",
     settings_wallet_connected: "Подключен",
     settings_wallet_not_connected: "Не подключен",
@@ -1552,6 +1564,14 @@ export const translations = {
     help_settings: "# НАСТРОЙКИ\n\nПриведи систему в порядок.\n\n[NOTE] Уведомления можно настраивать.\n\n• Язык: RU/EN.\n• Уведомления: аппка + телега.\n• Кошелёк: connect/disconnect для TON.",
     wiki_title: "Вики",
     wiki_intro: "Что за что, зачем и почему. Читай до того как спрашивать.",
+    wiki_section_settings: "Настройки приложения",
+    wiki_section_gamification: "Пульс и геймификация",
+    wiki_section_shop: "Магазин и кастомизация",
+    wiki_section_content: "Контент",
+    wiki_section_social: "Социальное",
+    wiki_section_legacy: "Наследие",
+    wiki_topic_settings: "Настройки приложения",
+    wiki_settings: "# НАСТРОЙКИ ПРИЛОЖЕНИЯ\n\nВсё, что управляет поведением приложения. Находится в **Настройках** (иконка шестерёнки).\n\n**Язык**: RU/EN. Переключай когда угодно. Без перезапуска.\n\n**Короткая заставка**: После первого просмотра можно включить «Короткая заставка после первого просмотра». При следующих запусках будет показываться заставка 2,5 с вместо полной. По умолчанию выключено — полная заставка каждый раз, пока не включишь.\n\n**Звук**: Звуки в приложении (клики, лут, заставка). Вкл/выкл.\n\n**Уведомления**: Напоминания в аппке + в Telegram. Как часто напоминать про тап по черепу (15м, 1ч, 3ч, 12ч, 24ч). Пресеты: Тихо (без TG), Баланс, Хардкор.\n\n**Таймер пульса**: 1 день, 1 неделя или 1 месяц. Через сколько ты «мёртв», если не тапнул. Настройки > блок уведомлений.\n\n**Кошелёк (TON)**: Подключить/отключить для Storage, Наследства, эскроу в бифах. Виджет «Наследство запланировано» на главной при наличии планов.\n\n**Сообщение при победе в бифе**: Если купил предмет — задаётся текст, который показывают оппоненту при твоей победе.\n\n[NOTE] Изменения сохраняются локально и при необходимости синхронизируются с сервером. Язык и уведомления синкаются; заставка и звук — локально.",
     wiki_avatars: "# АВАТАРЫ И РАМКИ\n\nКастомизация профиля. Покупай за XP в Магазине.\n\n**Аватары**: Дефолт (pressf) бесплатен. Skull, Ghost, Robot, Crown — 80–120 XP. Профиль > тап по аватару > выбирай из купленных. Новые аватары в Магазине, в селекторе только купленные.\n\n**Рамки**: Обводка вокруг аватара. Дефолт бесплатен. Fire (100 XP), Diamond (150), Neon (200), Gold (250). Профиль > кнопка ◫ рядом с аватаром > выбирай купленную рамку.\n\n**Флоу**: Магазин > купи > Профиль > выбери. Не купленное нельзя надеть.",
     wiki_checkin: "# ЖМИ НА ЧЕРЕП ЕСЛИ ЖИВ\n\nТот большой череп на главной — это твой пульс. Вся аппка — Dead Man's Switch: если замолчишь, письма и секреты могут улететь получателям. Поэтому надо регулярно тапать череп, чтобы доказать что ещё дышишь.\n\n**Зачем**: Каждый тап сбрасывает таймер. Не тапнул — таймер обнулился — ты «мёртв». Свидетели получают пинг, письма могут открыться. Не гости свою же жизнь.\n\n[NOTE] **Интервал**: 1 день, 1 неделя или 1 месяц. Ежедневно = максимум вовлечённости, ежемесячно = расслабон. Настройки > таймер.\n[WARN] **Таймер обнулился?** Иди в Resurrection, тапни — воскреснешь. Серия сбросится, но ты в игре.\n\n**Награды**:\n• **База**: +10 XP за каждый тап — халява\n• **Серия**: Подряд дни = бонус REP. 3д +5, 7д +15, 14д +30, 30д +100, 100д +500 REP. Чем дольше живешь — тем богаче.\n• **Comeback**: Пропадал 3+ дня? Вернулся = +30 XP приветственный\n• **Re-engagement**: 7+ дней оффлайн = +50 XP, 3–6 дней = +30 XP — хотим тебя обратно\n• **Milestone**: 7 дней серии = +50 XP, 30 дней = +100 XP\n• **Lucky**: 1% шанс +100 XP на любом чек-ине. Молись RNG.\n• **Streak Shield**: Предмет в магазине. Пропуск одного дня без сброса серии.",
     wiki_xp: "# XP И УРОВНИ\n\nXP = очки опыта. Уровень = флекс. Выше уровень — скидки в Магазине.\n\n**Формула**: level = √(XP/100) + 1. Потолка нет.\n\n**Как заработать**:\n• **Череп**: +10 базово.\n• **Ежедневный лут**: +5–15 XP при первом входе.\n• **Гайд**: +50 XP один раз.\n• **Квесты, письма, бифы**: награды за активность.\n• **Re-engagement / Comeback**: вернулся после оффлайна = бонус.\n\n**xp_boost_2x** (Магазин, 200 XP): 24ч двойного XP на чек-ин, письма, бифы, квесты. Всё стекается.\n\n**Spendable XP**: Тратится в Магазине на бусты, аватары, рамки, Mystery Box. REP — отдельно.",
@@ -1570,7 +1590,7 @@ export const translations = {
     wiki_topic_squads: "Сквады",
     wiki_topic_legacy: "Наследие",
     wiki_topic_witnesses: "Свидетели",
-    
+
     // Gamification
     streak_title: "СТРИК",
     streak_calendar_title: "Календарь чек-инов",

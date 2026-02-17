@@ -288,10 +288,14 @@ async function processStarsPayment(pool, bot, { userId, payload, telegramPayment
 
     if (item.type === 'permanent') {
       // Store permanent purchase (templates, frames, badges)
+      // achievements may be [] (default) or {}; only merge when object to avoid JSONB type error
       await pool.query(
-        `UPDATE profiles SET achievements = 
-          COALESCE(achievements, '{}')::jsonb || jsonb_build_object($2, true)
-         WHERE user_id = $1`,
+        `UPDATE profiles SET achievements = (
+          CASE WHEN jsonb_typeof(COALESCE(achievements, '{}')) = 'array'
+            THEN jsonb_build_object($2, true)
+            ELSE COALESCE(achievements, '{}')::jsonb || jsonb_build_object($2, true)
+          END
+        ) WHERE user_id = $1`,
         [userId, itemId]
       );
     }
