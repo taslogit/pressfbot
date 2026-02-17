@@ -76,13 +76,26 @@ const Landing = () => {
   const [currentLog, setCurrentLog] = useState(0);
   const logs = ['log_connected', 'log_sync', 'log_secure'];
 
-  // «Коротко о главном»: после первого просмотра сворачивается, по тапу выезжает обратно
+  // Туториал: открывается автоматически после заставки, потом сворачивается по скроллу
   const HOME_VALUE_SEEN_KEY = 'lastmeme_home_value_seen';
+  const OPEN_TUTORIAL_KEY = 'pressf_open_tutorial';
   const [homeValueCollapsed, setHomeValueCollapsed] = useState(() => {
-    try { return sessionStorage.getItem(HOME_VALUE_SEEN_KEY) === '1'; } catch { return false; }
+    try {
+      if (sessionStorage.getItem(OPEN_TUTORIAL_KEY) === '1') return false; // откроем туториал после заставки
+      return sessionStorage.getItem(HOME_VALUE_SEEN_KEY) === '1';
+    } catch { return false; }
   });
   const homeValueRef = useRef<HTMLDivElement>(null);
   const homeValueSeenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // После заставки открыть туториал один раз
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(OPEN_TUTORIAL_KEY) === '1') {
+        sessionStorage.removeItem(OPEN_TUTORIAL_KEY);
+        setHomeValueCollapsed(false);
+      }
+    } catch {}
+  }, []);
   useEffect(() => {
     const el = homeValueRef.current;
     if (!el || homeValueCollapsed) return;
@@ -357,22 +370,16 @@ const Landing = () => {
         setTimeout(() => setShowSharePulse(false), 8000);
         setTimeout(() => {
           if (!tg.showPopup) return;
-          const nextCheckIn = new Date(settings.lastCheckIn + (settings.deadManSwitchDays * 24 * 60 * 60 * 1000)).toLocaleDateString();
-          const text = t('share_pulse_text', { days: Math.max(daysRemaining, 0), next: nextCheckIn });
           tg.showPopup(
             {
               message: t('share_pulse_popup'),
               buttons: [
-                { id: 'share', type: 'default', text: t('share_pulse') },
+                { id: 'share', type: 'default', text: t('share_btn_label') },
                 { id: 'close', type: 'close' }
               ]
             },
             (buttonId: string) => {
-              if (buttonId === 'share') {
-                const username = tg.initDataUnsafe?.user?.username;
-                const url = username ? `https://t.me/${username}` : window.location.href;
-                tg.openLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
-              }
+              if (buttonId === 'share') handleSharePulse();
             }
           );
         }, 700);
@@ -406,11 +413,10 @@ const Landing = () => {
   };
 
   const handleSharePulse = () => {
-    const username = tg.initDataUnsafe?.user?.username;
-    const url = username ? `https://t.me/${username}` : window.location.href;
-    const nextCheckIn = new Date(settings.lastCheckIn + (settings.deadManSwitchDays * 24 * 60 * 60 * 1000)).toLocaleDateString();
-    const text = t('share_pulse_text', { days: Math.max(daysRemaining, 0), next: nextCheckIn });
-    tg.openLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
+    const appUrl = window.location.href.split('#')[0] + (window.location.hash || '');
+    const firstName = tg.initDataUnsafe?.user?.first_name || t('im_alive_btn').split('!')[0] || 'Я';
+    const text = t('share_invite_text', { name: firstName, url: appUrl });
+    tg.openLink(`https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent(text)}`);
   };
 
 
@@ -538,20 +544,12 @@ const Landing = () => {
                 {t('home_cta_guide')}
               </button>
             </div>
-            {showSharePulse && (
-              <button
-                onClick={handleSharePulse}
-                className="mt-3 w-full px-3 py-2 rounded-lg border border-accent-cyan/40 text-accent-cyan bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-all font-bold tracking-widest text-xs uppercase"
-              >
-                {t('share_pulse')}
-              </button>
-            )}
           </motion.div>
         )}
       </AnimatePresence>
       </motion.div>
 
-      {/* Streak share */}
+      {/* Поделись, что жив — приглашение в приложение, выбор чата/контакта в TG */}
       <motion.div
         className="card-terminal bg-card/60 border border-border rounded-xl p-4 text-xs text-muted overflow-hidden"
         variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
@@ -563,14 +561,17 @@ const Landing = () => {
             {is24hMode ? t('home_streak_hours', { hours: Math.max(hoursRemaining, 0) }) : t('home_streak_days', { days: Math.max(daysRemaining, 0) })}
           </span>
         </div>
-        <div className="text-xs text-muted mb-3 truncate">
+        <p className="text-xs text-muted mb-3 break-words">
+          {t('home_streak_desc')}
+        </p>
+        <p className="text-xs text-muted mb-3 truncate">
           {t('home_streak_next', { next: triggerDate })}
-        </div>
+        </p>
         <button
-          onClick={handleSharePulse}
+          onClick={() => { playSound('click'); handleSharePulse(); }}
           className="w-full px-3 py-2 rounded-lg border border-accent-cyan/40 text-accent-cyan bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-all font-bold tracking-widest text-xs uppercase"
         >
-          {t('share_pulse')}
+          {t('share_btn_label')}
         </button>
       </motion.div>
 

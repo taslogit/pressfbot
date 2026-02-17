@@ -218,6 +218,7 @@ const App = () => {
               {!splashDone && (
                 <SplashScreen
                   onFinish={() => {
+                    try { sessionStorage.setItem('pressf_open_tutorial', '1'); } catch {}
                     requestAnimationFrame(() => {
                       requestAnimationFrame(() => setSplashDone(true));
                     });
