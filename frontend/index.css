@@ -448,7 +448,18 @@ select:focus-visible {
   100% { transform: translate(-50%, -50%) scale(1.4) translateZ(0); opacity: 0; border-color: rgba(255, 215, 0, 0.1); }
 }
 
-/* Монумент «F»: рамка-стела (только CSS) */
+/* Плавное появление при смене фазы (0.25 с) */
+.splash-phase-in {
+  animation: splash-fadeIn 0.25s ease-out forwards;
+}
+
+/* Кнопка «Пропустить» на заставке */
+.splash-skip-btn:focus {
+  outline: 1px solid rgba(0, 255, 65, 0.6);
+  outline-offset: 2px;
+}
+
+/* Монумент «F»: рамка-стела (только CSS), на больших экранах крупнее */
 .splash-monument-f {
   width: 4.5rem;
   height: 4.5rem;
@@ -457,6 +468,12 @@ select:focus-visible {
   box-shadow:
     0 0 15px rgba(0, 224, 255, 0.2),
     inset 0 0 20px rgba(180, 255, 0, 0.06);
+}
+@media (min-width: 768px) {
+  .splash-monument-f { width: 6rem; height: 6rem; }
+}
+.splash-monument-f-glow {
+  animation: splash-border-glow 2s ease-in-out infinite;
 }
 
 /* Терминал в стиле Kali: окно с заголовком и командной строкой */
@@ -551,4 +568,5 @@ select:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
   .splash-screen [class*="splash-"] { animation: none !important; }
+  .splash-phase-in { opacity: 1; }
 }

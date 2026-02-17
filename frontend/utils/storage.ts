@@ -20,7 +20,8 @@ const KEYS = {
   HAS_SEEN_WITNESS_GUIDE: 'lastmeme_has_seen_witness_guide_v2',
   HAS_SEEN_DJ_GUIDE: 'lastmeme_has_seen_dj_guide_v2',
   SHARES: 'lastmeme_share_history',
-  SESSION: 'lastmeme_session'
+  SESSION: 'lastmeme_session',
+  HAS_SEEN_SPLASH: 'lastmeme_has_seen_splash',
 };
 
 // Initial empty settings
@@ -519,4 +520,7 @@ export const storage = {
 
   getHasSeenDJGuide: () => localStorage.getItem(KEYS.HAS_SEEN_DJ_GUIDE) === 'true',
   setHasSeenDJGuide: () => localStorage.setItem(KEYS.HAS_SEEN_DJ_GUIDE, 'true'),
+
+  getHasSeenSplash: () => localStorage.getItem(KEYS.HAS_SEEN_SPLASH) === 'true',
+  setHasSeenSplash: () => localStorage.setItem(KEYS.HAS_SEEN_SPLASH, 'true'),
 };

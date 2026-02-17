@@ -12,6 +12,7 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // По умолчанию всегда русский; язык из Telegram не используем — только сохранённые настройки
   const [language, setLanguageState] = useState<Language>(() => {
     if (typeof window === 'undefined') return 'ru';
     const hasExplicit = localStorage.getItem('lastmeme_settings');
@@ -19,8 +20,6 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const settings = storage.getSettings();
       return settings.language;
     }
-    const tgLang = (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.language_code || '';
-    if (tgLang) return tgLang.toLowerCase().startsWith('ru') ? 'ru' : 'en';
     return 'ru';
   });
 

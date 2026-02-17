@@ -5,14 +5,16 @@ import {
   playTerminalSuccess,
   playOrSound,
   playAngelMp3,
+  preloadAngelMp3,
 } from '../utils/splashSound';
+import { storage } from '../utils/storage';
 
 const INTRO_MS = 900;
-const SPLASH_DURATION_MS = 10000 + INTRO_MS;
+const SPLASH_DURATION_MS = 10200 + INTRO_MS;
+const SHORT_SPLASH_MS = 2500;
+const SKIP_BUTTON_AFTER_MS = 2500;
 const TYPING_INTERVAL_MS = 26;
-/** Быстрая скан-линия в интро — один проход */
 const INTRO_SCAN_DURATION_S = 0.7;
-/** Скан-линия в терминальных фазах — 3 прохода */
 const SCAN_DURATION_S = 2.167;
 const SCAN_ITERATIONS = 3;
 
@@ -21,10 +23,10 @@ const PHASE1_END_MS = INTRO_MS + 3500;
 const PHASE2_END_MS = INTRO_MS + 5000;
 const PHASE3_END_MS = INTRO_MS + 6500;
 const PHASE4_END_MS = INTRO_MS + 8000;
-const PHASE5_END_MS = INTRO_MS + 9000;
+const PHASE5_END_MS = INTRO_MS + 9400; // +400ms пауза между «ИЛИ?» и PRESS F
 const PHASE6_PRESS_DELAY_MS = 400;
-const FLASH_AT_MS = INTRO_MS + 9600;
-const FADEOUT_START_MS = INTRO_MS + 9700;
+const FLASH_AT_MS = INTRO_MS + 10000;
+const FADEOUT_START_MS = INTRO_MS + 10100;
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -43,38 +45,51 @@ interface SplashScreenProps {
  */
 const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const { t } = useTranslation();
-  const [phase, setPhase] = useState(-1);
+  const shortMode = useRef(storage.getHasSeenSplash()).current;
+  const soundEnabled = storage.getSettings().soundEnabled;
+  const [phase, setPhase] = useState(shortMode ? 6 : -1);
   const [line1Len, setLine1Len] = useState(0);
   const [line2Len, setLine2Len] = useState(0);
   const [symbolVisible, setSymbolVisible] = useState(false);
   const [showFlash, setShowFlash] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
+  const [showSkip, setShowSkip] = useState(false);
   const onFinishRef = useRef(onFinish);
   const soundPlayedRef = useRef<Record<number, boolean>>({});
   onFinishRef.current = onFinish;
 
+  const finish = () => {
+    storage.setHasSeenSplash();
+    onFinishRef.current();
+  };
+
   const LINE1 = t('splash_checking');
   const LINE2 = t('splash_no_response');
 
-  // Звуки при входе в фазу (интро -1 без звука)
+  // Предзагрузка angel.mp3 при монтировании
   useEffect(() => {
-    if (phase < 0 || soundPlayedRef.current[phase]) return;
+    preloadAngelMp3();
+  }, []);
+
+  // Звуки при входе в фазу (только если включены в настройках)
+  useEffect(() => {
+    if (!soundEnabled || phase < 0 || soundPlayedRef.current[phase]) return;
     soundPlayedRef.current[phase] = true;
     if (phase === 1 || phase === 2) playTerminalBeep();
     if (phase === 3) playTerminalSuccess();
     if (phase === 4) playTerminalSuccess();
     if (phase === 5) playOrSound();
     if (phase === 6) playAngelMp3();
-  }, [phase]);
+  }, [phase, soundEnabled]);
 
   // Бип при появлении "no response" (конец набора второй строки в фазе 0)
   const line2DoneRef = useRef(false);
   useEffect(() => {
-    if (phase === 0 && line2Len >= LINE2.length && LINE2.length > 0 && !line2DoneRef.current) {
+    if (soundEnabled && phase === 0 && line2Len >= LINE2.length && LINE2.length > 0 && !line2DoneRef.current) {
       line2DoneRef.current = true;
       playTerminalBeep();
     }
-  }, [phase, line2Len, LINE2.length]);
+  }, [phase, line2Len, LINE2.length, soundEnabled]);
 
   // Печатание фазы 0
   useEffect(() => {
@@ -107,8 +122,20 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     return () => clearInterval(t2);
   }, [line1Len, LINE1.length, LINE2]);
 
-  // Таймеры: интро → затем фазы 0..6 и финал
+  // Кнопка «Пропустить» через 2.5 с
   useEffect(() => {
+    const t = setTimeout(() => setShowSkip(true), SKIP_BUTTON_AFTER_MS);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Таймеры: короткий режим (только PRESS F + heaven) или полная заставка
+  useEffect(() => {
+    if (shortMode) {
+      const tFlash = setTimeout(() => setShowFlash(true), 800);
+      const tFade = setTimeout(() => setFadeOut(true), 900);
+      const tEnd = setTimeout(finish, SHORT_SPLASH_MS);
+      return () => { clearTimeout(tFlash); clearTimeout(tFade); clearTimeout(tEnd); };
+    }
     const tIntro = setTimeout(() => setPhase(0), INTRO_MS);
     const t0 = setTimeout(() => setPhase(1), PHASE0_END_MS);
     const t1 = setTimeout(() => setPhase(2), PHASE1_END_MS);
@@ -118,7 +145,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     const t5 = setTimeout(() => setPhase(6), PHASE5_END_MS);
     const t6 = setTimeout(() => setShowFlash(true), FLASH_AT_MS);
     const t7 = setTimeout(() => setFadeOut(true), FADEOUT_START_MS);
-    const t8 = setTimeout(() => onFinishRef.current(), SPLASH_DURATION_MS);
+    const t8 = setTimeout(finish, SPLASH_DURATION_MS);
     return () => {
       [tIntro, t0, t1, t2, t3, t4, t5, t6, t7, t8].forEach(clearTimeout);
     };
@@ -129,7 +156,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const isTerminalPhase = phase >= 0 && phase <= 3;
-  const isIntro = phase === -1;
+  const isIntro = !shortMode && phase === -1;
 
   return (
     <div
@@ -143,6 +170,18 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
       }}
       aria-hidden="true"
     >
+      {/* Кнопка «Пропустить» — после 2.5 с */}
+      {showSkip && !fadeOut && (
+        <button
+          type="button"
+          onClick={finish}
+          className="splash-skip-btn absolute top-4 right-4 z-10 px-4 py-2 rounded border border-[rgba(0,255,65,0.5)] bg-black/40 text-[#00ff41] text-sm font-mono hover:bg-[rgba(0,255,65,0.1)] transition-colors"
+          aria-label={t('splash_skip')}
+        >
+          {t('splash_skip')}
+        </button>
+      )}
+
       {/* Интро: только чёрный экран + быстрая скан-линия (один проход) */}
       {isIntro && (
         <div
@@ -243,7 +282,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           )}
           {symbolVisible && (
             <div
-              className="splash-monument-f opacity-0 flex items-center justify-center mt-8"
+              className="splash-monument-f splash-monument-f-glow opacity-0 flex items-center justify-center mt-8"
               style={{
                 animation: reducedMotion ? 'none' : 'splash-fadeIn 0.5s ease-out forwards',
                 willChange: 'opacity',
@@ -270,7 +309,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
 
       {/* Фаза 1: Сканирование... */}
       {phase === 1 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
+        <div className="splash-phase-in absolute inset-0 flex flex-col items-center justify-center px-4">
           <div className="splash-terminal-window">
             <div className="splash-terminal-titlebar">
               <div className="splash-terminal-titlebar-dots"><span /><span /><span /></div>
@@ -286,7 +325,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
 
       {/* Фаза 2: Идентификация... */}
       {phase === 2 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
+        <div className="splash-phase-in absolute inset-0 flex flex-col items-center justify-center px-4">
           <div className="splash-terminal-window">
             <div className="splash-terminal-titlebar">
               <div className="splash-terminal-titlebar-dots"><span /><span /><span /></div>
@@ -302,7 +341,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
 
       {/* Фаза 3: Юзер отметился */}
       {phase === 3 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
+        <div className="splash-phase-in absolute inset-0 flex flex-col items-center justify-center px-4">
           <div className="splash-terminal-window">
             <div className="splash-terminal-titlebar">
               <div className="splash-terminal-titlebar-dots"><span /><span /><span /></div>
@@ -318,7 +357,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
 
       {/* Фаза 4: Данные зашифрованы + анимация + иконка щита */}
       {phase === 4 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
+        <div className="splash-phase-in absolute inset-0 flex flex-col items-center justify-center px-4">
           <div
             className="font-mono text-lg sm:text-xl text-center mb-6"
             style={{

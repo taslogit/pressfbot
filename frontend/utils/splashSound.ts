@@ -66,13 +66,26 @@ export function playOrSound() {
   } catch (_) {}
 }
 
+function getAngelMp3Url(): string {
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+  return `${base}/sound/angel.mp3`;
+}
+
+/** Предзагрузка angel.mp3 при монтировании заставки */
+export function preloadAngelMp3() {
+  if (typeof window === 'undefined') return;
+  try {
+    const audio = new Audio(getAngelMp3Url());
+    audio.preload = 'auto';
+    audio.load();
+  } catch (_) {}
+}
+
 /** Хор ангелов для PRESS F — воспроизведение angel.mp3 из public/sound/ */
 export function playAngelMp3() {
   if (typeof window === 'undefined') return;
   try {
-    const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
-    const src = `${base}/sound/angel.mp3`;
-    const audio = new Audio(src);
+    const audio = new Audio(getAngelMp3Url());
     audio.volume = 0.8;
     audio.play().catch(() => {});
   } catch (_) {}
