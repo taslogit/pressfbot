@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ShieldCheck, Skull, Zap, Info, ChevronRight, Moon, Sun, Hourglass, Activity, Target, Terminal, FileText, Swords, Users, RefreshCw, Lock, Share2, Signal, BookOpen, ShoppingBag, Settings, Trophy } from 'lucide-react';
+import { ShieldCheck, Skull, Zap, Info, ChevronRight, Moon, Sun, Hourglass, Activity, Target, Terminal, FileText, Swords, Users, RefreshCw, Lock, Share2, Signal, BookOpen, ShoppingBag, Settings, Trophy } from 'lucide-react';
 import { useDeadManSwitch } from '../hooks/useDeadManSwitch';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -25,10 +25,28 @@ import { profileAPI, tonAPI, dailyQuestsAPI } from '../utils/api';
 import { analytics } from '../utils/analytics';
 import { useApiError } from '../contexts/ApiErrorContext';
 
+/** Русская плюрализация: день/дня/дней, час/часа/часов */
+function getTimerLabel(count: number, type: 'days' | 'hours', t: (k: any, p?: Record<string, number>) => string, language: string): string {
+  const n = Math.max(0, Math.abs(count)) % 100;
+  const n10 = n % 10;
+  if (language !== 'ru') {
+    if (type === 'days') return n === 1 ? (t('timer_day_en') || 'DAY') : (t('timer_days_en') || 'DAYS');
+    return n === 1 ? (t('timer_hour_en') || 'HOUR') : (t('timer_hours_en') || 'HOURS');
+  }
+  if (type === 'days') {
+    if (n10 === 1 && n !== 11) return t('timer_day');
+    if (n10 >= 2 && n10 <= 4 && (n < 10 || n >= 20)) return t('timer_days_few');
+    return t('timer_days_many');
+  }
+  if (n10 === 1 && n !== 11) return t('timer_hour');
+  if (n10 >= 2 && n10 <= 4 && (n < 10 || n >= 20)) return t('timer_hours_few');
+  return t('timer_hours_many');
+}
+
 const Landing = () => {
   const navigate = useNavigate();
   const { daysRemaining, hoursRemaining, is24hMode, isDead, imAlive } = useDeadManSwitch();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { showApiError } = useApiError();
   const { theme, toggleTheme } = useTheme();
   
@@ -477,7 +495,7 @@ const Landing = () => {
             onClick={() => { playSound('click'); setHomeValueCollapsed(false); }}
             className="w-full card-terminal bg-card/60 border border-border rounded-xl py-3 px-4 text-left flex items-center justify-between gap-2 hover:border-accent-cyan/40 hover:bg-card/80 transition-colors"
           >
-            <span className="label-terminal text-xs uppercase tracking-widest text-muted">{t('home_value_title')}</span>
+            <span className="label-terminal text-xs uppercase tracking-widest text-purple-400">{t('home_value_title')}</span>
             <ChevronRight size={18} className="text-muted flex-shrink-0" />
           </motion.button>
         ) : (
@@ -491,7 +509,7 @@ const Landing = () => {
             className="card-terminal bg-card/60 border border-border rounded-xl p-4 text-xs text-muted overflow-hidden"
           >
             <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="label-terminal text-xs uppercase tracking-widest text-muted truncate">{t('home_value_title')}</div>
+              <div className="label-terminal text-xs uppercase tracking-widest text-purple-400 truncate">{t('home_value_title')}</div>
               <button
                 type="button"
                 onClick={() => { playSound('click'); setHomeValueCollapsed(true); }}
@@ -540,7 +558,7 @@ const Landing = () => {
         transition={{ duration: 0.35 }}
       >
         <div className="flex items-center justify-between gap-2 mb-2 min-w-0">
-          <div className="label-terminal text-xs uppercase tracking-widest text-muted truncate">{t('home_streak_title')}</div>
+          <div className="label-terminal text-xs uppercase tracking-widest text-purple-400 truncate">{t('home_streak_title')}</div>
           <span className={`text-xs uppercase tracking-widest shrink-0 ${isOverdue ? 'text-red-400' : 'text-accent-lime'}`}>
             {is24hMode ? t('home_streak_hours', { hours: Math.max(hoursRemaining, 0) }) : t('home_streak_days', { days: Math.max(daysRemaining, 0) })}
           </span>
@@ -563,7 +581,7 @@ const Landing = () => {
         transition={{ duration: 0.35 }}
       >
         <div className="flex justify-between items-center w-full mb-2">
-           <h2 className="font-heading text-sm font-bold text-muted flex items-center gap-2">
+           <h2 className="font-heading text-sm font-bold text-purple-400 flex items-center gap-2">
              <Activity size={16} className="text-accent-lime" />
              {t('system_status')}
            </h2>
@@ -611,13 +629,13 @@ const Landing = () => {
                     )}
                 </motion.div>
 
-                {/* Countdown: hours in 24h mode, days otherwise */}
+                {/* Countdown: цифры и подпись — кроваво-красные; подпись с правильными окончаниями (1 день, 20 дней, 1 час, 20 часов) */}
                 <div className="flex flex-col items-center z-10 mt-1">
-                    <span className={`font-heading text-5xl font-black tracking-tighter leading-none ${isUrgent ? 'text-red-500' : 'text-white'}`}>
+                    <span className="font-heading text-5xl font-black tracking-tighter leading-none text-red-700 drop-shadow-[0_0_12px_rgba(185,28,28,0.6)]">
                         {is24hMode ? hoursRemaining : daysRemaining}
                     </span>
-                    <span className="font-heading text-xs font-bold uppercase text-muted tracking-[0.3em] mt-1">
-                        {is24hMode ? t('hours_left') : t('days_left')}
+                    <span className="font-heading text-xs font-bold uppercase text-red-700/90 tracking-[0.3em] mt-1">
+                        {getTimerLabel(is24hMode ? hoursRemaining : daysRemaining, is24hMode ? 'hours' : 'days', t, language)}
                     </span>
                 </div>
             </motion.div>
@@ -789,7 +807,7 @@ const Landing = () => {
       {/* System Log Widget */}
       <div className="relative z-10">
          <div className="flex justify-between items-end mb-2 px-1">
-           <h3 className="font-heading text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-1">
+           <h3 className="font-heading text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1">
              <Terminal size={12} /> {t('system_log_title')}
            </h3>
            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -812,7 +830,7 @@ const Landing = () => {
 
       {/* Active Widgets */}
       <div className="relative z-10">
-         <h3 className="font-heading text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1">{t('active_widgets')}</h3>
+         <h3 className="font-heading text-xs font-bold text-purple-400 uppercase tracking-wider mb-3 ml-1">{t('active_widgets')}</h3>
          
          <div className="grid grid-cols-2 gap-3">
             <motion.div 
@@ -935,30 +953,6 @@ const Landing = () => {
       {/* Activity Feed */}
       <div className="relative z-10">
         <ActivityFeed />
-      </div>
-
-      {/* Primary Action - Compact Button Style */}
-      <div className="relative z-10 mt-2">
-        <motion.button
-            whileTap={{ scale: 0.98 }}
-            onClick={() => { playSound('open'); navigate('/create-letter'); }}
-            className="w-full relative group overflow-hidden rounded-xl p-[1px]" // Border wrapper
-          >
-            {/* Animated Gradient Border */}
-            <div className="absolute inset-0 bg-gradient-to-r from-accent-cyan via-accent-lime to-accent-cyan animate-gradient-xy opacity-70 group-hover:opacity-100 transition-opacity" />
-
-            {/* Compact Inner Content */}
-            <div className="relative bg-card/90 backdrop-blur-xl rounded-xl px-5 h-14 flex items-center justify-between transition-all group-active:bg-card/80">
-               <div className="flex items-center gap-3">
-                   <Plus size={20} className="text-accent-cyan group-hover:scale-110 transition-transform" strokeWidth={3} />
-                   <span className="text-sm font-black italic tracking-wider text-white uppercase group-hover:text-accent-cyan transition-colors">
-                     {t('quick_action_letter')}
-                   </span>
-               </div>
-               
-               <ChevronRight size={20} className="text-muted/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
-            </div>
-        </motion.button>
       </div>
 
     </div>

@@ -66,59 +66,15 @@ export function playOrSound() {
   } catch (_) {}
 }
 
-function getAngelMp3Url(): string {
-  const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
-  return `${base}/sound/angel.mp3`;
-}
-
-let angelAudio: HTMLAudioElement | null = null;
-
-function getAngelAudio(): HTMLAudioElement | null {
-  if (typeof window === 'undefined') return null;
-  if (!angelAudio) {
-    try {
-      angelAudio = new Audio(getAngelMp3Url());
-      angelAudio.preload = 'auto';
-    } catch (_) {
-      return null;
-    }
-  }
-  return angelAudio;
-}
-
-/** Предзагрузка angel.mp3 при монтировании заставки */
-export function preloadAngelMp3() {
-  const audio = getAngelAudio();
-  if (audio) audio.load();
-}
-
 /**
  * Разблокировка звука по первому жесту пользователя (требование браузеров).
  * Вызывать из обработчика click/touch на заставке один раз.
  */
 export function unlockSplashAudio() {
   getContext()?.resume();
-  const audio = getAngelAudio();
-  if (!audio) return;
-  audio.volume = 0;
-  audio.play().then(() => {
-    audio.pause();
-    audio.currentTime = 0;
-  }).catch(() => {});
 }
 
-/** Хор ангелов для PRESS F — один экземпляр Audio, разблокированный через unlockSplashAudio() */
-export function playAngelMp3() {
-  const audio = getAngelAudio();
-  if (!audio) return;
-  try {
-    audio.volume = 0.8;
-    audio.currentTime = 0;
-    audio.play().catch(() => {});
-  } catch (_) {}
-}
-
-/** Хор ангелов (синтез) — запасной вариант, если mp3 недоступен */
+/** Ангельский хор для PRESS F (Web Audio API) */
 export function playAngelChoir() {
   const ctx = getContext();
   if (!ctx) return;

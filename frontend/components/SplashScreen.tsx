@@ -4,14 +4,13 @@ import {
   playTerminalBeep,
   playTerminalSuccess,
   playOrSound,
-  playAngelMp3,
-  preloadAngelMp3,
+  playAngelChoir,
   unlockSplashAudio,
 } from '../utils/splashSound';
 import { storage } from '../utils/storage';
 
 const INTRO_MS = 900;
-const SPLASH_DURATION_MS = 10200 + INTRO_MS;
+const SPLASH_DURATION_MS = 12200 + INTRO_MS;
 const SHORT_SPLASH_MS = 2500;
 const SKIP_BUTTON_AFTER_MS = 2500;
 const TYPING_INTERVAL_MS = 26;
@@ -25,9 +24,9 @@ const PHASE2_END_MS = INTRO_MS + 5000;
 const PHASE3_END_MS = INTRO_MS + 6500;
 const PHASE4_END_MS = INTRO_MS + 8000;
 const PHASE5_END_MS = INTRO_MS + 9400; // +400ms пауза между «ИЛИ?» и PRESS F
-const PHASE6_PRESS_DELAY_MS = 400;
-const FLASH_AT_MS = INTRO_MS + 10000;
-const FADEOUT_START_MS = INTRO_MS + 10100;
+const PHASE6_PRESS_DELAY_MS = 2000; /* 2 с задержки, затем PRESS F проявляется из ничего */
+const FLASH_AT_MS = INTRO_MS + 10500; /* свет в конце тоннеля после появления PRESS F */
+const FADEOUT_START_MS = INTRO_MS + 10600;
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -76,11 +75,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const LINE1 = t('splash_checking');
   const LINE2 = t('splash_no_response');
 
-  // Предзагрузка angel.mp3 при монтировании
-  useEffect(() => {
-    preloadAngelMp3();
-  }, []);
-
   // Звуки при входе в фазу (только если включены в настройках)
   useEffect(() => {
     if (!soundEnabled || phase < 0 || soundPlayedRef.current[phase]) return;
@@ -89,7 +83,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     if (phase === 3) playTerminalSuccess();
     if (phase === 4) playTerminalSuccess();
     if (phase === 5) playOrSound();
-    if (phase === 6) playAngelMp3();
+    if (phase === 6) playAngelChoir();
   }, [phase, soundEnabled]);
 
   // Бип при появлении "no response" (конец набора второй строки в фазе 0)
@@ -398,7 +392,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         </div>
       )}
 
-      {/* Фаза 6: PRESS F с задержкой появления, затем переход в приложение */}
+      {/* Фаза 6: 2 с тишины, затем PRESS F проявляется из ничего; после — свет в конце тоннеля */}
       {phase === 6 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
           <div
@@ -411,7 +405,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
               animation:
                 reducedMotion
                   ? 'none'
-                  : `splash-logo-burst 0.5s ease-out ${PHASE6_PRESS_DELAY_MS / 1000}s forwards, splash-glow-pulse 1.2s ease-in-out ${(PHASE6_PRESS_DELAY_MS + 600) / 1000}s infinite`,
+                  : `splash-press-appear 0.9s ease-out ${PHASE6_PRESS_DELAY_MS / 1000}s forwards, splash-glow-pulse 1.2s ease-in-out ${(PHASE6_PRESS_DELAY_MS + 1000) / 1000}s infinite`,
               opacity: reducedMotion ? 1 : 0,
               willChange: 'transform, opacity',
             }}
@@ -421,17 +415,23 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         </div>
       )}
 
-      {/* Переход «в рай»: светло-жёлтый свет, эпичное заполнение и затухание */}
+      {/* Свет в конце тоннеля: свет из центра расширяется и заполняет экран, затем затухание */}
       {showFlash && (
         <div
-          className="absolute inset-0 pointer-events-none"
+          className="absolute inset-0 pointer-events-none flex items-center justify-center"
           style={{
-            backgroundColor: '#FFF8DC',
-            opacity: 0,
-            animation: reducedMotion ? 'none' : 'splash-heaven 1.6s ease-out forwards',
-            willChange: 'opacity',
+            animation: reducedMotion ? 'none' : 'splash-tunnel-light 2s ease-out forwards',
+            willChange: 'opacity, transform',
           }}
-        />
+        >
+          <div
+            className="absolute w-[200vmax] h-[200vmax] rounded-full"
+            style={{
+              background: 'radial-gradient(circle, #FFFFF8 0%, #FFF8E0 15%, rgba(255,248,220,0.5) 30%, transparent 55%)',
+              animation: reducedMotion ? 'none' : 'splash-tunnel-expand 2s ease-out forwards',
+            }}
+          />
+        </div>
       )}
     </div>
   );
