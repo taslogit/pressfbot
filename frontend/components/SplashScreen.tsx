@@ -5,6 +5,7 @@ import {
   playTerminalSuccess,
   playOrSound,
   playAngelChoir,
+  ANGEL_CHOIR_DURATION_MS,
   unlockSplashAudio,
 } from '../utils/splashSound';
 import { storage } from '../utils/storage';
@@ -24,14 +25,9 @@ const SCAN_ITERATIONS = 3;
 
 const PHASE0_SCAN_END_MS = INTRO_MS; /* 1500 — конец скан-линии */
 const PHASE1_HEARTBEAT_END_MS = INTRO_MS + 2000; /* 3500 — конец heartbeat */
-const PHASE2_TERMINAL_END_MS = INTRO_MS + 2000 + 6500; /* 10000 — конец терминала */
+const LOCK_DISPLAY_MS = 500; /* показ замка после «Данные зашифрованы» вместо задержки */
 const PHASE3_OR_DURATION_MS = 600; /* ИЛИ? + не отметился — без задержек до и после */
-const PHASE3_OR_END_MS = PHASE2_TERMINAL_END_MS + PHASE3_OR_DURATION_MS; /* 10600 */
-const PHASE4_PRESS_DELAY_MS = 2000; /* единственная задержка: 2 с перед появлением PRESS F */
-const PRESS_APPEAR_DURATION_MS = 1000; /* длительность анимации появления PRESS F */
-const FLASH_AT_MS = PHASE3_OR_END_MS + PHASE4_PRESS_DELAY_MS + PRESS_APPEAR_DURATION_MS + 400; /* после появления PRESS F — свет в тоннеле */
-const FADEOUT_START_MS = FLASH_AT_MS + 100;
-const SPLASH_DURATION_MS = FADEOUT_START_MS + 1200; /* конец заставки */
+const PRESS_APPEAR_DURATION_MS = 400; /* появление PRESS F синхронно с началом ангельского звука */
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -138,6 +134,13 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     { prefix: '', text: t('splash_data_encrypted'), color: '#00ff41' },
   ];
   const terminalFullLength = TERMINAL_LINES.reduce((acc, l) => acc + l.prefix.length + l.text.length + 1, 0);
+  const typingDurationMs =
+    Math.ceil(terminalFullLength / TERMINAL_TYPING_BATCH) * (TERMINAL_TYPING_INTERVAL_MS * TERMINAL_TYPING_BATCH);
+  const PHASE2_TERMINAL_END_MS = PHASE1_HEARTBEAT_END_MS + typingDurationMs + LOCK_DISPLAY_MS;
+  const PHASE3_OR_END_MS = PHASE2_TERMINAL_END_MS + PHASE3_OR_DURATION_MS;
+  const FLASH_AT_MS = PHASE3_OR_END_MS + ANGEL_CHOIR_DURATION_MS;
+  const FADEOUT_START_MS = FLASH_AT_MS + 100;
+  const SPLASH_DURATION_MS = FADEOUT_START_MS + 1200;
 
   // Печатание объединённого терминала (фаза 2): батч по 2 символа — меньше ре-рендеров
   useEffect(() => {
@@ -383,6 +386,20 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
                   );
                 });
               })()}
+              {terminalTypedLen >= terminalFullLength && (
+                <div className="mt-2 flex items-center gap-2 splash-terminal-output" style={{ color: '#00ff41' }}>
+                  <span
+                    className="inline-flex shrink-0 opacity-90"
+                    style={{ animation: 'splash-text-reveal 0.35s ease-out forwards' }}
+                    aria-hidden
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -417,7 +434,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         </div>
       )}
 
-      {/* Фаза 4: 2 с задержки, затем PRESS F — градиент + подсветка; после — свет в конце тоннеля → приложение с туториалом */}
+      {/* Фаза 4: PRESS F синхронно с ангельским звуком (длительность = ANGEL_CHOIR_DURATION_MS), затем свет в тоннеле */}
       {phase === 4 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
           <div
@@ -427,7 +444,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
               animation:
                 reducedMotion
                   ? 'none'
-                  : `splash-press-appear-v2 ${PRESS_APPEAR_DURATION_MS}ms ease-out ${PHASE4_PRESS_DELAY_MS / 1000}s forwards, splash-press-glow 2s ease-in-out ${(PHASE4_PRESS_DELAY_MS + PRESS_APPEAR_DURATION_MS) / 1000}s infinite`,
+                  : `splash-press-appear-v2 ${PRESS_APPEAR_DURATION_MS}ms ease-out 0s forwards, splash-press-glow 2s ease-in-out ${PRESS_APPEAR_DURATION_MS / 1000}s infinite`,
               opacity: reducedMotion ? 1 : 0,
               willChange: 'transform, opacity, filter',
             }}

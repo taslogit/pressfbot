@@ -74,6 +74,9 @@ export function unlockSplashAudio() {
   getContext()?.resume();
 }
 
+/** Длительность ангельского хора (мс) — для синхронизации с появлением PRESS F */
+export const ANGEL_CHOIR_DURATION_MS = 2200;
+
 /** Ангельский хор для PRESS F (Web Audio API) */
 export function playAngelChoir() {
   const ctx = getContext();
@@ -83,7 +86,7 @@ export function playAngelChoir() {
     gain.connect(ctx.destination);
     gain.gain.setValueAtTime(0, ctx.currentTime);
     gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.4);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.2);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + ANGEL_CHOIR_DURATION_MS / 1000);
     const t0 = ctx.currentTime;
     const freqs = [523.25, 659.25, 783.99, 1046.5, 1318.5];
     freqs.forEach((freq) => {
@@ -93,7 +96,7 @@ export function playAngelChoir() {
       osc.frequency.setValueAtTime(freq, t0);
       osc.frequency.linearRampToValueAtTime(freq * 1.02, t0 + 1.5);
       osc.start(t0);
-      osc.stop(t0 + 2.2);
+      osc.stop(t0 + ANGEL_CHOIR_DURATION_MS / 1000);
     });
   } catch (_) {}
 }
