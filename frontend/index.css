@@ -204,7 +204,10 @@ html {
   text-transform: uppercase;
 }
 
-/* Шрифты единые для RU и EN (как в английской локали) — .lang-ru не переопределяет шрифты */
+/* Русская локаль: основной текст — Reggae One (кириллица) */
+.lang-ru {
+  --font-body: "Reggae One", cursive;
+}
 
 /* ─── Кнопки (дизайн-система) ──────────────────────────────────────────── */
 /* Контраст: btn-primary использует text-black на accent-lime (WCAG AA). */
