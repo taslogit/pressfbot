@@ -449,95 +449,149 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
-/* Монумент «F»: рамка-стела (только CSS), на больших экранах крупнее */
-.splash-monument-f {
-  width: 4.5rem;
-  height: 4.5rem;
-  border: 2px solid rgba(0, 224, 255, 0.35);
-  border-radius: 4px;
-  box-shadow:
-    0 0 15px rgba(0, 224, 255, 0.2),
-    inset 0 0 20px rgba(180, 255, 0, 0.06);
-}
-@media (min-width: 768px) {
-  .splash-monument-f { width: 6rem; height: 6rem; }
-}
-.splash-monument-f-glow {
-  animation: splash-border-glow 2s ease-in-out infinite;
-}
-
-/* Терминал в стиле Kali: окно с заголовком и командной строкой */
+/* Терминал: вид как у настоящего (iTerm/hacker-style) */
 .splash-terminal-window {
-  background: #0d1117;
-  border: 1px solid rgba(0, 255, 65, 0.4);
-  border-radius: 8px;
+  --term-bg: #0a0e14;
+  --term-border: rgba(0, 255, 65, 0.35);
+  --term-glow: rgba(0, 255, 65, 0.15);
+  background: linear-gradient(180deg, #0c1016 0%, #080b0f 100%);
+  border: 1px solid var(--term-border);
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 0 24px rgba(0, 255, 65, 0.12), inset 0 1px 0 rgba(255,255,255,0.04);
-  max-width: 380px;
+  max-width: 420px;
   width: 100%;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 0 40px var(--term-glow),
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(0, 255, 65, 0.08),
+    inset 0 0 60px rgba(0, 0, 0, 0.4);
 }
 
 .splash-terminal-titlebar {
-  background: rgba(0, 0, 0, 0.4);
-  border-bottom: 1px solid rgba(0, 255, 65, 0.25);
-  padding: 6px 10px 6px 12px;
+  background: linear-gradient(180deg, #1a1f26 0%, #0f1318 100%);
+  border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+  padding: 10px 14px 10px 16px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  gap: 12px;
+  font-family: "SF Mono", "Consolas", "Monaco", "Courier New", monospace;
   font-size: 11px;
-  color: rgba(0, 255, 65, 0.85);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(0, 255, 65, 0.9);
+  text-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
 }
 
 .splash-terminal-titlebar-dots {
   display: flex;
-  gap: 5px;
+  gap: 6px;
 }
 .splash-terminal-titlebar-dots span {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: rgba(0, 255, 65, 0.35);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.2);
 }
-.splash-terminal-titlebar-dots span:nth-child(1) { background: rgba(255, 95, 86, 0.6); }
-.splash-terminal-titlebar-dots span:nth-child(2) { background: rgba(255, 189, 46, 0.6); }
-.splash-terminal-titlebar-dots span:nth-child(3) { background: rgba(39, 201, 63, 0.5); }
+.splash-terminal-titlebar-dots span:nth-child(1) {
+  background: linear-gradient(180deg, #ff5f56 0%, #e0443e 100%);
+}
+.splash-terminal-titlebar-dots span:nth-child(2) {
+  background: linear-gradient(180deg, #ffbd2e 0%, #dea123 100%);
+}
+.splash-terminal-titlebar-dots span:nth-child(3) {
+  background: linear-gradient(180deg, #27c93f 0%, #1aab29 100%);
+}
 
 .splash-terminal-body {
-  padding: 12px 14px 14px;
-  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  padding: 16px 18px 18px;
+  font-family: "SF Mono", "Consolas", "Monaco", "Courier New", monospace;
   font-size: 13px;
+  font-weight: 400;
   color: #00ff41;
-  text-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
-  line-height: 1.5;
+  line-height: 1.6;
+  text-shadow: 0 0 12px rgba(0, 255, 65, 0.35);
+  background: var(--term-bg);
+  position: relative;
+  min-height: 80px;
+}
+.splash-terminal-body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 255, 65, 0.015) 2px,
+    rgba(0, 255, 65, 0.015) 4px
+  );
+  pointer-events: none;
 }
 
 .splash-terminal-prompt {
   color: #00ff41;
   opacity: 0.95;
+  font-weight: 500;
 }
 
 .splash-terminal-prompt::before {
   content: "root@pressf:~$ ";
+  color: rgba(0, 255, 65, 0.7);
 }
 
 .splash-terminal-output {
   color: #00ff41;
 }
 
-/* Иконка шифрования: щит (CSS) */
-.splash-shield-icon {
-  width: 4rem;
+/* Иконка шифрования: замок (CSS) — замок с замочной скважиной и лёгкое свечение */
+.splash-encrypt-icon {
+  width: 4.5rem;
   height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.splash-shield-shape {
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 255, 65, 0.12);
-  border: 2px solid rgba(0, 255, 65, 0.6);
-  clip-path: polygon(50% 0%, 100% 15%, 100% 85%, 50% 100%, 0% 85%, 0% 15%);
-  border-radius: 2px;
+.splash-encrypt-lock {
+  width: 2.25rem;
+  height: 2rem;
+  position: relative;
+  background: linear-gradient(180deg, rgba(0, 255, 65, 0.25) 0%, rgba(0, 255, 65, 0.08) 100%);
+  border: 2px solid rgba(0, 255, 65, 0.7);
+  border-radius: 4px;
+  box-shadow:
+    0 0 20px rgba(0, 255, 65, 0.4),
+    0 0 40px rgba(0, 255, 65, 0.15),
+    inset 0 1px 0 rgba(0, 255, 65, 0.2),
+    inset 0 -2px 8px rgba(0, 0, 0, 0.3);
+}
+.splash-encrypt-lock::before {
+  /* дужка замка */
+  content: "";
+  position: absolute;
+  top: -0.65rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1rem;
+  height: 0.7rem;
+  border: 2px solid rgba(0, 255, 65, 0.7);
+  border-bottom: none;
+  border-radius: 0.5rem 0.5rem 0 0;
+  box-shadow: 0 0 12px rgba(0, 255, 65, 0.3);
+}
+.splash-encrypt-lock::after {
+  /* замочная скважина */
+  content: "";
+  position: absolute;
+  bottom: 0.35rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 6px;
+  background: rgba(0, 255, 65, 0.9);
+  border-radius: 1px;
+  box-shadow: 0 0 8px rgba(0, 255, 65, 0.6), inset 0 0 4px rgba(0, 255, 65, 0.5);
 }
 
 @keyframes splash-encrypt {

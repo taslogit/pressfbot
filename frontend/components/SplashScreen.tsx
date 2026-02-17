@@ -51,7 +51,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const [phase, setPhase] = useState(shortMode ? 6 : -1);
   const [line1Len, setLine1Len] = useState(0);
   const [line2Len, setLine2Len] = useState(0);
-  const [symbolVisible, setSymbolVisible] = useState(false);
   const [showFlash, setShowFlash] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
   const [showSkip, setShowSkip] = useState(false);
@@ -124,9 +123,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           clearInterval(t2);
           return n;
         }
-        const next = n + 1;
-        if (next >= LINE2.length) setSymbolVisible(true);
-        return next;
+        return n + 1;
       });
     }, TYPING_INTERVAL_MS);
     return () => clearInterval(t2);
@@ -297,7 +294,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           </div>
           {line1Len >= LINE1.length && (
             <div
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 w-28 h-0.5 rounded-full origin-center"
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 w-28 h-0.5 rounded-full origin-center pointer-events-none"
               style={{
                 background: 'linear-gradient(90deg, transparent, #ff6b6b 40%, #00ff41 60%, transparent)',
                 boxShadow: '0 0 10px rgba(255, 107, 107, 0.5)',
@@ -305,30 +302,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
                 willChange: 'transform',
               }}
             />
-          )}
-          {symbolVisible && (
-            <div
-              className="splash-monument-f splash-monument-f-glow opacity-0 flex items-center justify-center mt-8"
-              style={{
-                animation: reducedMotion ? 'none' : 'splash-fadeIn 0.5s ease-out forwards',
-                willChange: 'opacity',
-                borderColor: 'rgba(0, 255, 65, 0.4)',
-                boxShadow: '0 0 14px rgba(0, 255, 65, 0.2), inset 0 0 16px rgba(0, 255, 65, 0.06)',
-              }}
-              aria-hidden
-            >
-              <span
-                className="font-logo text-4xl sm:text-5xl font-black select-none"
-                style={{
-                  color: '#00ff41',
-                  fontFamily: 'var(--font-logo), Rye, cursive',
-                  textShadow: '0 0 12px rgba(0, 255, 65, 0.6)',
-                  lineHeight: 1,
-                }}
-              >
-                F
-              </span>
-            </div>
           )}
         </div>
       )}
@@ -381,7 +354,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         </div>
       )}
 
-      {/* Фаза 4: Данные зашифрованы + анимация + иконка щита */}
+      {/* Фаза 4: Данные зашифрованы + иконка замка */}
       {phase === 4 && (
         <div className="splash-phase-in absolute inset-0 flex flex-col items-center justify-center px-4">
           <div
@@ -394,20 +367,14 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           >
             {t('splash_data_encrypted')}
           </div>
-          {/* Иконка шифрования: щит (CSS) */}
           <div
-            className="splash-shield-icon flex items-center justify-center"
+            className="splash-encrypt-icon"
             style={{
               animation: reducedMotion ? 'none' : 'splash-lock-in 0.5s ease-out forwards',
               opacity: reducedMotion ? 1 : 0,
             }}
           >
-            <div
-              className="splash-shield-shape"
-              style={{
-                boxShadow: '0 0 20px rgba(0, 255, 65, 0.4), inset 0 0 12px rgba(0, 255, 65, 0.08)',
-              }}
-            />
+            <div className="splash-encrypt-lock" />
           </div>
         </div>
       )}
