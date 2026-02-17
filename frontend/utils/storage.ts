@@ -277,7 +277,7 @@ export const storage = {
         lastCheckIn: apiSettings.lastCheckIn || Date.now(),
         lastDailyClaim: apiSettings.lastDailyClaim || 0,
         funeralTrack: apiSettings.funeralTrack || 'astronomia',
-        language: apiSettings.language || 'ru',
+        language: (apiSettings.language === 'en' || apiSettings.language === 'ru') ? apiSettings.language : 'ru',
         theme: apiSettings.theme || 'dark',
         soundEnabled: apiSettings.soundEnabled !== false,
         notificationsEnabled: apiSettings.notificationsEnabled !== false,

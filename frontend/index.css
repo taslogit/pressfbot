@@ -204,17 +204,7 @@ html {
   text-transform: uppercase;
 }
 
-/* Русская локализация: шрифты с поддержкой кириллицы (похожи на EN) */
-.lang-ru .label-terminal,
-.lang-ru .font-body {
-  font-family: "PT Serif", "Georgia", serif;
-}
-.lang-ru .font-heading {
-  font-family: "Rubik Wet Paint", "Russo One", cursive;
-}
-.lang-ru .font-logo {
-  font-family: "Russo One", "Rye", cursive;
-}
+/* Шрифты единые для RU и EN (как в английской локали) — .lang-ru не переопределяет шрифты */
 
 /* ─── Кнопки (дизайн-система) ──────────────────────────────────────────── */
 /* Контраст: btn-primary использует text-black на accent-lime (WCAG AA). */

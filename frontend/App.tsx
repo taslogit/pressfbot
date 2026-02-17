@@ -216,7 +216,13 @@ const App = () => {
           <TonConnectUIProvider manifestUrl={manifestUrl}>
             <HashRouter>
               {!splashDone && (
-                <SplashScreen onFinish={() => setSplashDone(true)} />
+                <SplashScreen
+                  onFinish={() => {
+                    requestAnimationFrame(() => {
+                      requestAnimationFrame(() => setSplashDone(true));
+                    });
+                  }}
+                />
               )}
               <TelegramHandler />
               <SessionGate>

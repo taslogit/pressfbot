@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { translations, Language } from '../utils/translations';
-import { tg } from '../utils/telegram';
 
 interface LanguageContextType {
   language: Language;
@@ -12,15 +11,11 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // По умолчанию всегда русский; язык из Telegram не используем — только сохранённые настройки
+  // По умолчанию русский; язык только из сохранённых настроек (localStorage + API)
   const [language, setLanguageState] = useState<Language>(() => {
     if (typeof window === 'undefined') return 'ru';
-    const hasExplicit = localStorage.getItem('lastmeme_settings');
-    if (hasExplicit) {
-      const settings = storage.getSettings();
-      return settings.language;
-    }
-    return 'ru';
+    const settings = storage.getSettings();
+    return (settings.language === 'en' || settings.language === 'ru') ? settings.language : 'ru';
   });
 
   useEffect(() => {
@@ -32,6 +27,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     storage.updateSettings({ language: lang });
+    storage.updateSettingsAsync({ language: lang }).catch(() => {});
   };
 
   const t = (key: keyof typeof translations['en'], params?: Record<string, string | number>) => {

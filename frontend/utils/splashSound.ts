@@ -71,22 +71,49 @@ function getAngelMp3Url(): string {
   return `${base}/sound/angel.mp3`;
 }
 
-/** Предзагрузка angel.mp3 при монтировании заставки */
-export function preloadAngelMp3() {
-  if (typeof window === 'undefined') return;
-  try {
-    const audio = new Audio(getAngelMp3Url());
-    audio.preload = 'auto';
-    audio.load();
-  } catch (_) {}
+let angelAudio: HTMLAudioElement | null = null;
+
+function getAngelAudio(): HTMLAudioElement | null {
+  if (typeof window === 'undefined') return null;
+  if (!angelAudio) {
+    try {
+      angelAudio = new Audio(getAngelMp3Url());
+      angelAudio.preload = 'auto';
+    } catch (_) {
+      return null;
+    }
+  }
+  return angelAudio;
 }
 
-/** Хор ангелов для PRESS F — воспроизведение angel.mp3 из public/sound/ */
+/** Предзагрузка angel.mp3 при монтировании заставки */
+export function preloadAngelMp3() {
+  const audio = getAngelAudio();
+  if (audio) audio.load();
+}
+
+/**
+ * Разблокировка звука по первому жесту пользователя (требование браузеров).
+ * Вызывать из обработчика click/touch на заставке один раз.
+ */
+export function unlockSplashAudio() {
+  getContext()?.resume();
+  const audio = getAngelAudio();
+  if (!audio) return;
+  audio.volume = 0;
+  audio.play().then(() => {
+    audio.pause();
+    audio.currentTime = 0;
+  }).catch(() => {});
+}
+
+/** Хор ангелов для PRESS F — один экземпляр Audio, разблокированный через unlockSplashAudio() */
 export function playAngelMp3() {
-  if (typeof window === 'undefined') return;
+  const audio = getAngelAudio();
+  if (!audio) return;
   try {
-    const audio = new Audio(getAngelMp3Url());
     audio.volume = 0.8;
+    audio.currentTime = 0;
     audio.play().catch(() => {});
   } catch (_) {}
 }

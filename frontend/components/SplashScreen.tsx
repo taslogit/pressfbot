@@ -6,6 +6,7 @@ import {
   playOrSound,
   playAngelMp3,
   preloadAngelMp3,
+  unlockSplashAudio,
 } from '../utils/splashSound';
 import { storage } from '../utils/storage';
 
@@ -54,9 +55,18 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const [showFlash, setShowFlash] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
   const [showSkip, setShowSkip] = useState(false);
+  const [soundHintVisible, setSoundHintVisible] = useState(true);
   const onFinishRef = useRef(onFinish);
   const soundPlayedRef = useRef<Record<number, boolean>>({});
+  const audioUnlockedRef = useRef(false);
   onFinishRef.current = onFinish;
+
+  const handleSplashInteraction = () => {
+    if (audioUnlockedRef.current) return;
+    audioUnlockedRef.current = true;
+    setSoundHintVisible(false);
+    unlockSplashAudio();
+  };
 
   const finish = () => {
     storage.setHasSeenSplash();
@@ -122,9 +132,13 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     return () => clearInterval(t2);
   }, [line1Len, LINE1.length, LINE2]);
 
-  // Кнопка «Пропустить» через 2.5 с
+  // Кнопка «Пропустить» через 2.5 с; подсказка «Нажмите для звука» скрыть через 3 с
   useEffect(() => {
     const t = setTimeout(() => setShowSkip(true), SKIP_BUTTON_AFTER_MS);
+    return () => clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    const t = setTimeout(() => setSoundHintVisible(false), 3000);
     return () => clearTimeout(t);
   }, []);
 
@@ -168,8 +182,20 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         willChange: fadeOut ? 'opacity' : 'auto',
         transition: reducedMotion ? 'none' : 'opacity 1.2s ease-out',
       }}
+      onClick={handleSplashInteraction}
+      onTouchStart={handleSplashInteraction}
+      role="presentation"
       aria-hidden="true"
     >
+      {/* Подсказка: нажмите для включения звука (ангел на PRESS F) */}
+      {soundEnabled && soundHintVisible && !fadeOut && (
+        <div className="absolute bottom-6 left-0 right-0 text-center pointer-events-none">
+          <span className="text-xs text-[rgba(0,255,65,0.7)] font-mono">
+            {t('splash_tap_for_sound')}
+          </span>
+        </div>
+      )}
+
       {/* Кнопка «Пропустить» — после 2.5 с */}
       {showSkip && !fadeOut && (
         <button
