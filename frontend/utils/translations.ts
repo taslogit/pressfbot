@@ -5,6 +5,7 @@ export const translations = {
   en: {
     app_title: "PRESS F",
     app_subtitle: "Digital immortality (or nah).",
+    splash_loading: "Loading...",
     splash_checking: "checking user heartbeat...",
     splash_no_response: "no response",
     splash_scanning: "Scanning...",
@@ -12,6 +13,7 @@ export const translations = {
     splash_user_checked_in: "User checked in...",
     splash_data_encrypted: "Data encrypted",
     splash_or: "OR?",
+    splash_not_checked_in: "didn't check in",
     splash_activating: "activating legacy protocol",
     splash_data_survive: "your words will outlast you",
     splash_you_disappear: "YOU MAY DISAPPEAR",
@@ -862,6 +864,7 @@ export const translations = {
   ru: {
     app_title: "PRESS F",
     app_subtitle: "Цифровое бессмертие (или нет).",
+    splash_loading: "Загрузка...",
     splash_checking: "проверка пульса пользователя...",
     splash_no_response: "нет ответа",
     splash_scanning: "Сканирование...",
@@ -869,6 +872,7 @@ export const translations = {
     splash_user_checked_in: "Юзер отметился...",
     splash_data_encrypted: "Данные зашифрованы",
     splash_or: "ИЛИ?",
+    splash_not_checked_in: "не отметился",
     splash_activating: "активация протокола наследия",
     splash_data_survive: "твои слова переживут тебя",
     splash_you_disappear: "ТЫ МОЖЕШЬ ИСЧЕЗНУТЬ",
