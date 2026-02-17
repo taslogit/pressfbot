@@ -387,6 +387,31 @@ select:focus-visible {
   100% { opacity: 1; transform: scale(1) translateZ(0); filter: blur(0); }
 }
 
+/* PRESS F: градиентный текст с подсветкой */
+.splash-press-title {
+  background: linear-gradient(135deg, #B4FF00 0%, #FFF8B0 25%, #00E0FF 50%, #FF4DD2 75%, #B4FF00 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  filter: drop-shadow(0 0 20px rgba(180, 255, 0, 0.7)) drop-shadow(0 0 40px rgba(0, 224, 255, 0.5)) drop-shadow(0 0 60px rgba(255, 77, 210, 0.3));
+}
+
+/* Появление: из центра, лёгкий отскок, снятие размытия */
+@keyframes splash-press-appear-v2 {
+  0% { opacity: 0; transform: scale(0.6) translateZ(0); filter: drop-shadow(0 0 0 transparent) blur(14px); }
+  50% { opacity: 1; transform: scale(1.08) translateZ(0); filter: drop-shadow(0 0 30px rgba(180, 255, 0, 0.8)) blur(0); }
+  70% { transform: scale(0.97) translateZ(0); }
+  100% { opacity: 1; transform: scale(1) translateZ(0); filter: drop-shadow(0 0 24px rgba(180, 255, 0, 0.7)) drop-shadow(0 0 48px rgba(0, 224, 255, 0.5)); }
+}
+
+/* Пульсация подсветки градиента */
+@keyframes splash-press-glow {
+  0%, 100% { filter: drop-shadow(0 0 24px rgba(180, 255, 0, 0.7)) drop-shadow(0 0 48px rgba(0, 224, 255, 0.5)) drop-shadow(0 0 72px rgba(255, 77, 210, 0.3)); }
+  50% { filter: drop-shadow(0 0 32px rgba(180, 255, 0, 0.9)) drop-shadow(0 0 64px rgba(0, 224, 255, 0.7)) drop-shadow(0 0 96px rgba(255, 77, 210, 0.5)); }
+}
+
 /* Свет в конце тоннеля: появление и затухание */
 @keyframes splash-tunnel-light {
   0% { opacity: 0; }

@@ -12,7 +12,6 @@ import { storage } from '../utils/storage';
 const LOADING_MS = 600; /* быстрый экран загрузки перед скан-линией */
 const SCAN_LINE_MS = 900; /* скан-линия после загрузки */
 const INTRO_MS = LOADING_MS + SCAN_LINE_MS; /* 1500 — конец интро, начало терминала */
-const SPLASH_DURATION_MS = 15200;
 const SHORT_SPLASH_MS = 2500;
 const SKIP_BUTTON_AFTER_MS = 2500;
 const TYPING_INTERVAL_MS = 26;
@@ -23,11 +22,14 @@ const SCAN_ITERATIONS = 3;
 
 const PHASE0_SCAN_END_MS = INTRO_MS; /* 1500 — конец скан-линии */
 const PHASE1_HEARTBEAT_END_MS = INTRO_MS + 2000; /* 3500 — конец heartbeat */
-const PHASE2_TERMINAL_END_MS = INTRO_MS + 2000 + 6500; /* 10000 — конец объединённого терминала */
-const PHASE3_OR_END_MS = INTRO_MS + 2000 + 6500 + 1500; /* 11500 — конец ИЛИ? */
-const PHASE4_PRESS_DELAY_MS = 2000; /* 2 с задержки, затем PRESS F проявляется */
-const FLASH_AT_MS = PHASE3_OR_END_MS + PHASE4_PRESS_DELAY_MS + 500; /* 14000 */
+const PHASE2_TERMINAL_END_MS = INTRO_MS + 2000 + 6500; /* 10000 — конец терминала */
+const PHASE3_OR_DURATION_MS = 600; /* ИЛИ? + не отметился — без задержек до и после */
+const PHASE3_OR_END_MS = PHASE2_TERMINAL_END_MS + PHASE3_OR_DURATION_MS; /* 10600 */
+const PHASE4_PRESS_DELAY_MS = 2000; /* единственная задержка: 2 с перед появлением PRESS F */
+const PRESS_APPEAR_DURATION_MS = 1000; /* длительность анимации появления PRESS F */
+const FLASH_AT_MS = PHASE3_OR_END_MS + PHASE4_PRESS_DELAY_MS + PRESS_APPEAR_DURATION_MS + 400; /* после появления PRESS F — свет в тоннеле */
 const FADEOUT_START_MS = FLASH_AT_MS + 100;
+const SPLASH_DURATION_MS = FADEOUT_START_MS + 1200; /* конец заставки */
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -409,22 +411,19 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         </div>
       )}
 
-      {/* Фаза 4: 2 с тишины, затем PRESS F проявляется из ничего; после — свет в конце тоннеля */}
+      {/* Фаза 4: 2 с задержки, затем PRESS F — градиент + подсветка; после — свет в конце тоннеля → приложение с туториалом */}
       {phase === 4 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
           <div
-            className="font-logo text-5xl sm:text-6xl md:text-7xl font-black"
+            className="splash-press-title font-logo text-5xl sm:text-6xl md:text-7xl font-black"
             style={{
-              color: '#FFD700',
               fontFamily: 'var(--font-logo), Rye, cursive',
-              textShadow:
-                '0 0 30px rgba(255, 215, 0, 0.9), 0 0 60px rgba(255, 77, 210, 0.4)',
               animation:
                 reducedMotion
                   ? 'none'
-                  : `splash-press-appear 0.9s ease-out ${PHASE4_PRESS_DELAY_MS / 1000}s forwards, splash-glow-pulse 1.2s ease-in-out ${(PHASE4_PRESS_DELAY_MS + 1000) / 1000}s infinite`,
+                  : `splash-press-appear-v2 ${PRESS_APPEAR_DURATION_MS}ms ease-out ${PHASE4_PRESS_DELAY_MS / 1000}s forwards, splash-press-glow 2s ease-in-out ${(PHASE4_PRESS_DELAY_MS + PRESS_APPEAR_DURATION_MS) / 1000}s infinite`,
               opacity: reducedMotion ? 1 : 0,
-              willChange: 'transform, opacity',
+              willChange: 'transform, opacity, filter',
             }}
           >
             {t('app_title')}

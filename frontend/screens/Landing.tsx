@@ -208,7 +208,7 @@ const Landing = () => {
     });
 
     // Daily login loot — начисление XP за вход; обновляем кэш профиля.
-    // Небольшая задержка, чтобы не слать запрос в одну секунду с чекином и не получать 429.
+    // Небольшая задержка, чтобы не слать запрос в одну секунду с тапом и не получать 429.
     const dailyLootDelay = setTimeout(() => {
       profileAPI.claimDailyLoginLoot().then((res) => {
         if (isMounted && res.ok && res.data?.claimed && res.data?.xp) {
@@ -298,7 +298,7 @@ const Landing = () => {
       if (result.ok && result.data) {
         const { xp, streak, bonuses, timestamp } = result.data;
         
-        // Обновить локальные настройки: время последнего чекина (таймер и даты)
+        // Обновить локальные настройки: время последнего тапа (таймер и даты)
         if (timestamp != null) {
           storage.updateSettings({ lastCheckIn: timestamp });
           setSettings(storage.getSettings());
@@ -308,7 +308,7 @@ const Landing = () => {
         imAlive();
         setJustCheckedIn(true);
         setShowSharePulse(true);
-        // Обновить прогресс ежедневного квеста «чекин»
+        // Обновить прогресс ежедневного квеста «тап»
         dailyQuestsAPI.updateProgress('check_in').catch(() => {});
 
         // Track analytics
@@ -412,11 +412,12 @@ const Landing = () => {
     }
   };
 
-  const handleSharePulse = () => {
-    const appUrl = window.location.href.split('#')[0] + (window.location.hash || '');
+  const handleSharePulse = async () => {
+    const res = await profileAPI.getReferral();
+    const shareUrl = res.ok && res.data?.referralLink ? res.data.referralLink : 'https://t.me/PressFBot';
     const firstName = tg.initDataUnsafe?.user?.first_name || t('im_alive_btn').split('!')[0] || 'Я';
-    const text = t('share_invite_text', { name: firstName, url: appUrl });
-    tg.openLink(`https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent(text)}`);
+    const text = t('share_invite_text', { name: firstName, url: shareUrl });
+    tg.openLink(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`);
   };
 
 

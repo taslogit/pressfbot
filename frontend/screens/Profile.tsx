@@ -327,9 +327,9 @@ const Profile = () => {
     }
   };
 
-  const handleShareProfile = () => {
-    const username = tg.initDataUnsafe?.user?.username;
-    const url = username ? `https://t.me/${username}` : window.location.href;
+  const handleShareProfile = async () => {
+    const res = await profileAPI.getReferral();
+    const url = res.ok && res.data?.referralLink ? res.data.referralLink : 'https://t.me/PressFBot';
     const text = `PRESS F // LVL ${currentLevel} // ${displayTitle}`;
     tg.openLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
     setShowShareModal(false);

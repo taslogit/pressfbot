@@ -84,12 +84,12 @@ const StreakIndicator: React.FC<Props> = ({ className = '' }) => {
           )}
         </div>
         <button
-          onClick={() => {
+          onClick={async () => {
             playSound('click');
             const text = t('share_streak_text', { days: current });
-            const url = tg.initDataUnsafe?.user?.username
-              ? `https://t.me/${tg.initDataUnsafe.user.username}`
-              : window.location.href;
+            const { profileAPI } = await import('../utils/api');
+            const res = await profileAPI.getReferral();
+            const url = res.ok && res.data?.referralLink ? res.data.referralLink : 'https://t.me/PressFBot';
             tg.openLink?.(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
           }}
           className="flex-shrink-0 p-2 rounded-lg border border-orange-500/40 text-orange-400 hover:bg-orange-500/20 transition-all"

@@ -16,7 +16,7 @@ import EnvelopeAnimation from '../components/EnvelopeAnimation';
 import { playSound } from '../utils/sound';
 import XPNotification from '../components/XPNotification';
 import { calculateLevel } from '../utils/levelSystem';
-import { duelsAPI, dailyQuestsAPI } from '../utils/api';
+import { duelsAPI, dailyQuestsAPI, profileAPI } from '../utils/api';
 import { useApiAbort } from '../hooks/useApiAbort';
 import { useApiError } from '../contexts/ApiErrorContext';
 
@@ -358,9 +358,10 @@ const Duels = () => {
 
   const normalizeName = (value?: string) => (value || '').replace('@', '').trim().toLowerCase();
 
-  const shareDuel = (duel: Duel) => {
+  const shareDuel = async (duel: Duel) => {
     const text = t('share_duel_text', { title: duel.title || 'Beef', opponent: duel.opponent || '??' });
-    const url = window.location.href;
+    const res = await profileAPI.getReferral();
+    const url = res.ok && res.data?.referralLink ? res.data.referralLink : 'https://t.me/PressFBot';
     tg.openLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
   };
 
