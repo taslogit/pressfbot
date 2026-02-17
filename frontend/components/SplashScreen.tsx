@@ -15,7 +15,9 @@ const INTRO_MS = LOADING_MS + SCAN_LINE_MS; /* 1500 — конец интро, �
 const SHORT_SPLASH_MS = 2500;
 const SKIP_BUTTON_AFTER_MS = 2500;
 const TYPING_INTERVAL_MS = 26;
-const TERMINAL_TYPING_INTERVAL_MS = 22; /* печатание в объединённом терминале */
+const TYPING_BATCH = 2; /* обновлять по 2 символа — меньше ре-рендеров при той же скорости */
+const TERMINAL_TYPING_INTERVAL_MS = 22;
+const TERMINAL_TYPING_BATCH = 2;
 const INTRO_SCAN_DURATION_S = 0.7;
 const SCAN_DURATION_S = 2.167;
 const SCAN_ITERATIONS = 3;
@@ -96,7 +98,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     }
   }, [phase, line2Len, LINE2.length, soundEnabled]);
 
-  // Печатание фазы 1 (heartbeat)
+  // Печатание фазы 1 (heartbeat): батч по 2 символа — меньше ре-рендеров, плавнее
   useEffect(() => {
     if (phase !== 1) return;
     const t1 = setInterval(() => {
@@ -105,9 +107,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           clearInterval(t1);
           return n;
         }
-        return n + 1;
+        return Math.min(n + TYPING_BATCH, LINE1.length);
       });
-    }, TYPING_INTERVAL_MS);
+    }, TYPING_INTERVAL_MS * TYPING_BATCH);
     return () => clearInterval(t1);
   }, [phase, LINE1]);
 
@@ -119,9 +121,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           clearInterval(t2);
           return n;
         }
-        return n + 1;
+        return Math.min(n + TYPING_BATCH, LINE2.length);
       });
-    }, TYPING_INTERVAL_MS);
+    }, TYPING_INTERVAL_MS * TYPING_BATCH);
     return () => clearInterval(t2);
   }, [line1Len, LINE1.length, LINE2, phase]);
 
@@ -137,7 +139,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   ];
   const terminalFullLength = TERMINAL_LINES.reduce((acc, l) => acc + l.prefix.length + l.text.length + 1, 0);
 
-  // Печатание объединённого терминала (фаза 2)
+  // Печатание объединённого терминала (фаза 2): батч по 2 символа — меньше ре-рендеров
   useEffect(() => {
     if (phase !== 2) return;
     const iv = setInterval(() => {
@@ -146,9 +148,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           clearInterval(iv);
           return n;
         }
-        return n + 1;
+        return Math.min(n + TERMINAL_TYPING_BATCH, terminalFullLength);
       });
-    }, TERMINAL_TYPING_INTERVAL_MS);
+    }, TERMINAL_TYPING_INTERVAL_MS * TERMINAL_TYPING_BATCH);
     return () => clearInterval(iv);
   }, [phase, terminalFullLength]);
 
@@ -245,11 +247,12 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
             boxShadow: '0 0 20px rgba(0, 255, 65, 0.7)',
             animation: reducedMotion ? 'none' : `splash-scan ${INTRO_SCAN_DURATION_S}s linear 1 forwards`,
             willChange: 'transform',
+            transform: 'translateZ(0)',
           }}
         />
       )}
 
-      {/* Фон: сетка — не показывать при загрузке и скан-линии */}
+      {/* Фон: сетка — изоляция перерисовки для плавности */}
       {!isLoading && !isScanLine && (
       <div
         className="absolute inset-0 pointer-events-none"
@@ -261,6 +264,8 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
                linear-gradient(90deg, rgba(0, 224, 255, 0.04) 1px, transparent 1px)`,
           backgroundSize: '24px 24px',
           opacity: 0.6,
+          contain: 'paint',
+          transform: 'translateZ(0)',
         }}
       />
       )}
@@ -278,6 +283,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
                 ? 'none'
                 : `splash-scan ${SCAN_DURATION_S}s linear ${SCAN_ITERATIONS}`,
             willChange: 'transform',
+            transform: 'translateZ(0)',
           }}
         />
       )}
@@ -431,13 +437,14 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         </div>
       )}
 
-      {/* Свет в конце тоннеля: свет из центра расширяется и заполняет экран, затем затухание */}
+      {/* Свет в конце тоннеля: GPU-слой для плавной анимации */}
       {showFlash && (
         <div
           className="absolute inset-0 pointer-events-none flex items-center justify-center"
           style={{
             animation: reducedMotion ? 'none' : 'splash-tunnel-light 2s ease-out forwards',
-            willChange: 'opacity, transform',
+            willChange: 'opacity',
+            transform: 'translateZ(0)',
           }}
         >
           <div
@@ -445,6 +452,8 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
             style={{
               background: 'radial-gradient(circle, #FFFFF8 0%, #FFF8E0 15%, rgba(255,248,220,0.5) 30%, transparent 55%)',
               animation: reducedMotion ? 'none' : 'splash-tunnel-expand 2s ease-out forwards',
+              willChange: 'transform, opacity',
+              transform: 'translateZ(0)',
             }}
           />
         </div>
