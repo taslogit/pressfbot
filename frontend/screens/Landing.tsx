@@ -87,12 +87,13 @@ const Landing = () => {
   });
   const homeValueRef = useRef<HTMLDivElement>(null);
   const homeValueSeenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // После заставки открыть туториал один раз
+  // После заставки: открыть онбоардинг (туториал) и блок «Туториал»
   useEffect(() => {
     try {
       if (sessionStorage.getItem(OPEN_TUTORIAL_KEY) === '1') {
         sessionStorage.removeItem(OPEN_TUTORIAL_KEY);
         setHomeValueCollapsed(false);
+        setShowGuide(true); // автоматически открыть онбоардинг
       }
     } catch {}
   }, []);
@@ -414,7 +415,7 @@ const Landing = () => {
 
   const handleSharePulse = async () => {
     const res = await profileAPI.getReferral();
-    const shareUrl = res.ok && res.data?.referralLink ? res.data.referralLink : 'https://t.me/PressFBot';
+    const shareUrl = res.ok && res.data?.referralLink ? res.data.referralLink : 'https://t.me/press_F_app_bot';
     const firstName = tg.initDataUnsafe?.user?.first_name || t('im_alive_btn').split('!')[0] || 'Я';
     const text = t('share_invite_text', { name: firstName, url: shareUrl });
     tg.openLink(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`);

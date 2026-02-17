@@ -329,7 +329,7 @@ const Profile = () => {
 
   const handleShareProfile = async () => {
     const res = await profileAPI.getReferral();
-    const url = res.ok && res.data?.referralLink ? res.data.referralLink : 'https://t.me/PressFBot';
+    const url = res.ok && res.data?.referralLink ? res.data.referralLink : 'https://t.me/press_F_app_bot';
     const text = `PRESS F // LVL ${currentLevel} // ${displayTitle}`;
     tg.openLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
     setShowShareModal(false);

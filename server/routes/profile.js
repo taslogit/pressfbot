@@ -1017,7 +1017,7 @@ const createProfileRoutes = (pool) => {
         referralsCount,
         referrals,
         nextMilestone,
-        referralLink: referralCode ? `https://t.me/${process.env.BOT_USERNAME || 'PressFBot'}?start=ref_${referralCode}` : null
+        referralLink: referralCode ? `https://t.me/${process.env.BOT_USERNAME || 'press_F_app_bot'}?start=ref_${referralCode}` : null
       });
     } catch (error) {
       logger.error('Get referral info error', error);
