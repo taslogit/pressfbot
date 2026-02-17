@@ -316,7 +316,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         </div>
       )}
 
-      {/* Фаза 4: Данные зашифрованы + анимация + замок */}
+      {/* Фаза 4: Данные зашифрованы + анимация + иконка щита */}
       {phase === 4 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
           <div
