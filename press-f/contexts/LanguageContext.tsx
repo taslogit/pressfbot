@@ -13,7 +13,7 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
-    if (typeof window === 'undefined') return 'en';
+    if (typeof window === 'undefined') return 'ru';
     const hasExplicit = localStorage.getItem('lastmeme_settings');
     if (hasExplicit) {
       const settings = storage.getSettings();
@@ -21,9 +21,14 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     const tgLang = (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.language_code || '';
     if (tgLang) return tgLang.toLowerCase().startsWith('ru') ? 'ru' : 'en';
-    const deviceLang = navigator.language || (navigator as any).userLanguage || '';
-    return deviceLang.toLowerCase().startsWith('ru') ? 'ru' : 'en';
+    return 'ru';
   });
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.lang = language === 'ru' ? 'ru' : 'en';
+    document.documentElement.classList.toggle('lang-ru', language === 'ru');
+  }, [language]);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);

@@ -204,6 +204,18 @@ html {
   text-transform: uppercase;
 }
 
+/* Русская локализация: шрифты с поддержкой кириллицы (похожи на EN) */
+.lang-ru .label-terminal,
+.lang-ru .font-body {
+  font-family: "PT Serif", "Georgia", serif;
+}
+.lang-ru .font-heading {
+  font-family: "Rubik Wet Paint", "Russo One", cursive;
+}
+.lang-ru .font-logo {
+  font-family: "Russo One", "Rye", cursive;
+}
+
 /* ─── Кнопки (дизайн-система) ──────────────────────────────────────────── */
 /* Контраст: btn-primary использует text-black на accent-lime (WCAG AA). */
 .btn-primary {
@@ -379,6 +391,17 @@ select:focus-visible {
   100% { opacity: 0; }
 }
 
+/* Переход «в рай»: светло-жёлтый свет нарастает и уходит */
+@keyframes splash-heaven {
+  0% { opacity: 0; background-color: #FFF8DC; }
+  18% { opacity: 0.5; background-color: #FFFACD; }
+  35% { opacity: 0.92; background-color: #FFFAF0; }
+  50% { opacity: 1; background-color: #FFFFF0; }
+  65% { opacity: 1; background-color: #FFFFF8; }
+  85% { opacity: 0.4; background-color: #FFFEF5; }
+  100% { opacity: 0; background-color: #FFFFFF; }
+}
+
 @keyframes splash-scan-glow {
   0% { opacity: 0.6; box-shadow: 0 0 10px var(--splash-cyan); }
   50% { opacity: 1; box-shadow: 0 0 30px var(--splash-cyan), 0 0 60px rgba(0, 224, 255, 0.3); }
@@ -436,24 +459,78 @@ select:focus-visible {
     inset 0 0 20px rgba(180, 255, 0, 0.06);
 }
 
-/* Терминал в стиле Kali: тёмное окно, зелёный текст */
-.splash-terminal {
+/* Терминал в стиле Kali: окно с заголовком и командной строкой */
+.splash-terminal-window {
   background: #0d1117;
-  border: 1px solid rgba(0, 255, 65, 0.35);
-  border-radius: 6px;
-  box-shadow: 0 0 20px rgba(0, 255, 65, 0.1), inset 0 1px 0 rgba(255,255,255,0.03);
-  color: #00ff41;
+  border: 1px solid rgba(0, 255, 65, 0.4);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 24px rgba(0, 255, 65, 0.12), inset 0 1px 0 rgba(255,255,255,0.04);
+  max-width: 380px;
+  width: 100%;
+}
+
+.splash-terminal-titlebar {
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 1px solid rgba(0, 255, 65, 0.25);
+  padding: 6px 10px 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 11px;
+  color: rgba(0, 255, 65, 0.85);
+}
+
+.splash-terminal-titlebar-dots {
+  display: flex;
+  gap: 5px;
+}
+.splash-terminal-titlebar-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(0, 255, 65, 0.35);
+}
+.splash-terminal-titlebar-dots span:nth-child(1) { background: rgba(255, 95, 86, 0.6); }
+.splash-terminal-titlebar-dots span:nth-child(2) { background: rgba(255, 189, 46, 0.6); }
+.splash-terminal-titlebar-dots span:nth-child(3) { background: rgba(39, 201, 63, 0.5); }
+
+.splash-terminal-body {
+  padding: 12px 14px 14px;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 13px;
+  color: #00ff41;
   text-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+  line-height: 1.5;
 }
 
 .splash-terminal-prompt {
   color: #00ff41;
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 .splash-terminal-prompt::before {
-  content: "root@pressf:~# ";
+  content: "root@pressf:~$ ";
+}
+
+.splash-terminal-output {
+  color: #00ff41;
+}
+
+/* Иконка шифрования: щит (CSS) */
+.splash-shield-icon {
+  width: 4rem;
+  height: 4.5rem;
+}
+
+.splash-shield-shape {
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 255, 65, 0.12);
+  border: 2px solid rgba(0, 255, 65, 0.6);
+  clip-path: polygon(50% 0%, 100% 15%, 100% 85%, 50% 100%, 0% 85%, 0% 15%);
+  border-radius: 2px;
 }
 
 @keyframes splash-encrypt {

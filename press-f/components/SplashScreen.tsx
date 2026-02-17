@@ -3,24 +3,28 @@ import { useTranslation } from '../contexts/LanguageContext';
 import {
   playTerminalBeep,
   playTerminalSuccess,
-  playWarning,
-  playEpic,
+  playOrSound,
+  playAngelChoir,
 } from '../utils/splashSound';
 
-const SPLASH_DURATION_MS = 10000;
+const INTRO_MS = 900;
+const SPLASH_DURATION_MS = 10000 + INTRO_MS;
 const TYPING_INTERVAL_MS = 26;
-/** Одна скан-линия идёт 3 раза за первые 4 фазы (0–3): 6.5s / 3 ≈ 2.167s на проход */
+/** Быстрая скан-линия в интро — один проход */
+const INTRO_SCAN_DURATION_S = 0.7;
+/** Скан-линия в терминальных фазах — 3 прохода */
 const SCAN_DURATION_S = 2.167;
 const SCAN_ITERATIONS = 3;
 
-const PHASE0_END_MS = 2000;
-const PHASE1_END_MS = 3500;
-const PHASE2_END_MS = 5000;
-const PHASE3_END_MS = 6500;
-const PHASE4_END_MS = 8000;
-const PHASE5_END_MS = 9000;
-const FLASH_AT_MS = 9600;
-const FADEOUT_START_MS = 9700;
+const PHASE0_END_MS = INTRO_MS + 2000;
+const PHASE1_END_MS = INTRO_MS + 3500;
+const PHASE2_END_MS = INTRO_MS + 5000;
+const PHASE3_END_MS = INTRO_MS + 6500;
+const PHASE4_END_MS = INTRO_MS + 8000;
+const PHASE5_END_MS = INTRO_MS + 9000;
+const PHASE6_PRESS_DELAY_MS = 400;
+const FLASH_AT_MS = INTRO_MS + 9600;
+const FADEOUT_START_MS = INTRO_MS + 9700;
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -39,7 +43,7 @@ interface SplashScreenProps {
  */
 const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const { t } = useTranslation();
-  const [phase, setPhase] = useState(0);
+  const [phase, setPhase] = useState(-1);
   const [line1Len, setLine1Len] = useState(0);
   const [line2Len, setLine2Len] = useState(0);
   const [symbolVisible, setSymbolVisible] = useState(false);
@@ -52,15 +56,15 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const LINE1 = t('splash_checking');
   const LINE2 = t('splash_no_response');
 
-  // Звуки при входе в фазу
+  // Звуки при входе в фазу (интро -1 без звука)
   useEffect(() => {
-    if (soundPlayedRef.current[phase]) return;
+    if (phase < 0 || soundPlayedRef.current[phase]) return;
     soundPlayedRef.current[phase] = true;
     if (phase === 1 || phase === 2) playTerminalBeep();
     if (phase === 3) playTerminalSuccess();
     if (phase === 4) playTerminalSuccess();
-    if (phase === 5) playWarning();
-    if (phase === 6) playEpic();
+    if (phase === 5) playOrSound();
+    if (phase === 6) playAngelChoir();
   }, [phase]);
 
   // Бип при появлении "no response" (конец набора второй строки в фазе 0)
@@ -95,19 +99,17 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           clearInterval(t2);
           return n;
         }
-        if (n >= LINE2.length) {
-          setSymbolVisible(true);
-          clearInterval(t2);
-          return n;
-        }
-        return n + 1;
+        const next = n + 1;
+        if (next >= LINE2.length) setSymbolVisible(true);
+        return next;
       });
     }, TYPING_INTERVAL_MS);
     return () => clearInterval(t2);
   }, [line1Len, LINE1.length, LINE2]);
 
-  // Таймеры фаз и финала
+  // Таймеры: интро → затем фазы 0..6 и финал
   useEffect(() => {
+    const tIntro = setTimeout(() => setPhase(0), INTRO_MS);
     const t0 = setTimeout(() => setPhase(1), PHASE0_END_MS);
     const t1 = setTimeout(() => setPhase(2), PHASE1_END_MS);
     const t2 = setTimeout(() => setPhase(3), PHASE2_END_MS);
@@ -118,7 +120,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     const t7 = setTimeout(() => setFadeOut(true), FADEOUT_START_MS);
     const t8 = setTimeout(() => onFinishRef.current(), SPLASH_DURATION_MS);
     return () => {
-      [t0, t1, t2, t3, t4, t5, t6, t7, t8].forEach(clearTimeout);
+      [tIntro, t0, t1, t2, t3, t4, t5, t6, t7, t8].forEach(clearTimeout);
     };
   }, []);
 
@@ -127,20 +129,35 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const isTerminalPhase = phase >= 0 && phase <= 3;
+  const isIntro = phase === -1;
 
   return (
     <div
       className="splash-screen fixed inset-0 z-[99999] flex flex-col items-center justify-center overflow-hidden"
       style={{
-        backgroundColor: '#0f0d16',
+        backgroundColor: isIntro ? '#000000' : '#0f0d16',
         opacity: fadeOut ? 0 : 1,
         transform: 'translateZ(0)',
         willChange: fadeOut ? 'opacity' : 'auto',
-        transition: reducedMotion ? 'none' : 'opacity 0.5s ease-out',
+        transition: reducedMotion ? 'none' : 'opacity 1.2s ease-out',
       }}
       aria-hidden="true"
     >
-      {/* Фон: сетка (для терминальных фаз — чуть зеленоватая) */}
+      {/* Интро: только чёрный экран + быстрая скан-линия (один проход) */}
+      {isIntro && (
+        <div
+          className="absolute left-0 right-0 h-0.5 pointer-events-none top-0"
+          style={{
+            background: 'linear-gradient(90deg, transparent, #00ff41 25%, #00ff41 75%, transparent)',
+            boxShadow: '0 0 20px rgba(0, 255, 65, 0.7)',
+            animation: reducedMotion ? 'none' : `splash-scan ${INTRO_SCAN_DURATION_S}s linear 1 forwards`,
+            willChange: 'transform',
+          }}
+        />
+      )}
+
+      {/* Фон: сетка — не показывать в интро */}
+      {!isIntro && (
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -153,8 +170,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           opacity: 0.6,
         }}
       />
+      )}
 
-      {/* Одна скан-линия, 3 прохода — только в фазах 0–3 */}
+      {/* Скан-линия, 3 прохода — только в фазах 0–3 (не в интро) */}
       {isTerminalPhase && (
         <div
           className="absolute left-0 right-0 h-0.5 pointer-events-none top-0 origin-center"
@@ -171,31 +189,46 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         />
       )}
 
-      {/* Фаза 0: терминал — heartbeat / no response (как есть) + линия пульса + F */}
+      {/* Фаза 0: терминал с командной строкой — heartbeat / no response + пульс + F */}
       {phase === 0 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
-          <div className="splash-terminal px-5 py-4 text-sm text-left max-w-[360px] w-full">
-            <div className="splash-terminal-prompt mb-1" />
-            <div className="mb-1" style={{ color: '#00ff41' }}>
-              {LINE1.slice(0, line1Len)}
-              {line1Len < LINE1.length && (
-                <span
-                  className="inline-block w-2 h-4 bg-[#00ff41] ml-0.5 animate-pulse"
-                  style={{ boxShadow: '0 0 6px #00ff41' }}
-                />
-              )}
+          <div className="splash-terminal-window">
+            <div className="splash-terminal-titlebar">
+              <div className="splash-terminal-titlebar-dots">
+                <span /><span /><span />
+              </div>
+              <span>root@pressf — Terminal</span>
             </div>
-            {line1Len >= LINE1.length && (
-              <div style={{ color: '#ff6b6b' }}>
-                {LINE2.slice(0, line2Len)}
-                {line2Len < LINE2.length && (
+            <div className="splash-terminal-body">
+              <div className="splash-terminal-prompt mb-1">
+                <span className="opacity-90">check_pulse</span>
+              </div>
+              <div className="mb-1 splash-terminal-output">
+                {LINE1.slice(0, line1Len)}
+                {line1Len < LINE1.length && (
                   <span
-                    className="inline-block w-2 h-4 bg-[#ff6b6b] ml-0.5 animate-pulse"
-                    style={{ boxShadow: '0 0 6px #ff6b6b' }}
+                    className="inline-block w-2 h-4 bg-[#00ff41] ml-0.5 animate-pulse"
+                    style={{ boxShadow: '0 0 6px #00ff41' }}
                   />
                 )}
               </div>
-            )}
+              {line1Len >= LINE1.length && (
+                <div className="splash-terminal-output" style={{ color: '#ff6b6b' }}>
+                  {LINE2.slice(0, line2Len)}
+                  {line2Len < LINE2.length && (
+                    <span
+                      className="inline-block w-2 h-4 bg-[#ff6b6b] ml-0.5 animate-pulse"
+                      style={{ boxShadow: '0 0 6px #ff6b6b' }}
+                    />
+                  )}
+                </div>
+              )}
+              {line2Len >= LINE2.length && (
+                <div className="splash-terminal-prompt mt-2">
+                  <span className="inline-block w-2 h-4 bg-[#00ff41] ml-0.5 animate-pulse" style={{ boxShadow: '0 0 6px #00ff41' }} />
+                </div>
+              )}
+            </div>
           </div>
           {line1Len >= LINE1.length && (
             <div
@@ -238,9 +271,15 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
       {/* Фаза 1: Сканирование... */}
       {phase === 1 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
-          <div className="splash-terminal px-5 py-4 text-sm text-left max-w-[360px] w-full">
-            <div className="splash-terminal-prompt mb-2" />
-            <div style={{ color: '#00ff41' }}>{t('splash_scanning')}</div>
+          <div className="splash-terminal-window">
+            <div className="splash-terminal-titlebar">
+              <div className="splash-terminal-titlebar-dots"><span /><span /><span /></div>
+              <span>root@pressf — Terminal</span>
+            </div>
+            <div className="splash-terminal-body">
+              <div className="splash-terminal-prompt mb-1"><span className="opacity-90">scan --full</span></div>
+              <div className="splash-terminal-output">{t('splash_scanning')}</div>
+            </div>
           </div>
         </div>
       )}
@@ -248,9 +287,15 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
       {/* Фаза 2: Идентификация... */}
       {phase === 2 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
-          <div className="splash-terminal px-5 py-4 text-sm text-left max-w-[360px] w-full">
-            <div className="splash-terminal-prompt mb-2" />
-            <div style={{ color: '#00ff41' }}>{t('splash_identification')}</div>
+          <div className="splash-terminal-window">
+            <div className="splash-terminal-titlebar">
+              <div className="splash-terminal-titlebar-dots"><span /><span /><span /></div>
+              <span>root@pressf — Terminal</span>
+            </div>
+            <div className="splash-terminal-body">
+              <div className="splash-terminal-prompt mb-1"><span className="opacity-90">identify --user</span></div>
+              <div className="splash-terminal-output">{t('splash_identification')}</div>
+            </div>
           </div>
         </div>
       )}
@@ -258,9 +303,15 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
       {/* Фаза 3: Юзер отметился */}
       {phase === 3 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
-          <div className="splash-terminal px-5 py-4 text-sm text-left max-w-[360px] w-full">
-            <div className="splash-terminal-prompt mb-2" />
-            <div style={{ color: '#00ff41' }}>{t('splash_user_checked_in')}</div>
+          <div className="splash-terminal-window">
+            <div className="splash-terminal-titlebar">
+              <div className="splash-terminal-titlebar-dots"><span /><span /><span /></div>
+              <span>root@pressf — Terminal</span>
+            </div>
+            <div className="splash-terminal-body">
+              <div className="splash-terminal-prompt mb-1"><span className="opacity-90">status</span></div>
+              <div className="splash-terminal-output" style={{ color: '#00ff41' }}>{t('splash_user_checked_in')}</div>
+            </div>
           </div>
         </div>
       )}
@@ -278,23 +329,18 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           >
             {t('splash_data_encrypted')}
           </div>
-          {/* Иконка замка (CSS) */}
+          {/* Иконка шифрования: щит (CSS) */}
           <div
-            className="relative w-14 h-14 flex items-center justify-center"
+            className="splash-shield-icon flex items-center justify-center"
             style={{
               animation: reducedMotion ? 'none' : 'splash-lock-in 0.5s ease-out forwards',
               opacity: reducedMotion ? 1 : 0,
             }}
           >
             <div
-              className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-7 rounded-b-lg border-2 border-[#00ff41] bg-[#0d1117]"
-              style={{ boxShadow: '0 0 12px rgba(0, 255, 65, 0.4)' }}
-            />
-            <div
-              className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-8 rounded-t-full border-2 border-[#00ff41] border-b-0 bg-transparent"
+              className="splash-shield-shape"
               style={{
-                boxShadow: '0 0 12px rgba(0, 255, 65, 0.4)',
-                transform: 'translate(-50%, -50%) translateZ(0)',
+                boxShadow: '0 0 20px rgba(0, 255, 65, 0.4), inset 0 0 12px rgba(0, 255, 65, 0.08)',
               }}
             />
           </div>
@@ -319,7 +365,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         </div>
       )}
 
-      {/* Фаза 6: PRESS F и эпичный переход */}
+      {/* Фаза 6: PRESS F с задержкой появления, затем переход в приложение */}
       {phase === 6 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
           <div
@@ -332,7 +378,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
               animation:
                 reducedMotion
                   ? 'none'
-                  : 'splash-logo-burst 0.5s ease-out 0.2s forwards, splash-glow-pulse 1.2s ease-in-out 0.8s infinite',
+                  : `splash-logo-burst 0.5s ease-out ${PHASE6_PRESS_DELAY_MS / 1000}s forwards, splash-glow-pulse 1.2s ease-in-out ${(PHASE6_PRESS_DELAY_MS + 600) / 1000}s infinite`,
               opacity: reducedMotion ? 1 : 0,
               willChange: 'transform, opacity',
             }}
@@ -342,28 +388,17 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         </div>
       )}
 
-      {/* Вспышка при переходе */}
+      {/* Переход «в рай»: светло-жёлтый свет, эпичное заполнение и затухание */}
       {showFlash && (
-        <>
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              backgroundColor: '#FFD700',
-              opacity: 0,
-              animation: reducedMotion ? 'none' : 'splash-flash-strong 0.6s ease-out forwards',
-              willChange: 'opacity',
-            }}
-          />
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              backgroundColor: '#fff',
-              opacity: 0,
-              animation: reducedMotion ? 'none' : 'splash-flash 0.2s ease-out 0.02s forwards',
-              willChange: 'opacity',
-            }}
-          />
-        </>
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundColor: '#FFF8DC',
+            opacity: 0,
+            animation: reducedMotion ? 'none' : 'splash-heaven 1.6s ease-out forwards',
+            willChange: 'opacity',
+          }}
+        />
       )}
     </div>
   );

@@ -55,34 +55,37 @@ export function playTerminalSuccess() {
   } catch (_) {}
 }
 
-/** Предупреждение для фазы "ИЛИ?" */
-export function playWarning() {
+/** Звук для фазы "ИЛИ?" — мягкий загадочный тон (два высоких колокольчика) */
+export function playOrSound() {
   const ctx = getContext();
   if (!ctx) return;
   try {
-    beep(200, 120, 'sawtooth', 0.12);
-    setTimeout(() => beep(180, 120, 'sawtooth', 0.1), 150);
-    setTimeout(() => beep(160, 200, 'sawtooth', 0.08), 300);
+    beep(784, 100, 'sine', 0.06);
+    setTimeout(() => beep(988, 140, 'sine', 0.05), 120);
+    setTimeout(() => beep(659, 80, 'sine', 0.04), 280);
   } catch (_) {}
 }
 
-/** Эпичный аккорд для PRESS F и перехода */
-export function playEpic() {
+/** Хор ангелов для PRESS F и перехода (как при смерти в играх — в рай) */
+export function playAngelChoir() {
   const ctx = getContext();
   if (!ctx) return;
   try {
     const gain = ctx.createGain();
     gain.connect(ctx.destination);
     gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.05);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
-    [261.63, 329.63, 392].forEach((freq, i) => {
+    gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.4);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.2);
+    const t0 = ctx.currentTime;
+    const freqs = [523.25, 659.25, 783.99, 1046.5, 1318.5];
+    freqs.forEach((freq, i) => {
       const osc = ctx.createOscillator();
       osc.connect(gain);
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 1.2);
+      osc.frequency.setValueAtTime(freq, t0);
+      osc.frequency.linearRampToValueAtTime(freq * 1.02, t0 + 1.5);
+      osc.start(t0);
+      osc.stop(t0 + 2.2);
     });
   } catch (_) {}
 }
