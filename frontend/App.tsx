@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ApiErrorProvider } from './contexts/ApiErrorContext';
+import { ProfileProvider } from './contexts/ProfileContext';
 import Layout from './components/Layout';
 import { TonConnectUIProvider } from '@tonconnect/ui-react';
 
@@ -213,6 +214,7 @@ const App = () => {
       <ErrorBoundary>
         <ThemeProvider>
           <ApiErrorProvider>
+          <ProfileProvider>
           <TonConnectUIProvider manifestUrl={manifestUrl}>
             <HashRouter>
               {!splashDone && (
@@ -243,6 +245,7 @@ const App = () => {
               </SessionGate>
             </HashRouter>
           </TonConnectUIProvider>
+          </ProfileProvider>
           </ApiErrorProvider>
         </ThemeProvider>
       </ErrorBoundary>

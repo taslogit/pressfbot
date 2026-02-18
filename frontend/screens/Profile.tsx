@@ -43,10 +43,11 @@ const Profile = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const getSignal = useApiAbort();
-  const [profile, setProfile] = useState(() => storage.getUserProfile());
+  const { profile: profileFromContext, settings: settingsFromContext, refreshProfile } = useProfile();
+  const [profile, setProfile] = useState<UserProfile | null>(profileFromContext);
   const [isEditing, setIsEditing] = useState(false);
-  const [tempBio, setTempBio] = useState(() => storage.getUserProfile().bio);
-  const [tempTitle, setTempTitle] = useState(() => storage.getUserProfile().title || '');
+  const [tempBio, setTempBio] = useState(profileFromContext?.bio || 'No bio yet.');
+  const [tempTitle, setTempTitle] = useState(profileFromContext?.title || '');
   const [activeTab, setActiveTab] = useState<'stats' | 'trophies' | 'system'>('stats');
   const [scanning, setScanning] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -73,29 +74,33 @@ const Profile = () => {
   const funeralAudioRef = useRef<HTMLAudioElement>(null);
   
   // Calculate level from experience (needed before state initialization)
-  const currentXP = profile.experience || 0;
-  const currentLevel = calculateLevel(currentXP);
+  const currentXP = profile?.experience || 0;
+  const currentLevel = profile ? calculateLevel(currentXP) : 1;
   
   const [previousLevel, setPreviousLevel] = useState(currentLevel);
   const [showLevelUpAnimation, setShowLevelUpAnimation] = useState(false);
 
+  // Sync profile from context (always from DB)
   useEffect(() => {
-    let isMounted = true;
-    const opts = { signal: getSignal() };
-    profileAPI.get(opts).then((res) => {
-      if (!isMounted || !res.ok) return;
-      if (res.data?.profile) {
-        const apiProfile = res.data.profile;
-        const merged = { ...storage.getUserProfile(), ...apiProfile, avatar: apiProfile.avatar || 'pressf' };
-        setProfile(merged);
-        setTempBio(apiProfile.bio || 'No bio yet.');
-        setTempTitle(apiProfile.title || '');
-        storage.saveUserProfile(merged);
-      }
-      if (res.data?.settings) {
-        setSettings(res.data.settings);
-      }
-    });
+    if (profileFromContext) {
+      setProfile(profileFromContext);
+      setTempBio(profileFromContext.bio || 'No bio yet.');
+      setTempTitle(profileFromContext.title || '');
+    }
+  }, [profileFromContext]);
+
+  useEffect(() => {
+    if (settingsFromContext) {
+      setSettings({
+        avatar_frame: settingsFromContext.avatarFrame,
+        lastCheckIn: settingsFromContext.lastCheckIn,
+        deadManSwitchDays: settingsFromContext.deadManSwitchDays,
+        funeralTrack: settingsFromContext.funeralTrack,
+      });
+    }
+  }, [settingsFromContext]);
+
+  useEffect(() => {
     setShareHistory(storage.getShareHistory());
 
     // Avatars will be loaded lazily when avatar selector is opened
@@ -192,14 +197,17 @@ const Profile = () => {
 
 
   const handleSave = async () => {
+    if (!profile) return;
     playSound('success');
     const updated = { ...profile, bio: tempBio };
     if (hasTitleCustom) {
       (updated as Record<string, unknown>).title = tempTitle.slice(0, 100);
     }
     try {
-      await storage.saveUserProfileAsync(updated);
-      setProfile(updated);
+      // Update via API (saves to DB)
+      await profileAPI.update(updated);
+      // Refresh profile from DB to get latest data
+      await refreshProfile();
       setIsEditing(false);
       dailyQuestsAPI.updateProgress('update_profile').catch(() => {});
     } catch (e) {
@@ -230,9 +238,8 @@ const Profile = () => {
         tg.showPopup({ message: t('gift_claimed') || 'Gift claimed!' });
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         await loadGifts();
-        // Refresh profile to get updated reputation
-        const apiProfile = await storage.getUserProfileAsync();
-        setProfile(apiProfile);
+        // Refresh profile from DB to get updated reputation
+        await refreshProfile();
       } else {
         throw new Error(result.error || 'Failed to claim gift');
       }

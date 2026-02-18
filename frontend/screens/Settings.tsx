@@ -3,15 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Settings as SettingsIcon, Bell, Globe2, Wallet, Sparkles, BookOpen, ChevronRight, Newspaper } from 'lucide-react';
 import { TonConnectButton, useTonAddress, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { storage } from '../utils/storage';
-import { tonAPI, starsAPI, storeAPI } from '../utils/api';
+import { tonAPI, starsAPI, storeAPI, profileAPI } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
+import { useProfile } from '../contexts/ProfileContext';
 import InfoSection from '../components/InfoSection';
 import { tg } from '../utils/telegram';
 import { playSound } from '../utils/sound';
 
 const Settings = () => {
   const { t, language, setLanguage } = useTranslation();
-  const [settings, setSettings] = useState(storage.getSettings());
+  const { settings: settingsFromContext, refreshSettings } = useProfile();
+  const [settings, setSettings] = useState(settingsFromContext || storage.getSettings());
   const wallet = useTonWallet();
   const address = useTonAddress();
   const [tonConnectUI] = useTonConnectUI();
@@ -38,12 +40,18 @@ const Settings = () => {
   }, [address]);
   const lastSavedAddress = useRef<string | null>(null);
 
+  // Sync settings from ProfileContext (always from DB)
+  useEffect(() => {
+    if (settingsFromContext) {
+      setSettings(settingsFromContext);
+    }
+  }, [settingsFromContext]);
+
   useEffect(() => {
     let isMounted = true;
-    storage.getSettingsAsync().then((apiSettings) => {
-      if (isMounted) {
-        setSettings(apiSettings);
-      }
+    // Refresh settings from DB on mount
+    refreshSettings().catch((err) => {
+      console.error('Failed to refresh settings:', err);
     });
     storeAPI.getMyItems().then((r) => {
       if (isMounted && r.ok && r.data?.items) setMyStoreItems(r.data.items);
@@ -51,7 +59,7 @@ const Settings = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [refreshSettings]);
 
   useEffect(() => {
     const next = address || null;
@@ -75,27 +83,55 @@ const Settings = () => {
     return () => { isMounted = false; };
   }, [storeOpen]);
 
-  const handleToggleNotifications = (key: 'notificationsEnabled' | 'telegramNotificationsEnabled') => {
+  const handleToggleNotifications = async (key: 'notificationsEnabled' | 'telegramNotificationsEnabled') => {
+    const previousSettings = { ...settings };
     const updated = { ...settings, [key]: !settings[key] };
-    setSettings(updated);
-    storage.updateSettingsAsync({ [key]: updated[key] });
+    setSettings(updated); // Optimistic update
+    try {
+      // Update via API - single source of truth
+      await profileAPI.updateSettings({ [key]: updated[key] });
+      await refreshSettings(); // Refresh from DB - will update settingsFromContext and trigger useEffect
+    } catch (error) {
+      console.error('Failed to update notifications:', error);
+      // Revert on error
+      setSettings(previousSettings);
+    }
   };
 
-  const handleReminderInterval = (minutes: number) => {
+  const handleReminderInterval = async (minutes: number) => {
+    const previousSettings = { ...settings };
     const updated = { ...settings, checkinReminderIntervalMinutes: minutes };
-    setSettings(updated);
-    storage.updateSettingsAsync({ checkinReminderIntervalMinutes: minutes });
+    setSettings(updated); // Optimistic update
+    try {
+      // Update via API - single source of truth
+      await profileAPI.updateSettings({ checkinReminderIntervalMinutes: minutes });
+      await refreshSettings(); // Refresh from DB - will update settingsFromContext and trigger useEffect
+    } catch (error) {
+      console.error('Failed to update reminder interval:', error);
+      // Revert on error
+      setSettings(previousSettings);
+    }
   };
 
-  const applyNotificationsPreset = (mode: 'quiet' | 'balanced' | 'hardcore') => {
+  const applyNotificationsPreset = async (mode: 'quiet' | 'balanced' | 'hardcore') => {
     const preset =
       mode === 'quiet'
         ? { notificationsEnabled: true, telegramNotificationsEnabled: false, checkinReminderIntervalMinutes: 1440 }
         : mode === 'balanced'
           ? { notificationsEnabled: true, telegramNotificationsEnabled: true, checkinReminderIntervalMinutes: 180 }
           : { notificationsEnabled: true, telegramNotificationsEnabled: true, checkinReminderIntervalMinutes: 60 };
-    setSettings((prev) => ({ ...prev, ...preset }));
-    storage.updateSettingsAsync(preset);
+    setSettings((prev) => ({ ...prev, ...preset })); // Optimistic update
+    try {
+      // Update via API - single source of truth
+      await profileAPI.updateSettings(preset);
+      await refreshSettings(); // Refresh from DB - will update settingsFromContext and trigger useEffect
+    } catch (error) {
+      console.error('Failed to apply notifications preset:', error);
+      // Revert on error - use settingsFromContext if available
+      if (settingsFromContext) {
+        setSettings(settingsFromContext);
+      }
+    }
   };
 
   const toggleLanguage = () => {
@@ -215,10 +251,17 @@ const Settings = () => {
                 <div className="text-xs text-muted">{t('settings_short_splash_hint')}</div>
               </div>
               <button
-                onClick={() => {
+                onClick={async () => {
+                  const previousSettings = { ...settings };
                   const v = !settings.shortSplashEnabled;
-                  setSettings((s) => ({ ...s, shortSplashEnabled: v }));
-                  storage.updateSettings({ shortSplashEnabled: v });
+                  setSettings((s) => ({ ...s, shortSplashEnabled: v })); // Optimistic update
+                  try {
+                    await profileAPI.updateSettings({ shortSplashEnabled: v });
+                    await refreshSettings(); // Refresh from DB
+                  } catch (error) {
+                    console.error('Failed to update short splash setting:', error);
+                    setSettings(previousSettings); // Revert on error
+                  }
                 }}
                 className={`w-10 h-5 rounded-full relative transition-colors flex-shrink-0 ml-3 ${settings.shortSplashEnabled === true ? 'bg-accent-cyan' : 'bg-input'}`}
               >

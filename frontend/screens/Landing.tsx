@@ -6,6 +6,7 @@ import { ShieldCheck, Skull, Zap, Info, ChevronRight, Moon, Sun, Hourglass, Acti
 import { useDeadManSwitch } from '../hooks/useDeadManSwitch';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useProfile } from '../contexts/ProfileContext';
 import { storage } from '../utils/storage';
 import { tg } from '../utils/telegram';
 import { playSound } from '../utils/sound';
@@ -48,6 +49,7 @@ const Landing = () => {
   const { daysRemaining, hoursRemaining, is24hMode, isDead, imAlive } = useDeadManSwitch();
   const { t, language } = useTranslation();
   const { showApiError } = useApiError();
+  const { profile, settings, refreshProfile } = useProfile();
   const { theme, toggleTheme } = useTheme();
   
   // Component mount tracking (removed console.log for production)
@@ -135,14 +137,11 @@ const Landing = () => {
   useEffect(() => {
     let isMounted = true;
     
-    // Load settings with error handling
-    storage.getSettingsAsync().then((nextSettings) => {
-      if (isMounted) setSettings(nextSettings);
-    }).catch((error) => {
-      console.error('Error loading settings:', error);
-      // Use default settings on error
-      if (isMounted) setSettings(storage.getSettings());
-    });
+    // Settings come from ProfileContext (always from DB)
+    // Only update local state for UI rendering
+    if (settings && isMounted) {
+      setSettings(settings);
+    }
 
     // Initialize with localStorage data first (fast)
     setActiveDuels(storage.getDuels().filter(d => d.status === 'active').length);
@@ -208,15 +207,18 @@ const Landing = () => {
       // Keep localStorage data
     });
 
-    // Daily login loot — начисление XP за вход; обновляем кэш профиля.
+    // Daily login loot — начисление XP за вход; обновляем профиль из БД.
     // Небольшая задержка, чтобы не слать запрос в одну секунду с тапом и не получать 429.
     const dailyLootDelay = setTimeout(() => {
       profileAPI.claimDailyLoginLoot().then((res) => {
         if (isMounted && res.ok && res.data?.claimed && res.data?.xp) {
           const xp = res.data.xp;
-          const profile = storage.getUserProfile();
-          storage.saveUserProfile({ ...profile, experience: (profile.experience ?? 0) + xp });
-          setXpNotification({ xp, bonusLabel: 'daily' });
+          // Refresh profile from DB to get updated XP (single source of truth)
+          refreshProfile().then(() => {
+            if (isMounted) {
+              setXpNotification({ xp, bonusLabel: 'daily' });
+            }
+          });
           setTimeout(() => setXpNotification(null), 2500);
         }
       });

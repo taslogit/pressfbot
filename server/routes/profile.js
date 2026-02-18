@@ -58,7 +58,13 @@ const createProfileRoutes = (pool) => {
       const cached = await cache.get(cacheKey);
       if (cached) {
         logger.debug('Profile cache hit', { userId });
-        return res.json({ ok: true, ...cached, _cached: true });
+        // Ensure version is present even for cached data
+        return res.json({ 
+          ok: true, 
+          ...cached, 
+          _version: cached._version || Date.now(),
+          _cached: true 
+        });
       }
 
       // Optimization: Use single query with LEFT JOIN instead of two separate queries
@@ -158,7 +164,14 @@ const createProfileRoutes = (pool) => {
         }
       }
 
-      const response = { ok: true, profile, settings };
+      // Add versioning for data freshness check
+      const response = { 
+        ok: true, 
+        profile, 
+        settings,
+        _version: Date.now(), // Timestamp for client-side cache validation
+        _cached: false
+      };
 
       // Cache for 5 minutes
       await cache.set(cacheKey, response, 300);

@@ -72,13 +72,12 @@ const createLettersRoutes = (pool, createLimiter, letterLimitCheck) => {
     }
   });
 
-  // GET /api/letters - Get all letters for user
-  router.get('/', async (req, res) => {
+  // GET /api/letters - Get all letters for user (match both '' and '/' when mounted)
+  const getLettersHandler = async (req, res) => {
+    if (!pool) {
+      return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+    }
     try {
-      if (!pool) {
-        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
-      }
-
       const userId = req.userId;
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
@@ -270,7 +269,8 @@ const createLettersRoutes = (pool, createLimiter, letterLimitCheck) => {
       logger.error('Get letters error:', error);
       return sendError(res, 500, 'LETTERS_FETCH_FAILED', 'Failed to fetch letters');
     }
-  });
+  };
+  router.get(['/', ''], getLettersHandler);
 
   // POST /api/letters - Create new letter (with rate limiting + free tier check)
   router.post('/', createLimiter || ((req, res, next) => next()), letterLimitCheck || ((req, res, next) => next()), validateBody(letterSchema), async (req, res) => {

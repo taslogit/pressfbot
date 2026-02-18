@@ -262,14 +262,22 @@ export const storage = {
     return result.ok;
   },
 
-  // Sync version (localStorage only - backward compatible)
+  /**
+   * @deprecated Use ProfileContext (useProfile hook) instead - it loads from DB only.
+   * This method is kept for backward compatibility but should not be used for critical settings.
+   * Critical settings (lastCheckIn, streak) must come from DB via API.
+   */
   getSettings: (): UserSettings => {
     const stored = safeParse<Partial<UserSettings>>(KEYS.SETTINGS, {});
     return { ...defaultSettings, ...stored };
   },
-  // Async version (API with fallback to localStorage)
+  /**
+   * @deprecated Use ProfileContext (useProfile hook) instead - it loads from DB only.
+   * This method does NOT save critical settings to localStorage for security.
+   * Critical settings (lastCheckIn, streak) must come from DB via API.
+   */
   getSettingsAsync: async (): Promise<UserSettings> => {
-    // Try API first
+    // Always load from API - single source of truth
     const result = await profileAPI.get();
     if (result.ok && result.data?.settings) {
       const apiSettings = result.data.settings;
@@ -287,24 +295,37 @@ export const storage = {
         freeGiftBalance: apiSettings.freeGiftBalance ?? 0,
         duelTauntMessage: apiSettings.duelTauntMessage ?? null
       };
-      safeSave(KEYS.SETTINGS, settings);
+      // Security: Do NOT save critical settings (lastCheckIn, streak) to localStorage
+      // Only save non-critical UI preferences (language, theme) if needed
+      // safeSave(KEYS.SETTINGS, settings); // REMOVED for security
       return settings;
     }
-    // Fallback to localStorage
-    const stored = safeParse<Partial<UserSettings>>(KEYS.SETTINGS, {});
-    return { ...defaultSettings, ...stored };
+    // No fallback - throw error if API fails
+    throw new Error(result.error?.message || 'Failed to load settings from database');
   },
-  // Sync version (localStorage only - backward compatible)
+  /**
+   * @deprecated Use ProfileContext or profileAPI.updateSettings() directly.
+   * This method is kept for backward compatibility but should not be used for critical settings.
+   */
   updateSettings: (partial: Partial<UserSettings>) => {
     const current = storage.getSettings();
-    safeSave(KEYS.SETTINGS, { ...current, ...partial });
-    if (partial.lastCheckIn) {
-        storage.updateAchievements('ach_survivor', 1);
-    }
+    // Security: Do NOT save critical settings (lastCheckIn, streak) to localStorage
+    // Only save non-critical UI preferences
+    const nonCriticalSettings: Partial<UserSettings> = {};
+    if (partial.language !== undefined) nonCriticalSettings.language = partial.language;
+    if (partial.theme !== undefined) nonCriticalSettings.theme = partial.theme;
+    if (partial.soundEnabled !== undefined) nonCriticalSettings.soundEnabled = partial.soundEnabled;
+    if (partial.notificationsEnabled !== undefined) nonCriticalSettings.notificationsEnabled = partial.notificationsEnabled;
+    if (partial.telegramNotificationsEnabled !== undefined) nonCriticalSettings.telegramNotificationsEnabled = partial.telegramNotificationsEnabled;
+    safeSave(KEYS.SETTINGS, { ...current, ...nonCriticalSettings });
+    // Note: lastCheckIn and streak are managed by DB only
   },
-  // Async version (API with fallback to localStorage)
+  /**
+   * @deprecated Use ProfileContext or profileAPI.updateSettings() directly.
+   * This method saves only non-critical UI preferences to localStorage.
+   */
   updateSettingsAsync: async (partial: Partial<UserSettings>) => {
-    // Try API first
+    // Always update via API first - single source of truth
     if (partial.lastCheckIn) {
       await profileAPI.checkIn();
     }
@@ -324,13 +345,17 @@ export const storage = {
       await profileAPI.updateSettings(settingsToUpdate);
     }
     
-    // Also save to localStorage
-    const current = storage.getSettings();
-    const updated = { ...current, ...partial };
-    safeSave(KEYS.SETTINGS, updated);
-    
-    if (partial.lastCheckIn) {
-        storage.updateAchievements('ach_survivor', 1);
+    // Security: Only save non-critical UI preferences to localStorage
+    // Critical settings (lastCheckIn, streak) are managed by DB only
+    const nonCriticalSettings: Partial<UserSettings> = {};
+    if (partial.language !== undefined) nonCriticalSettings.language = partial.language;
+    if (partial.theme !== undefined) nonCriticalSettings.theme = partial.theme;
+    if (partial.soundEnabled !== undefined) nonCriticalSettings.soundEnabled = partial.soundEnabled;
+    if (partial.notificationsEnabled !== undefined) nonCriticalSettings.notificationsEnabled = partial.notificationsEnabled;
+    if (partial.telegramNotificationsEnabled !== undefined) nonCriticalSettings.telegramNotificationsEnabled = partial.telegramNotificationsEnabled;
+    if (Object.keys(nonCriticalSettings).length > 0) {
+      const current = storage.getSettings();
+      safeSave(KEYS.SETTINGS, { ...current, ...nonCriticalSettings });
     }
   },
 
@@ -380,7 +405,11 @@ export const storage = {
   getDraft: (): Partial<Letter> | null => safeParse(KEYS.DRAFT, null),
   clearDraft: () => localStorage.removeItem(KEYS.DRAFT),
 
-  // Sync version (localStorage only - backward compatible)
+  /**
+   * @deprecated Use ProfileContext (useProfile hook) instead - it loads from DB only.
+   * This method is kept for backward compatibility but should not be used for critical data.
+   * Critical data (experience, level, XP, streak) must come from DB via API.
+   */
   getUserProfile: (): UserProfile => {
     const stored = safeParse<Partial<UserProfile>>(KEYS.PROFILE, {});
     const tgUser = tg.initDataUnsafe?.user;
@@ -401,9 +430,13 @@ export const storage = {
     };
     return baseProfile;
   },
-  // Async version (API with fallback to localStorage)
+  /**
+   * @deprecated Use ProfileContext (useProfile hook) instead - it loads from DB only.
+   * This method does NOT save critical data to localStorage for security.
+   * Critical data (experience, level, XP, streak) must come from DB via API.
+   */
   getUserProfileAsync: async (): Promise<UserProfile> => {
-    // Try API first
+    // Always load from API - single source of truth
     const result = await profileAPI.get();
     if (result.ok && result.data?.profile) {
       const apiProfile = result.data.profile;
@@ -421,30 +454,16 @@ export const storage = {
         karma: apiProfile.karma || 50,
         stats: apiProfile.stats || { beefsWon: 0, leaksDropped: 0, daysAlive: 1 },
         experience: apiProfile.experience || 0,
-        totalXpEarned: apiProfile.totalXpEarned || 0
+        totalXpEarned: apiProfile.totalXpEarned || 0,
+        spendableXp: apiProfile.spendableXp ?? 0
       };
-      safeSave(KEYS.PROFILE, profile);
+      // Security: Do NOT save critical data (experience, level, XP) to localStorage
+      // Only save non-critical UI preferences if needed
+      // safeSave(KEYS.PROFILE, profile); // REMOVED for security
       return profile;
     }
-    // Fallback to localStorage
-    const stored = safeParse<Partial<UserProfile>>(KEYS.PROFILE, {});
-    const tgUser = tg.initDataUnsafe?.user;
-    const baseProfile: UserProfile = {
-        avatar: 'default',
-        bio: 'No bio yet.',
-        level: 1,
-        title: 'Newbie',
-        tonAddress: null,
-        gifts: [],
-        achievements: initialAchievements,
-        perks: initialPerks,
-        contracts: initialContracts,
-        reputation: 0,
-        karma: 50,
-        stats: { beefsWon: 0, leaksDropped: 0, daysAlive: 1 },
-        ...stored
-    };
-    return baseProfile;
+    // No fallback - throw error if API fails
+    throw new Error(result.error?.message || 'Failed to load profile from database');
   },
   // Sync version (localStorage only - backward compatible)
   saveUserProfile: (profile: UserProfile) => {
@@ -470,23 +489,14 @@ export const storage = {
     safeSave(KEYS.PROFILE, updated);
   },
 
+  /**
+   * @deprecated Achievements are managed by DB via API. Use ProfileContext instead.
+   * This method is kept for backward compatibility but does not update DB.
+   */
   updateAchievements: (key: string, amount: number) => {
-     const profile = storage.getUserProfile();
-     let updated = false;
-     const newAch = profile.achievements.map(a => {
-         if (a.key === key && !a.unlocked) {
-             const newProgress = Math.min(a.progress + amount, a.maxProgress);
-             if (newProgress >= a.maxProgress) {
-                 updated = true;
-                 return { ...a, progress: newProgress, unlocked: true };
-             }
-             return { ...a, progress: newProgress };
-         }
-         return a;
-     });
-     if (updated) {
-         storage.saveUserProfile({ ...profile, achievements: newAch });
-     }
+     // Security: Achievements are managed by DB only
+     // This method is a no-op - achievements come from DB via ProfileContext
+     console.warn('[storage] updateAchievements is deprecated - achievements are managed by DB');
   },
 
   /** No-op: legacy quest trigger (Daily Quests use API). Kept for compatibility. */
