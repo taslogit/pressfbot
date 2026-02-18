@@ -7,6 +7,7 @@ import { storage } from '../utils/storage';
 import { notificationsAPI, avatarsAPI, profileAPI, storeAPI, dailyQuestsAPI, getStaticUrl } from '../utils/api';
 import { UserProfile } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
+import { useProfile } from '../contexts/ProfileContext';
 import InfoSection from '../components/InfoSection';
 import { playSound } from '../utils/sound';
 import { calculateLevel, getLevelProgress, getTitleForLevel, xpForLevel } from '../utils/levelSystem';
