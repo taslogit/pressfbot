@@ -15,7 +15,6 @@ import OnboardingGuide from '../components/OnboardingGuide';
 import InfoSection from '../components/InfoSection';
 // QuestLog removed - replaced with DailyQuests component
 import StreakIndicator from '../components/StreakIndicator';
-import StreakCalendar from '../components/StreakCalendar';
 import DailyQuests from '../components/DailyQuests';
 import XPNotification from '../components/XPNotification';
 import SeasonalEvents from '../components/SeasonalEvents';
@@ -590,7 +589,7 @@ const Landing = () => {
            
            <InfoSection 
               title={t('how_it_works')} 
-              description={t('guide_step2_desc') + "\n\n[TIP] " + t('tap_to_reset')} 
+              description={t('landing_help')} 
               id="landing_help" 
               autoOpen
             />
@@ -711,8 +710,6 @@ const Landing = () => {
            }}
          />
          
-         {/* Streak Calendar & Indicator */}
-         <StreakCalendar />
          <StreakIndicator />
       </div>
 

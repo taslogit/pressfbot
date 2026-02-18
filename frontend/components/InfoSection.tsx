@@ -144,14 +144,14 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
                 backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 2px, ${stripeOpacity} 2px, ${stripeOpacity} 3px)`,
               }}
             />
-            {/* Заголовок блока: только метка (ИНФО/ВАЖНО) в стилизованном виде + иконка-вставка [] */}
+            {/* Заголовок: слова ИНФО/ВАЖНО — шрифт как в заголовках (font-heading) */}
             <div className={`flex items-center gap-2 text-xs font-black uppercase tracking-widest mb-2 relative z-10 ${labelColor}`}>
               <Icon size={14} className="shrink-0" />
-              <span className="font-mono">{Label}</span>
+              <span className="font-heading">{Label}</span>
               <span className="font-mono text-[10px] opacity-80" aria-hidden>[ ]</span>
             </div>
-            {/* Текст вставки — читаемый шрифт */}
-            <div className="text-sm leading-relaxed text-gray-200 font-sans relative z-10">
+            {/* Текст — обычный системный шрифт */}
+            <div className="text-sm leading-relaxed text-gray-200 relative z-10" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
               {formatText(content)}
             </div>
           </div>
