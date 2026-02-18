@@ -5,6 +5,7 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ApiErrorProvider } from './contexts/ApiErrorContext';
 import { ProfileProvider } from './contexts/ProfileContext';
+import { ToastProvider } from './contexts/ToastContext';
 import Layout from './components/Layout';
 import { TonConnectUIProvider } from '@tonconnect/ui-react';
 
@@ -214,6 +215,7 @@ const App = () => {
       <ErrorBoundary>
         <ThemeProvider>
           <ApiErrorProvider>
+          <ToastProvider>
           <ProfileProvider>
           <TonConnectUIProvider manifestUrl={manifestUrl}>
             <HashRouter>
@@ -246,6 +248,7 @@ const App = () => {
             </HashRouter>
           </TonConnectUIProvider>
           </ProfileProvider>
+          </ToastProvider>
           </ApiErrorProvider>
         </ThemeProvider>
       </ErrorBoundary>

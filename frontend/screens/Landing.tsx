@@ -24,6 +24,7 @@ import ActivityFeed from '../components/ActivityFeed';
 import { profileAPI, tonAPI, dailyQuestsAPI } from '../utils/api';
 import { analytics } from '../utils/analytics';
 import { useApiError } from '../contexts/ApiErrorContext';
+import { useToast } from '../contexts/ToastContext';
 
 /** Русская плюрализация: день/дня/дней, час/часа/часов */
 function getTimerLabel(count: number, type: 'days' | 'hours', t: (k: any, p?: Record<string, number>) => string, language: string): string {
@@ -48,6 +49,7 @@ const Landing = () => {
   const { daysRemaining, hoursRemaining, is24hMode, isDead, imAlive } = useDeadManSwitch();
   const { t, language } = useTranslation();
   const { showApiError } = useApiError();
+  const toast = useToast();
   const { profile, settings, refreshProfile } = useProfile();
   const { theme, toggleTheme } = useTheme();
   // Use settings from ProfileContext (DB); fallback for initial render before load
@@ -283,7 +285,8 @@ const Landing = () => {
     // Haptic feedback
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
-    tg.showPopup({ message: t('timer_updated') });
+    toast.success(t('timer_updated'));
+    if (tg.showPopup) tg.showPopup({ message: t('timer_updated') });
   };
 
   const handleCheckIn = async () => {
@@ -422,7 +425,13 @@ const Landing = () => {
 
   const isUrgent = is24hMode ? hoursRemaining <= 3 : daysRemaining <= 3;
   const isOverdue = is24hMode ? hoursRemaining <= 0 : daysRemaining <= 0;
-  const triggerDate = new Date(effectiveSettings.lastCheckIn + (effectiveSettings.deadManSwitchDays * 24 * 60 * 60 * 1000)).toLocaleDateString();
+  const totalDays = effectiveSettings.deadManSwitchDays ?? 7;
+  const totalHours = 24;
+  const timerRatio = is24hMode
+    ? Math.max(0, Math.min(1, hoursRemaining / totalHours))
+    : Math.max(0, Math.min(1, daysRemaining / totalDays));
+  const ringColor = isOverdue || isUrgent ? '#ef4444' : timerRatio > 0.5 ? '#B4FF00' : timerRatio > 0.2 ? '#eab308' : '#ef4444';
+  const triggerDate = new Date(effectiveSettings.lastCheckIn + (totalDays * 24 * 60 * 60 * 1000)).toLocaleDateString();
   const lastScanDate = new Date(effectiveSettings.lastCheckIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
@@ -603,14 +612,37 @@ const Landing = () => {
           onClick={handleCheckIn}
           aria-label={t('im_alive_btn')}
         >
-            {/* Outer Glow Ring */}
-            <div className={`absolute -inset-6 rounded-full opacity-20 blur-2xl animate-pulse motion-reduce:animate-none ${isUrgent ? 'bg-red-500' : 'bg-accent-lime'}`} />
+            {/* Outer Glow Ring — пульсация быстрее при критическом времени */}
+            <div className={`absolute -inset-6 rounded-full opacity-20 blur-2xl motion-reduce:animate-none ${isUrgent ? 'bg-red-500 animate-pulse' : 'bg-accent-lime animate-pulse'}`} style={isUrgent ? { animationDuration: '1s' } : undefined} />
             
             {/* Main Circle */}
             <motion.div 
                whileTap={{ scale: 0.95 }}
                className={`relative w-52 h-52 rounded-full border-[6px] ${isUrgent ? 'border-red-500/50' : 'border-accent-lime/50'} bg-black/40 backdrop-blur-xl flex flex-col items-center justify-center shadow-2xl overflow-hidden`}
             >
+                {/* Progress ring: time left (green → yellow → red) */}
+                <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" aria-hidden="true">
+                  <circle
+                    cx="104"
+                    cy="104"
+                    r="100"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.08)"
+                    strokeWidth="5"
+                  />
+                  <circle
+                    cx="104"
+                    cy="104"
+                    r="100"
+                    fill="none"
+                    stroke={ringColor}
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 100}
+                    strokeDashoffset={2 * Math.PI * 100 * (1 - timerRatio)}
+                    className="transition-[stroke-dashoffset] duration-700 ease-out"
+                  />
+                </svg>
                 {/* Rotating Dashed Ring */}
                 <div className={`absolute inset-0 border-2 border-dashed ${isUrgent ? 'border-red-500/30' : 'border-accent-lime/30'} rounded-full skull-ring-rotate`} aria-hidden="true" />
 

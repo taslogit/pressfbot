@@ -220,11 +220,14 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         </div>
       )}
 
-      {/* Кнопка «Пропустить» — после 2.5 с */}
-      {showSkip && !fadeOut && (
+      {/* Кнопка «Пропустить» — после 2.5 с; плавный fade-out перед переходом */}
+      {showSkip && (
         <button
           type="button"
-          onClick={finish}
+          onClick={() => {
+            setFadeOut(true);
+            setTimeout(() => finish(), 1200);
+          }}
           className="splash-skip-btn absolute top-4 right-4 z-10 px-4 py-2 rounded border border-[rgba(0,255,65,0.5)] bg-black/40 text-[#00ff41] text-sm font-mono hover:bg-[rgba(0,255,65,0.1)] transition-colors"
           aria-label={t('splash_skip')}
         >

@@ -627,8 +627,8 @@ const Duels = () => {
             <EmptyState
               icon={<Swords size={40} />}
               title={t('no_results')}
-              description={t('duels_empty_hint') || 'No duels yet. Start a new beef and challenge someone.'}
-              actionLabel={t('create_beef') || 'START A BEEF'}
+              description={t('duels_empty_hint')}
+              actionLabel={t('create_beef')}
               onAction={() => setIsCreating(true)}
             />
           ) : (

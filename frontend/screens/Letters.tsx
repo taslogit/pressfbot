@@ -12,6 +12,7 @@ import EmptyState from '../components/EmptyState';
 import { tg } from '../utils/telegram';
 import { useApiAbort } from '../hooks/useApiAbort';
 import { useApiError } from '../contexts/ApiErrorContext';
+import { useToast } from '../contexts/ToastContext';
 import { isEncrypted, decryptPayload } from '../utils/security';
 
 type Tab = 'all' | 'draft' | 'scheduled' | 'sent';
@@ -163,6 +164,7 @@ const Letters = () => {
   const { t } = useTranslation();
   const getSignal = useApiAbort();
   const { showApiError } = useApiError();
+  const toast = useToast();
   const [retryLetters, setRetryLetters] = useState(0);
 
   useEffect(() => {
@@ -234,6 +236,7 @@ const Letters = () => {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+    toast.success(t('exported'));
   };
 
   const loadHistory = async (letterId: string) => {
@@ -279,7 +282,8 @@ const Letters = () => {
         const updated = letters.filter(l => l.id !== id);
         setLetters(updated);
         localStorage.setItem('lastmeme_letters', JSON.stringify(updated));
-        tg.showPopup({ message: t('delete_success') });
+        toast.success(t('delete_success'));
+        if (tg.showPopup) tg.showPopup({ message: t('delete_success') });
         if (selectedLetterId === id) setSelectedLetterId(null);
       });
     }
@@ -523,7 +527,7 @@ const Letters = () => {
             <EmptyState
               icon={<FileText size={40} />}
               title={t('no_results')}
-              description={t('letters_empty_hint') || 'Create your first time-locked letter. It will be stored securely until the unlock date.'}
+              description={t('letters_empty_hint')}
               actionLabel={t('write_now')}
               onAction={() => navigate('/create-letter')}
             />

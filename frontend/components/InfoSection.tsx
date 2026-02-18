@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Info, X, Zap, AlertTriangle, BookOpen, Terminal, CheckCircle2, ScanLine, ArrowUpCircle } from 'lucide-react';
@@ -17,14 +17,25 @@ interface Props {
 const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false, trigger }) => {
   const [isOpen, setIsOpen] = useState(false);
   const { t } = useTranslation();
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      closeButtonRef.current?.focus();
     } else {
       document.body.style.overflow = 'unset';
     }
     return () => { document.body.style.overflow = 'unset'; };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [isOpen]);
 
   useEffect(() => {
@@ -273,7 +284,7 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
                         </h3>
                     </div>
                  </div>
-                 <button onClick={handleClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-500 transition-colors">
+                 <button ref={closeButtonRef} onClick={handleClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-500 transition-colors" aria-label={t('close') || 'Close'}>
                    <X size={18} />
                  </button>
               </div>
