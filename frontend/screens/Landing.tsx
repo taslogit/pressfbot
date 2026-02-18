@@ -51,12 +51,12 @@ const Landing = () => {
   const { showApiError } = useApiError();
   const { profile, settings, refreshProfile } = useProfile();
   const { theme, toggleTheme } = useTheme();
-  
+  // Use settings from ProfileContext (DB); fallback for initial render before load
+  const effectiveSettings = settings ?? storage.getSettings();
+
   // Component mount tracking (removed console.log for production)
   const [justCheckedIn, setJustCheckedIn] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
-  // showQuestLog removed - use Daily Quests component instead
-  const [settings, setSettings] = useState(storage.getSettings());
   const [showSharePulse, setShowSharePulse] = useState(false);
   const [xpNotification, setXpNotification] = useState<{ xp: number; level?: number; levelUp?: boolean; bonusLabel?: 'lucky' | 'comeback' | 'reengagement' | 'milestone' | 'daily' | 'guide' } | null>(null);
   const [isCheckInLoading, setIsCheckInLoading] = useState(false);
@@ -136,12 +136,6 @@ const Landing = () => {
 
   useEffect(() => {
     let isMounted = true;
-    
-    // Settings come from ProfileContext (always from DB)
-    // Only update local state for UI rendering
-    if (settings && isMounted) {
-      setSettings(settings);
-    }
 
     // Initialize with localStorage data first (fast)
     setActiveDuels(storage.getDuels().filter(d => d.status === 'active').length);
@@ -276,16 +270,20 @@ const Landing = () => {
     toggleTheme();
   };
 
-  const handleSetTimer = (days: number) => {
-    if (settings.deadManSwitchDays === days) return;
+  const handleSetTimer = async (days: number) => {
+    if (effectiveSettings.deadManSwitchDays === days) return;
     playSound('click');
-    storage.updateSettings({ deadManSwitchDays: days });
-    setSettings(storage.getSettings()); // Keep UI in sync (trigger date, active tab)
+    try {
+      await profileAPI.updateSettings({ deadManSwitchDays: days });
+      await refreshProfile(); // Refresh from DB - UI will update via effectiveSettings
+    } catch (err) {
+      console.error('Failed to update timer:', err);
+    }
     imAlive(); // Reset the timer logic immediately
-    
+
     // Haptic feedback
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-    
+
     tg.showPopup({ message: t('timer_updated') });
   };
 
@@ -301,12 +299,11 @@ const Landing = () => {
       if (result.ok && result.data) {
         const { xp, streak, bonuses, timestamp } = result.data;
         
-        // Обновить локальные настройки: время последнего тапа (таймер и даты)
+        // Refresh profile from DB to get updated lastCheckIn and timer
         if (timestamp != null) {
-          storage.updateSettings({ lastCheckIn: timestamp });
-          setSettings(storage.getSettings());
+          refreshProfile(); // Settings come from DB
         }
-        
+
         // Update local state
         imAlive();
         setJustCheckedIn(true);
@@ -426,8 +423,8 @@ const Landing = () => {
 
   const isUrgent = is24hMode ? hoursRemaining <= 3 : daysRemaining <= 3;
   const isOverdue = is24hMode ? hoursRemaining <= 0 : daysRemaining <= 0;
-  const triggerDate = new Date(settings.lastCheckIn + (settings.deadManSwitchDays * 24 * 60 * 60 * 1000)).toLocaleDateString();
-  const lastScanDate = new Date(settings.lastCheckIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const triggerDate = new Date(effectiveSettings.lastCheckIn + (effectiveSettings.deadManSwitchDays * 24 * 60 * 60 * 1000)).toLocaleDateString();
+  const lastScanDate = new Date(effectiveSettings.lastCheckIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div className="space-y-4 pt-2 pb-24 relative">
@@ -670,12 +667,12 @@ const Landing = () => {
                    key={days}
                    onClick={() => handleSetTimer(days)}
                    className={`relative flex-1 py-3 rounded-xl text-xs font-black transition-all overflow-hidden ${
-                     settings.deadManSwitchDays === days 
-                       ? 'text-black shadow-lg' 
+                     effectiveSettings.deadManSwitchDays === days
+                       ? 'text-black shadow-lg'
                        : 'text-muted hover:text-white hover:bg-white/5'
                    }`}
                  >
-                    {settings.deadManSwitchDays === days && (
+                    {effectiveSettings.deadManSwitchDays === days && (
                        <motion.div 
                          layoutId="activeTimer"
                          className="absolute inset-0 bg-accent-cyan"
