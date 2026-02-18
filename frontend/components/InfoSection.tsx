@@ -91,33 +91,68 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
       if (match) {
         const type = match[1].trim();
         const content = match[2].trim();
-        
-        let colors = "border-gray-700 bg-gray-800/50 text-gray-300";
-        let Icon = BookOpen;
-        let Label = type;
+
+        type BlockStyle = {
+          wrapper: string;
+          labelColor: string;
+          Icon: typeof BookOpen;
+          Label: string;
+          stripeOpacity: string;
+        };
+
+        let style: BlockStyle = {
+          wrapper: "border-gray-700 bg-gray-800/50",
+          labelColor: "text-gray-400",
+          Icon: BookOpen,
+          Label: type,
+          stripeOpacity: "rgba(128,128,128,0.08)",
+        };
 
         if (['TIP', 'СОВЕТ', 'ЛАЙФХАК', 'CASE'].includes(type)) {
-          colors = "border-accent-lime/40 bg-accent-lime/10 text-accent-lime shadow-[0_0_10px_rgba(180,255,0,0.1)]";
-          Icon = Zap;
-          Label = t('tip_label');
+          style = {
+            wrapper: "border-accent-lime/50 bg-[#1a2e1a]/90",
+            labelColor: "text-accent-lime",
+            Icon: Zap,
+            Label: t('tip_label'),
+            stripeOpacity: "rgba(180,255,0,0.06)",
+          };
         } else if (['WARN', 'ВАЖНО', 'АХТУНГ'].includes(type)) {
-          colors = "border-red-500/40 bg-red-500/10 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]";
-          Icon = AlertTriangle;
-          Label = t('warn_label');
+          style = {
+            wrapper: "border-red-500/50 bg-[#2e1a1a]/95",
+            labelColor: "text-red-400",
+            Icon: AlertTriangle,
+            Label: t('warn_label'),
+            stripeOpacity: "rgba(239,68,68,0.08)",
+          };
         } else if (['NOTE', 'ФИЧА', 'ИНФО'].includes(type)) {
-          colors = "border-accent-cyan/40 bg-accent-cyan/10 text-accent-cyan shadow-[0_0_10px_rgba(0,224,255,0.1)]";
-          Icon = ScanLine;
-          Label = t('info_label');
+          style = {
+            wrapper: "border-accent-cyan/50 bg-[#0f1729]/95",
+            labelColor: "text-accent-cyan",
+            Icon: ScanLine,
+            Label: t('info_label'),
+            stripeOpacity: "rgba(0,224,255,0.06)",
+          };
         }
 
+        const { wrapper, labelColor, Icon, Label, stripeOpacity } = style;
         const inner = (
-          <div className={`my-3 p-3 rounded-tr-xl rounded-bl-xl border-l-2 border-r ${colors} relative overflow-hidden`}>
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,25,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-0 pointer-events-none bg-[length:100%_4px,3px_100%]" />
-            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest opacity-90 mb-1 relative z-10">
-               <Icon size={12} /> {Label}
+          <div className={`my-3 p-3.5 rounded-lg border-l-[3px] ${wrapper} relative overflow-hidden`}>
+            {/* Горизонтальные полоски (ретро-сетка) */}
+            <div
+              className="absolute inset-0 z-0 pointer-events-none opacity-80"
+              style={{
+                backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 2px, ${stripeOpacity} 2px, ${stripeOpacity} 3px)`,
+              }}
+            />
+            {/* Заголовок блока: только метка (ИНФО/ВАЖНО) в стилизованном виде + иконка-вставка [] */}
+            <div className={`flex items-center gap-2 text-xs font-black uppercase tracking-widest mb-2 relative z-10 ${labelColor}`}>
+              <Icon size={14} className="shrink-0" />
+              <span className="font-mono">{Label}</span>
+              <span className="font-mono text-[10px] opacity-80" aria-hidden>[ ]</span>
             </div>
-            <div className="text-xs font-medium leading-relaxed relative z-10 opacity-90">
-               {formatText(content)}
+            {/* Текст вставки — читаемый шрифт */}
+            <div className="text-sm leading-relaxed text-gray-200 font-sans relative z-10">
+              {formatText(content)}
             </div>
           </div>
         );
