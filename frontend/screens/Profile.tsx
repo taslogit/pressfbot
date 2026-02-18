@@ -102,10 +102,13 @@ const Profile = () => {
   }, [settingsFromContext]);
 
   useEffect(() => {
+    let isMounted = true;
+    const opts = { signal: getSignal() };
+
     setShareHistory(storage.getShareHistory());
 
     // Avatars will be loaded lazily when avatar selector is opened
-    
+
     // Load gifts
     loadGifts();
 
