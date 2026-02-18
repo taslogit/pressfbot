@@ -13,6 +13,7 @@ import { playSound } from '../utils/sound';
 import { storage } from '../utils/storage';
 import { tg } from '../utils/telegram';
 import { useBreadcrumb } from '../contexts/BreadcrumbContext';
+import { useToast } from '../contexts/ToastContext';
 
 type TabId = 'stars' | 'xp' | 'ton' | 'my';
 
@@ -37,6 +38,7 @@ const TON_ITEMS = [
 const Store = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const toast = useToast();
   const address = useTonAddress();
   const walletConnected = !!address;
   const getSignal = useApiAbort();
@@ -605,6 +607,7 @@ const Store = () => {
                 const res = await storeAPI.buyMysteryBox();
                 setMysteryBoxLoading(false);
                 if (res.ok && res.data) {
+                  toast.success(t('store_buy_success'));
                   if (res.data.remainingXp != null) {
                     setProfile((p: any) => p ? { ...p, spendableXp: res.data.remainingXp } : p);
                   }
@@ -612,7 +615,9 @@ const Store = () => {
                   setSelectedItem(res.data.item);
                   setItemType('xp');
                 } else {
-                  tg.showPopup?.({ message: res.error || t('store_buy_failed') });
+                  const errMsg = res.error || t('store_buy_failed');
+                  toast.error(errMsg);
+                  tg.showPopup?.({ message: errMsg });
                 }
               }}
               disabled={userXP < 120 || mysteryBoxLoading}
@@ -909,7 +914,9 @@ const Store = () => {
                       const res = await storeAPI.buyItem(selectedItem.id);
                       if (res.ok && res.data) {
                         const isAvatarOrFrame = selectedItem.id?.startsWith('avatar_');
-                        tg.showPopup?.({ message: isAvatarOrFrame ? t('store_buy_success_equip') : t('store_buy_success') });
+                        const msg = isAvatarOrFrame ? t('store_buy_success_equip') : t('store_buy_success');
+                        toast.success(msg);
+                        tg.showPopup?.({ message: msg });
                         if (res.data.remainingXp != null) {
                           setProfile((p: any) => p ? { ...p, spendableXp: res.data.remainingXp } : p);
                         }
@@ -917,6 +924,7 @@ const Store = () => {
                         closeItemModal();
                       } else {
                         const msg = res.code === 'ALREADY_OWNED' ? t('store_already_owned') : (res.error || t('store_buy_failed'));
+                        toast.error(msg);
                         tg.showPopup?.({ message: msg });
                       }
                     }

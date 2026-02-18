@@ -2,10 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldCheck, Skull, Zap, Info, ChevronRight, Moon, Sun, Hourglass, Activity, Target, Terminal, FileText, Swords, Users, RefreshCw, Lock, Share2, Signal, BookOpen, ShoppingBag, Settings, Trophy } from 'lucide-react';
+import { ShieldCheck, Skull, Zap, Info, ChevronRight, Hourglass, Activity, Target, Terminal, FileText, Swords, Users, RefreshCw, Lock, Share2, Signal, BookOpen, ShoppingBag, Settings, Trophy } from 'lucide-react';
 import { useDeadManSwitch } from '../hooks/useDeadManSwitch';
 import { useTranslation } from '../contexts/LanguageContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { useProfile } from '../contexts/ProfileContext';
 import { storage } from '../utils/storage';
 import { tg } from '../utils/telegram';
@@ -51,7 +50,6 @@ const Landing = () => {
   const { showApiError } = useApiError();
   const toast = useToast();
   const { profile, settings, refreshProfile } = useProfile();
-  const { theme, toggleTheme } = useTheme();
   // Use settings from ProfileContext (DB); fallback for initial render before load
   const effectiveSettings = settings ?? storage.getSettings();
 
@@ -266,11 +264,6 @@ const Landing = () => {
     }
   };
 
-  const handleThemeToggle = () => {
-    playSound('click');
-    toggleTheme();
-  };
-
   const handleSetTimer = async (days: number) => {
     if (effectiveSettings.deadManSwitchDays === days) return;
     playSound('click');
@@ -426,11 +419,6 @@ const Landing = () => {
   const isUrgent = is24hMode ? hoursRemaining <= 3 : daysRemaining <= 3;
   const isOverdue = is24hMode ? hoursRemaining <= 0 : daysRemaining <= 0;
   const totalDays = effectiveSettings.deadManSwitchDays ?? 7;
-  const totalHours = 24;
-  const timerRatio = is24hMode
-    ? Math.max(0, Math.min(1, hoursRemaining / totalHours))
-    : Math.max(0, Math.min(1, daysRemaining / totalDays));
-  const ringColor = isOverdue || isUrgent ? '#ef4444' : timerRatio > 0.5 ? '#B4FF00' : timerRatio > 0.2 ? '#eab308' : '#ef4444';
   const triggerDate = new Date(effectiveSettings.lastCheckIn + (totalDays * 24 * 60 * 60 * 1000)).toLocaleDateString();
   const lastScanDate = new Date(effectiveSettings.lastCheckIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -472,17 +460,8 @@ const Landing = () => {
              {t('welcome_back')} <span className="text-primary">{tg.initDataUnsafe?.user?.first_name || 'USER'}</span>
            </p>
         </div>
-        <div className="flex gap-2">
-          <div className="flex items-center justify-center bg-card/50 border border-green-500/30 px-2 py-1 rounded-md backdrop-blur-md">
-            <Signal size={16} className="text-green-500 animate-pulse motion-reduce:animate-none" />
-          </div>
-
-          <button 
-            onClick={handleThemeToggle}
-            className="flex items-center justify-center text-muted hover:text-accent-gold transition-colors bg-card/50 border border-border px-2 py-1 rounded-md backdrop-blur-md"
-          >
-            {theme === 'dark' ? <Sun size={16} className="drop-shadow-[0_0_5px_rgba(255,215,0,0.5)]" /> : <Moon size={16} />}
-          </button>
+        <div className="flex items-center justify-center bg-card/50 border border-green-500/30 px-2 py-1 rounded-md backdrop-blur-md">
+          <Signal size={16} className="text-green-500 animate-pulse motion-reduce:animate-none" />
         </div>
       </motion.header>
 
@@ -618,33 +597,10 @@ const Landing = () => {
             {/* Main Circle */}
             <motion.div 
                whileTap={{ scale: 0.95 }}
-               className={`relative w-52 h-52 rounded-full border-[6px] ${isUrgent ? 'border-red-500/50' : 'border-accent-lime/50'} bg-black/40 backdrop-blur-xl flex flex-col items-center justify-center shadow-2xl overflow-hidden`}
+               className="relative w-52 h-52 rounded-full bg-black/40 backdrop-blur-xl flex flex-col items-center justify-center shadow-2xl overflow-hidden"
             >
-                {/* Progress ring: time left (green → yellow → red) */}
-                <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" aria-hidden="true">
-                  <circle
-                    cx="104"
-                    cy="104"
-                    r="100"
-                    fill="none"
-                    stroke="rgba(255,255,255,0.08)"
-                    strokeWidth="5"
-                  />
-                  <circle
-                    cx="104"
-                    cy="104"
-                    r="100"
-                    fill="none"
-                    stroke={ringColor}
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    strokeDasharray={2 * Math.PI * 100}
-                    strokeDashoffset={2 * Math.PI * 100 * (1 - timerRatio)}
-                    className="transition-[stroke-dashoffset] duration-700 ease-out"
-                  />
-                </svg>
-                {/* Rotating Dashed Ring */}
-                <div className={`absolute inset-0 border-2 border-dashed ${isUrgent ? 'border-red-500/30' : 'border-accent-lime/30'} rounded-full skull-ring-rotate`} aria-hidden="true" />
+                {/* Единственное кольцо — пунктирное, вращающееся */}
+                <div className={`absolute inset-0 border-2 border-dashed rounded-full skull-ring-rotate pointer-events-none ${isUrgent ? 'border-red-500/40' : 'border-accent-lime/40'}`} aria-hidden="true" />
 
                 {/* Animated Background Scanline */}
                 <div className="absolute inset-0 bg-[linear-gradient(transparent_0%,rgba(255,255,255,0.05)_50%,transparent_100%)] bg-[length:100%_200%] animate-scan motion-reduce:animate-none pointer-events-none" />

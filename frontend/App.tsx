@@ -2,7 +2,6 @@ import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LanguageProvider } from './contexts/LanguageContext';
-import { ThemeProvider } from './contexts/ThemeContext';
 import { ApiErrorProvider } from './contexts/ApiErrorContext';
 import { ProfileProvider } from './contexts/ProfileContext';
 import { ToastProvider } from './contexts/ToastContext';
@@ -213,8 +212,7 @@ const App = () => {
   return (
     <LanguageProvider>
       <ErrorBoundary>
-        <ThemeProvider>
-          <ApiErrorProvider>
+        <ApiErrorProvider>
           <ToastProvider>
           <ProfileProvider>
           <TonConnectUIProvider manifestUrl={manifestUrl}>
@@ -250,7 +248,6 @@ const App = () => {
           </ProfileProvider>
           </ToastProvider>
           </ApiErrorProvider>
-        </ThemeProvider>
       </ErrorBoundary>
     </LanguageProvider>
   );

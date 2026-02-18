@@ -283,7 +283,6 @@ const Letters = () => {
         setLetters(updated);
         localStorage.setItem('lastmeme_letters', JSON.stringify(updated));
         toast.success(t('delete_success'));
-        if (tg.showPopup) tg.showPopup({ message: t('delete_success') });
         if (selectedLetterId === id) setSelectedLetterId(null);
       });
     }

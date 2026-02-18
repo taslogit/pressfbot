@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Mail, Swords, Zap, User, Search, ShoppingBag } from 'lucide-react';
 import { tg } from '../utils/telegram';
 import { useTranslation } from '../contexts/LanguageContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { playSound } from '../utils/sound';
 import OfflineIndicator from './OfflineIndicator';
 import Breadcrumbs from './Breadcrumbs';
@@ -17,7 +16,6 @@ const Layout: React.FC<Props> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
-  const { theme } = useTheme();
 
   React.useEffect(() => {
     tg.ready();
@@ -41,7 +39,7 @@ const Layout: React.FC<Props> = ({ children }) => {
   const showBreadcrumb = location.pathname !== '/';
 
   return (
-    <div className={`min-h-screen pb-content-bottom text-primary font-sans selection:bg-accent-pink selection:text-white transition-colors duration-300 ${theme === 'light' ? 'light-theme-bg' : 'bg-bg'}`}>
+    <div className="min-h-screen pb-content-bottom text-primary font-sans selection:bg-accent-pink selection:text-white bg-bg">
       <OfflineIndicator />
       <BreadcrumbProvider>
         <main className="content-scan p-4 max-w-md mx-auto relative z-10" id="main-content">
@@ -78,7 +76,7 @@ const Layout: React.FC<Props> = ({ children }) => {
 
                 {/* Active Indicator Dot */}
                 {isActive && (
-                  <span className={`absolute bottom-2 w-1 h-1 rounded-full ${item.color.replace('text-', 'bg-')} ${item.glow}`} />
+                  <span className={`absolute bottom-2 w-1 h-1 rounded-full ${item.color.replace('text-', 'bg-')}`} />
                 )}
               </button>
             );

@@ -19,6 +19,7 @@ import { calculateLevel } from '../utils/levelSystem';
 import { duelsAPI, dailyQuestsAPI, profileAPI } from '../utils/api';
 import { useApiAbort } from '../hooks/useApiAbort';
 import { useApiError } from '../contexts/ApiErrorContext';
+import { useToast } from '../contexts/ToastContext';
 
 type DuelTab = 'mine' | 'hype' | 'shame';
 
@@ -38,6 +39,7 @@ const Duels = () => {
   const navigate = useNavigate();
   const getSignal = useApiAbort();
   const { showApiError } = useApiError();
+  const toast = useToast();
   const [retryDuels, setRetryDuels] = useState(0);
   const [duels, setDuels] = React.useState<Duel[]>([]);
   const { t } = useTranslation();
@@ -251,7 +253,9 @@ const Duels = () => {
           dailyQuestsAPI.updateProgress('win_duel').catch(() => {});
           window.dispatchEvent(new CustomEvent('questProgressUpdated'));
         } else {
-          tg.showPopup({ message: t('duel_updated') || t('duel_created') });
+          const msg = t('duel_updated') || t('duel_created');
+          toast.success(msg);
+          tg.showPopup({ message: msg });
         }
       } else {
         const result = await storage.saveDuelAsync(newDuel);
@@ -273,6 +277,7 @@ const Duels = () => {
           const levelUp = newLevel > oldLevel;
           setXpNotification({ xp: result.xp, level: levelUp ? newLevel : undefined, levelUp });
         }
+        toast.success(t('duel_created'));
         tg.showPopup({ message: t('duel_created') });
       }
       
@@ -353,6 +358,7 @@ const Duels = () => {
 
   const copyWitnessLink = () => {
     navigator.clipboard.writeText(witnessLink);
+    toast.success(t('link_copied'));
     tg.showPopup({ message: t('link_copied') });
   };
 
