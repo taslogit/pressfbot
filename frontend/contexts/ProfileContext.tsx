@@ -61,7 +61,8 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const result = await profileAPI.get();
       if (!result.ok || !result.data) {
-        throw new Error(result.error?.message || 'Failed to load profile');
+        const msg = typeof result.error === 'string' ? result.error : (result.error as any)?.message || 'Failed to load profile';
+        throw new Error(msg);
       }
 
       const apiProfile = result.data.profile;
@@ -112,6 +113,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
         freeGiftBalance: apiSettings.freeGiftBalance ?? 0,
         duelTauntMessage: apiSettings.duelTauntMessage ?? null,
         shortSplashEnabled: apiSettings.shortSplashEnabled || false,
+        avatarFrame: apiSettings.avatarFrame ?? (apiSettings as any).avatar_frame ?? 'default',
       };
 
       if (isMountedRef.current) {

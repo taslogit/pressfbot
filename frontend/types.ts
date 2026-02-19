@@ -65,6 +65,7 @@ export interface UserSettings {
   freeGiftBalance?: number;
   duelTauntMessage?: string | null;
   shortSplashEnabled?: boolean;
+  avatarFrame?: string;
 }
 
 export interface Witness {

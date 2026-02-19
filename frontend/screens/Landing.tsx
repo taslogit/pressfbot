@@ -45,13 +45,16 @@ function getTimerLabel(count: number, type: 'days' | 'hours', t: (k: any, p?: Re
 
 const Landing = () => {
   const navigate = useNavigate();
-  const { daysRemaining, hoursRemaining, is24hMode, isDead, imAlive } = useDeadManSwitch();
   const { t, language } = useTranslation();
   const { showApiError } = useApiError();
   const toast = useToast();
   const { profile, settings, refreshProfile } = useProfile();
-  // Use settings from ProfileContext (DB); fallback for initial render before load
   const effectiveSettings = settings ?? storage.getSettings();
+  const deadManOverride = {
+    deadManSwitchDays: effectiveSettings.deadManSwitchDays ?? 30,
+    lastCheckIn: effectiveSettings.lastCheckIn ?? Date.now()
+  };
+  const { daysRemaining, hoursRemaining, is24hMode, isDead, imAlive } = useDeadManSwitch(deadManOverride);
 
   // Component mount tracking (removed console.log for production)
   const [justCheckedIn, setJustCheckedIn] = useState(false);
@@ -273,19 +276,15 @@ const Landing = () => {
   const handleSetTimer = async (days: number) => {
     if (timerDays === days) return;
     playSound('click');
-    setTimerDays(days); // Update button state immediately
+    setTimerDays(days);
     try {
       await profileAPI.updateSettings({ deadManSwitchDays: days });
       await refreshProfile();
     } catch (err) {
       console.error('Failed to update timer:', err);
-      setTimerDays(effectiveSettings.deadManSwitchDays ?? 30); // Revert on error
+      setTimerDays(effectiveSettings.deadManSwitchDays ?? 30);
     }
-    imAlive(); // Reset the timer logic immediately
-
-    // Haptic feedback
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-
     toast.success(t('timer_updated'));
     if (tg.showPopup) tg.showPopup({ message: t('timer_updated') });
   };

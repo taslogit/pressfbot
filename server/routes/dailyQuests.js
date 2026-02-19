@@ -242,7 +242,7 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
   router.post('/progress', async (req, res) => {
     const client = await pool?.connect();
     if (!client) {
-      return res.json({ ok: false, error: 'Database not available' });
+      return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
     }
 
     try {
@@ -251,7 +251,7 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
 
       if (!userId || !questType) {
         client.release();
-        return res.json({ ok: false, error: 'Missing parameters' });
+        return sendError(res, 400, 'MISSING_PARAMS', 'Missing parameters');
       }
 
       const today = new Date().toISOString().split('T')[0];
@@ -295,7 +295,7 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
       await client.query('ROLLBACK').catch(() => {});
       client.release();
       logger.error('Update quest progress error:', { error: error?.message || error });
-      return res.json({ ok: false, error: error?.message || error });
+      return sendError(res, 500, 'QUEST_PROGRESS_FAILED', error?.message || 'Failed to update progress');
     }
   });
 
@@ -361,7 +361,7 @@ async function generateDailyQuestsForAllUsers(pool, date) {
                   quest.description,
                   quest.target_count,
                   quest.current_count,
-                  JSON.stringify(quest.reward),
+                  quest.reward,
                   quest.quest_date,
                   quest.is_completed,
                   quest.is_claimed

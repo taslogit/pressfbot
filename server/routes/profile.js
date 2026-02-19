@@ -1107,13 +1107,16 @@ async function updateStreakChallenges(pool, userId, newStreak, oldStreak, bot) {
 
         // Award rewards to winner
         if (challenge.reward_xp > 0 || challenge.reward_rep > 0) {
+          const xpReward = challenge.reward_xp || 0;
           await pool.query(
             `UPDATE profiles 
-             SET xp = xp + $1, 
+             SET experience = experience + $1, 
+                 total_xp_earned = COALESCE(total_xp_earned, 0) + $1,
+                 spendable_xp = COALESCE(spendable_xp, 0) + $1,
                  reputation = reputation + $2,
                  updated_at = now()
              WHERE user_id = $3`,
-            [challenge.reward_xp || 0, challenge.reward_rep || 0, opponentId]
+            [xpReward, challenge.reward_rep || 0, opponentId]
           );
         }
 
