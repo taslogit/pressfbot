@@ -49,7 +49,7 @@ const XP_REWARDS = {
   create_letter: 25,
   create_duel: 30,
   win_duel: 50,
-  invite_friend: 100,
+  invite_friend: 200, // Увеличено для виральности: было 100, стало 200 XP
   daily_quest: 15, // Base, can vary
   update_profile: 5,
   create_squad: 20

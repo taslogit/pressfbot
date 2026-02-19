@@ -20,10 +20,13 @@ import { duelsAPI, dailyQuestsAPI, profileAPI } from '../utils/api';
 import { useApiAbort } from '../hooks/useApiAbort';
 import { useApiError } from '../contexts/ApiErrorContext';
 import { useToast } from '../contexts/ToastContext';
+import { useProfile } from '../contexts/ProfileContext';
+import PaywallModal from '../components/PaywallModal';
 
 type DuelTab = 'mine' | 'hype' | 'shame';
 
 const DUELS_FILTERS_KEY = 'lastmeme_duels_filters';
+const DUEL_LIMIT_FREE = 2;
 
 const readDuelsFilters = () => {
   try {
@@ -57,6 +60,9 @@ const Duels = () => {
   const skeletonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shownWinsRef = useRef<Set<string>>(new Set());
   const [xpNotification, setXpNotification] = useState<{ xp: number; level?: number; levelUp?: boolean } | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const { profile } = useProfile();
+  const isPremium = profile?.perks?.includes('premium') ?? false;
 
   // Form State
   const [title, setTitle] = useState('');
@@ -542,7 +548,15 @@ const Duels = () => {
                <motion.button 
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => { playSound('open'); setIsCreating(true); setEditingDuelId(null); }}
+                onClick={() => {
+                  playSound('open');
+                  if (!isPremium && duels.length >= DUEL_LIMIT_FREE) {
+                    setShowPaywall(true);
+                    return;
+                  }
+                  setIsCreating(true);
+                  setEditingDuelId(null);
+                }}
                 className="w-full bg-orange-500 hover:bg-orange-600 text-black font-black uppercase tracking-wider py-4 rounded-xl shadow-[0_0_15px_rgba(249,115,22,0.5)] flex items-center justify-center gap-2 transition-all"
               >
                 <Plus size={24} strokeWidth={3} />
@@ -635,7 +649,13 @@ const Duels = () => {
               title={t('no_results')}
               description={t('duels_empty_hint')}
               actionLabel={t('create_beef')}
-              onAction={() => setIsCreating(true)}
+              onAction={() => {
+                if (!isPremium && duels.length >= DUEL_LIMIT_FREE) {
+                  setShowPaywall(true);
+                  return;
+                }
+                setIsCreating(true);
+              }}
             />
           ) : (
             displayFiltered.map((duel, index) => {
@@ -756,6 +776,15 @@ const Duels = () => {
             })
           )}
         </div>
+
+        <PaywallModal
+          isOpen={showPaywall}
+          onClose={() => setShowPaywall(false)}
+          feature="duels"
+          limit={DUEL_LIMIT_FREE}
+          current={duels.length}
+          onUpgrade={() => setShowPaywall(false)}
+        />
       </div>
     </div>
   );

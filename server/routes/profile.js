@@ -606,7 +606,7 @@ const createProfileRoutes = (pool) => {
       if (newStreak > 0 && (newStreak === 3 || newStreak === 7 || newStreak === 14 || newStreak === 30 || newStreak === 100) && bot) {
         try {
           const { sendTelegramNotification } = require('./notifications');
-          const message = `🔥 <b>Streak Milestone!</b>\n\nYour streak: <b>${newStreak} days</b>${streakBonus > 0 ? `\n\n+${streakBonus} REP bonus!` : ''}`;
+          const message = `🔥 <b>Days in a row milestone!</b>\n\nYour series: <b>${newStreak} days</b>${streakBonus > 0 ? `\n\n+${streakBonus} REP bonus!` : ''}`;
           await sendTelegramNotification(bot, userId, message);
         } catch (notifError) {
           logger.debug('Failed to send streak notification', { error: notifError?.message });
@@ -1013,13 +1013,15 @@ const createProfileRoutes = (pool) => {
         rewardGiven: row.reward_given
       }));
 
-      // Calculate next milestone rewards
+      // Calculate next milestone rewards (увеличенные награды для виральности)
       const milestones = [
-        { count: 1, reward: 50, xp: 100 },
-        { count: 5, reward: 250, xp: 500 },
-        { count: 10, reward: 500, xp: 1000 },
-        { count: 25, reward: 1500, xp: 2500 },
-        { count: 50, reward: 3000, xp: 5000 }
+        { count: 1, reward: 50, xp: 100, badge: 'Recruiter', premiumDays: 0 },
+        { count: 2, reward: 100, xp: 200, badge: 'Recruiter', premiumDays: 0 },
+        { count: 3, reward: 200, xp: 500, badge: 'Influencer', premiumDays: 30 },
+        { count: 5, reward: 250, xp: 500, badge: 'Influencer', premiumDays: 30 },
+        { count: 10, reward: 500, xp: 1000, badge: 'Influencer', premiumDays: 90 },
+        { count: 25, reward: 1500, xp: 2500, badge: 'Viral', premiumDays: 180 },
+        { count: 50, reward: 3000, xp: 5000, badge: 'Viral', premiumDays: 365 }
       ];
 
       const nextMilestone = milestones.find(m => referralsCount < m.count) || null;

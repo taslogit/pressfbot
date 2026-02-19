@@ -23,6 +23,7 @@ const SharePost = lazy(() => import('./screens/SharePost'));
 const Notifications = lazy(() => import('./screens/Notifications'));
 const Store = lazy(() => import('./screens/Store'));
 const Wiki = lazy(() => import('./screens/Wiki'));
+const Referral = lazy(() => import('./screens/Referral'));
 import { tg, initTelegramApp, isTgVersionWithoutOptionalUI, isTelegramWebApp } from './utils/telegram';
 import { useTelegramSession } from './hooks/useTelegramSession';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -178,6 +179,7 @@ const AnimatedLayoutRoutes = () => {
           <Route path="/profile" element={<Profile />} />
           <Route path="/store" element={<Store />} />
           <Route path="/wiki" element={<Wiki />} />
+          <Route path="/referral" element={<Referral />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/share" element={<SharePost />} />
           <Route path="/notifications" element={<Notifications />} />

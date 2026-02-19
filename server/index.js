@@ -536,7 +536,23 @@ app.use('/api/witnesses', authMiddleware, getLimiter, createWitnessesRoutes(pool
 app.use('/api/stars', authMiddleware, getLimiter, createStarsRoutes(pool, bot));
 app.use('/api/store', authMiddleware, getLimiter, createStoreRoutes(pool));
 app.get('/api/limits', authMiddleware, getLimiter, createLimitsRoute(pool));
-app.post('/api/analytics', getLimiter, (req, res) => {
+app.post('/api/analytics', getLimiter, async (req, res) => {
+  try {
+    const { event, userId: bodyUserId, properties } = req.body || {};
+    if (!event || typeof event !== 'string') {
+      return res.status(204).end();
+    }
+    const userId = bodyUserId != null ? Number(bodyUserId) : null;
+    const props = properties && typeof properties === 'object' ? properties : {};
+    if (pool) {
+      await pool.query(
+        `INSERT INTO analytics_events (user_id, event, properties) VALUES ($1, $2, $3)`,
+        [userId || null, event.substring(0, 100), JSON.stringify(props)]
+      );
+    }
+  } catch (err) {
+    logger.debug('Analytics save failed', { error: err?.message });
+  }
   res.status(204).end();
 });
 
@@ -813,12 +829,12 @@ app.get('/api/metrics/prometheus', globalLimiter, (req, res) => {
 
           for (const row of streakRiskResult.rows) {
             try {
-              const msg = `⚠️ <b>Streak at risk!</b>\n\nYour ${row.current_streak}-day streak will reset if you don't check in today. Tap the skull now! 🔥`;
+              const msg = `⚠️ <b>Days in a row at risk!</b>\n\nYour ${row.current_streak} days in a row will reset if you don't check in today. Tap the skull now! 🔥`;
               await bot.telegram.sendMessage(row.user_id.toString(), msg, { parse_mode: 'HTML' });
               await pool.query(
                 `INSERT INTO notification_events (id, user_id, event_type, title, message)
                  VALUES ($1, $2, $3, $4, $5)`,
-                [uuidv4(), row.user_id, 'streak_risk', 'Streak at risk', msg]
+                [uuidv4(), row.user_id, 'streak_risk', 'Days in a row at risk', msg]
               );
             } catch (notifyError) {
               logger.warn('Failed to notify streak risk', { userId: row.user_id, error: notifyError.message });
@@ -1084,19 +1100,73 @@ app.post('/api/verify', async (req, res) => {
                 [referrerId]
               );
 
-              // Award XP to referrer (100 XP for inviting friend)
+              // Award XP and REP to referrer (увеличенные награды для виральности)
               const { getXPReward } = require('./utils/xpSystem');
-              const xpReward = getXPReward('invite_friend');
+              const xpReward = getXPReward('invite_friend'); // 200 XP
+              const repReward = 50; // 50 REP за каждого реферала
+              
               if (xpReward > 0) {
                 await pool.query(
                   `UPDATE profiles 
                    SET experience = experience + $1, 
                        total_xp_earned = total_xp_earned + $1, 
                        spendable_xp = COALESCE(spendable_xp, 0) + $1,
+                       reputation = COALESCE(reputation, 0) + $3,
                        updated_at = now()
                    WHERE user_id = $2`,
-                  [xpReward, referrerId]
+                  [xpReward, referrerId, repReward]
                 );
+              }
+              
+              // Check and award milestone rewards
+              const referralsCountResult = await pool.query(
+                'SELECT referrals_count FROM profiles WHERE user_id = $1',
+                [referrerId]
+              );
+              const newReferralsCount = referralsCountResult.rows[0]?.referrals_count || 0;
+              
+              // Milestone rewards: 1, 2, 3, 5, 10, 25, 50
+              const milestoneRewards = [
+                { count: 1, reward: 50, xp: 100, premiumDays: 0 },
+                { count: 2, reward: 100, xp: 200, premiumDays: 0 },
+                { count: 3, reward: 200, xp: 500, premiumDays: 30 },
+                { count: 5, reward: 250, xp: 500, premiumDays: 30 },
+                { count: 10, reward: 500, xp: 1000, premiumDays: 90 },
+                { count: 25, reward: 1500, xp: 2500, premiumDays: 180 },
+                { count: 50, reward: 3000, xp: 5000, premiumDays: 365 }
+              ];
+              
+              const milestone = milestoneRewards.find(m => m.count === newReferralsCount);
+              if (milestone) {
+                // Award milestone reward
+                await pool.query(
+                  `UPDATE profiles 
+                   SET experience = experience + $1,
+                       total_xp_earned = total_xp_earned + $1,
+                       spendable_xp = COALESCE(spendable_xp, 0) + $1,
+                       reputation = COALESCE(reputation, 0) + $2,
+                       updated_at = now()
+                   WHERE user_id = $3`,
+                  [milestone.xp, milestone.reward, referrerId]
+                );
+                
+                // Award Premium days if applicable
+                if (milestone.premiumDays > 0) {
+                  const { awardPremiumDays } = require('./routes/stars');
+                  try {
+                    await awardPremiumDays(pool, referrerId, milestone.premiumDays);
+                  } catch (premError) {
+                    logger.warn('Failed to award premium days for milestone', { error: premError.message });
+                  }
+                }
+                
+                logger.info('Milestone reward awarded', { 
+                  referrerId, 
+                  milestone: milestone.count, 
+                  reward: milestone.reward, 
+                  xp: milestone.xp,
+                  premiumDays: milestone.premiumDays 
+                });
               }
 
               logger.info('Referral processed', { referrerId, referredId: tgUserId, referralCode });

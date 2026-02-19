@@ -611,10 +611,25 @@ const createTables = async (pool) => {
     `);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_boosts_user_expires ON user_active_boosts(user_id, expires_at)`);
 
+    // Analytics events (for retention, funnels)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS analytics_events (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id BIGINT,
+        event VARCHAR(100) NOT NULL,
+        properties JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_analytics_events_event ON analytics_events(event)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_analytics_events_user ON analytics_events(user_id, created_at DESC)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_analytics_events_created ON analytics_events(created_at DESC)`);
+
     // Profile premium flag
     await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_premium BOOLEAN DEFAULT false`);
     await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS premium_expires_at TIMESTAMP`);
     await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS stars_balance INTEGER DEFAULT 0`);
+    await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS trial_used_at TIMESTAMP`);
     // Spendable points balance
     await pool.query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS spendable_xp INTEGER DEFAULT 0`);
 

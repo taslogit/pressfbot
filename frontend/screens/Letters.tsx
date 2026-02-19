@@ -14,6 +14,7 @@ import { useApiAbort } from '../hooks/useApiAbort';
 import { useApiError } from '../contexts/ApiErrorContext';
 import { useToast } from '../contexts/ToastContext';
 import { isEncrypted, decryptPayload } from '../utils/security';
+import PaywallModal from '../components/PaywallModal';
 
 type Tab = 'all' | 'draft' | 'scheduled' | 'sent';
 
@@ -166,6 +167,15 @@ const Letters = () => {
   const { showApiError } = useApiError();
   const toast = useToast();
   const [retryLetters, setRetryLetters] = useState(0);
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  const handleCreateLetter = useCallback(() => {
+    if (letters.length >= 3) {
+      setShowPaywall(true);
+      return;
+    }
+    navigate('/create-letter');
+  }, [letters.length, navigate]);
 
   useEffect(() => {
     setLetters(storage.getLetters());
@@ -528,7 +538,7 @@ const Letters = () => {
               title={t('no_results')}
               description={t('letters_empty_hint')}
               actionLabel={t('write_now')}
-              onAction={() => navigate('/create-letter')}
+              onAction={handleCreateLetter}
             />
           ) : (
             letterCards
@@ -759,6 +769,15 @@ const Letters = () => {
           </>
         )}
       </AnimatePresence>
+
+      <PaywallModal
+        isOpen={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        feature="letters"
+        limit={3}
+        current={letters.length}
+        onUpgrade={() => { setShowPaywall(false); navigate('/create-letter'); }}
+      />
     </div>
   );
 };

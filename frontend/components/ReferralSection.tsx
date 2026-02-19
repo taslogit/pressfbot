@@ -146,15 +146,20 @@ const ReferralSection: React.FC<Props> = ({ className = '' }) => {
                   className="h-full bg-gradient-to-r from-purple-500 to-accent-cyan"
                 />
               </div>
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
                 <Gift size={12} className="text-accent-gold" />
                 <span className="text-muted">
                   {t('reward') || 'Награда'}: +{referralInfo.nextMilestone.reward} REP
                 </span>
-                <TrendingUp size={12} className="text-accent-cyan ml-auto" />
+                <TrendingUp size={12} className="text-accent-cyan" />
                 <span className="text-accent-cyan">
                   +{referralInfo.nextMilestone.xp} XP
                 </span>
+                {referralInfo.nextMilestone.premiumDays > 0 && (
+                  <span className="text-accent-gold font-bold">
+                    +{referralInfo.nextMilestone.premiumDays} {t('premium_days') || 'дн. Premium'}
+                  </span>
+                )}
               </div>
             </div>
           )}

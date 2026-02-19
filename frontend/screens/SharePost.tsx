@@ -39,6 +39,41 @@ const SharePost = () => {
       cardClass: 'bg-gradient-to-br from-[#0b0b0b] via-[#161616] to-[#0b0b0b] border-accent-gold/30 shadow-[0_0_35px_rgba(255,215,0,0.18)]',
       accentClass: 'text-accent-gold',
       chipClass: 'border-accent-gold/30 bg-accent-gold/10'
+    },
+    {
+      id: 'matrix',
+      label: t('share_template_matrix') || 'Matrix',
+      cardClass: 'bg-gradient-to-br from-[#001100] via-[#003300] to-[#000000] border-green-500/40 shadow-[0_0_35px_rgba(0,255,0,0.25)]',
+      accentClass: 'text-green-500',
+      chipClass: 'border-green-500/40 bg-green-500/10'
+    },
+    {
+      id: 'vaporwave',
+      label: t('share_template_vaporwave') || 'Vaporwave',
+      cardClass: 'bg-gradient-to-br from-[#ff006e] via-[#8338ec] to-[#3a86ff] border-purple-400/40 shadow-[0_0_35px_rgba(131,56,236,0.3)]',
+      accentClass: 'text-purple-300',
+      chipClass: 'border-purple-400/40 bg-purple-400/10'
+    },
+    {
+      id: 'retro',
+      label: t('share_template_retro') || 'Retro',
+      cardClass: 'bg-gradient-to-br from-[#ff6b6b] via-[#ffa500] to-[#ffd700] border-orange-400/40 shadow-[0_0_35px_rgba(255,165,0,0.3)]',
+      accentClass: 'text-orange-300',
+      chipClass: 'border-orange-400/40 bg-orange-400/10'
+    },
+    {
+      id: 'dark',
+      label: t('share_template_dark') || 'Dark',
+      cardClass: 'bg-gradient-to-br from-[#000000] via-[#1a1a1a] to-[#000000] border-gray-600/40 shadow-[0_0_35px_rgba(255,255,255,0.1)]',
+      accentClass: 'text-gray-300',
+      chipClass: 'border-gray-600/40 bg-gray-600/10'
+    },
+    {
+      id: 'fire',
+      label: t('share_template_fire') || 'Fire',
+      cardClass: 'bg-gradient-to-br from-[#8b0000] via-[#ff4500] to-[#ff6347] border-red-500/40 shadow-[0_0_35px_rgba(255,69,0,0.3)]',
+      accentClass: 'text-red-300',
+      chipClass: 'border-red-500/40 bg-red-500/10'
     }
   ]), [t]);
   const [templateId, setTemplateId] = useState(styleParam);

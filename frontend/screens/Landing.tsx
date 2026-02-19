@@ -317,6 +317,44 @@ const Landing = () => {
         else if (bonuses?.reengagement) bonusLabel = 'reengagement';
         else if (bonuses?.comeback) bonusLabel = 'comeback';
         
+        // Автоматический шеринг при milestone streak (7d, 30d) для виральности
+        const currentStreak = streak?.current || 0;
+        if (currentStreak === 7 || currentStreak === 30) {
+          setTimeout(async () => {
+            try {
+              const refRes = await profileAPI.getReferral();
+              if (refRes.ok && refRes.data?.referralLink) {
+                const shareUrl = refRes.data.referralLink;
+                const firstName = tg.initDataUnsafe?.user?.first_name || 'Я';
+                const streakText = currentStreak === 7 
+                  ? t('share_streak_7d') || `🔥 ${currentStreak} дней подряд! Присоединяйся к PRESS F!`
+                  : t('share_streak_30d') || `🔥 ${currentStreak} дней подряд! Легенда! Присоединяйся!`;
+                const text = `${streakText}\n\n${shareUrl}`;
+                
+                tg.showPopup(
+                  {
+                    message: currentStreak === 7 
+                      ? t('milestone_7d_share') || `🎉 7 дней подряд! Поделись достижением?`
+                      : t('milestone_30d_share') || `🏆 30 дней подряд! Легенда! Поделись?`,
+                    buttons: [
+                      { id: 'share', type: 'default', text: t('share_btn_label') || 'Поделиться' },
+                      { id: 'close', type: 'close' }
+                    ]
+                  },
+                  (buttonId: string) => {
+                    if (buttonId === 'share') {
+                      tg.openLink(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`);
+                      analytics.trackShare('streak_milestone', currentStreak.toString());
+                    }
+                  }
+                );
+              }
+            } catch (error) {
+              console.error('Failed to get referral link for milestone share:', error);
+            }
+          }, 2000); // Задержка после показа XP notification
+        }
+        
         // Оптимистичное обновление кэша профиля: сразу добавляем начисленный XP,
         // чтобы в Профиле и Магазине отображался актуальный баланс (бэкенд может отдавать профиль с задержкой)
         if (xp != null && xp > 0) {
@@ -555,12 +593,20 @@ const Landing = () => {
         <p className="text-xs text-muted mb-3 truncate">
           {t('home_streak_next', { next: triggerDate })}
         </p>
-        <button
-          onClick={() => { playSound('click'); handleSharePulse(); }}
-          className="w-full px-3 py-2 rounded-lg border border-accent-cyan/40 text-accent-cyan bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-all font-bold tracking-widest text-xs uppercase"
-        >
-          {t('share_btn_label')}
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => { playSound('click'); handleSharePulse(); }}
+            className="w-full px-3 py-2 rounded-lg border border-accent-cyan/40 text-accent-cyan bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-all font-bold tracking-widest text-xs uppercase"
+          >
+            {t('share_btn_label')}
+          </button>
+          <button
+            onClick={() => { playSound('click'); navigate('/referral'); }}
+            className="w-full px-3 py-2 rounded-lg border border-purple-500/40 text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 transition-all font-bold tracking-widest text-xs uppercase"
+          >
+            {t('referral_system')}
+          </button>
+        </div>
       </motion.div>
 
       {/* MAIN HUD: SKULL & TIMER */}

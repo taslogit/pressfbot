@@ -598,7 +598,10 @@ export const starsAPI = {
     });
   },
   getPremiumStatus: async (options?: RequestInit) => {
-    return apiRequest<{ isPremium: boolean; expiresAt: string | null; starsBalance: number }>('/api/stars/premium-status', options);
+    return apiRequest<{ isPremium: boolean; expiresAt: string | null; starsBalance: number; trialUsed?: boolean }>('/api/stars/premium-status', options);
+  },
+  activateTrial: async () => {
+    return apiRequest<{ ok: boolean; expiresAt: string }>('/api/stars/activate-trial', { method: 'POST' });
   },
   getPurchases: async () => {
     return apiRequest<{ purchases: any[] }>('/api/stars/purchases');

@@ -5,6 +5,7 @@ import { searchAPI } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useApiAbort } from '../hooks/useApiAbort';
 import InfoSection from '../components/InfoSection';
+import ListSkeleton from '../components/ListSkeleton';
 
 const SearchScreen = () => {
   const navigate = useNavigate();
@@ -94,9 +95,9 @@ const SearchScreen = () => {
         </div>
       </div>
 
-      {loading && <p className="text-xs text-muted mb-4">{t('search_loading')}</p>}
+      {loading && <ListSkeleton rows={4} className="mb-4" />}
 
-      <div className="space-y-4">
+      {!loading && <div className="space-y-4">
         <div>
           <div className="flex items-center gap-2 mb-2 text-accent-lime font-bold text-xs uppercase">
             <Mail size={14} /> {t('search_section_letters')}

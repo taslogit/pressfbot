@@ -184,13 +184,13 @@ const createStarsRoutes = (pool, bot) => {
       }
 
       const result = await pool.query(
-        `SELECT is_premium, premium_expires_at, stars_balance 
+        `SELECT is_premium, premium_expires_at, stars_balance, trial_used_at 
          FROM profiles WHERE user_id = $1`,
         [userId]
       );
 
       if (!result.rows[0]) {
-        return res.json({ ok: true, isPremium: false, expiresAt: null, starsBalance: 0 });
+        return res.json({ ok: true, isPremium: false, expiresAt: null, starsBalance: 0, trialUsed: false });
       }
 
       const profile = result.rows[0];
@@ -208,11 +208,60 @@ const createStarsRoutes = (pool, bot) => {
         ok: true,
         isPremium,
         expiresAt: profile.premium_expires_at,
-        starsBalance: profile.stars_balance || 0
+        starsBalance: profile.stars_balance || 0,
+        trialUsed: !!profile.trial_used_at
       });
     } catch (error) {
       logger.error('Check premium error:', error);
       return sendError(res, 500, 'PREMIUM_CHECK_FAILED', 'Failed to check premium status');
+    }
+  });
+
+  // ─── POST /api/stars/activate-trial — Activate 7-day Premium trial (once per user)
+  router.post('/activate-trial', async (req, res) => {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        return sendError(res, 401, 'AUTH_REQUIRED', 'Not authenticated');
+      }
+
+      const row = await pool.query(
+        `SELECT trial_used_at, premium_expires_at FROM profiles WHERE user_id = $1`,
+        [userId]
+      );
+      if (!row.rows[0]) {
+        return sendError(res, 404, 'PROFILE_NOT_FOUND', 'Profile not found');
+      }
+      const { trial_used_at, premium_expires_at } = row.rows[0];
+      if (trial_used_at) {
+        return res.status(400).json({ ok: false, code: 'TRIAL_ALREADY_USED', message: 'Trial already used' });
+      }
+
+      const now = new Date();
+      let expiresAt = new Date(now);
+      expiresAt.setDate(expiresAt.getDate() + 7);
+      if (premium_expires_at && new Date(premium_expires_at) > now) {
+        const currentEnd = new Date(premium_expires_at);
+        currentEnd.setDate(currentEnd.getDate() + 7);
+        expiresAt = currentEnd;
+      }
+
+      await pool.query(
+        `UPDATE profiles SET is_premium = true, premium_expires_at = $2, trial_used_at = $3 WHERE user_id = $1`,
+        [userId, expiresAt, now]
+      );
+      await pool.query(
+        `INSERT INTO premium_subscriptions (user_id, plan, stars_paid, expires_at)
+         VALUES ($1, 'trial', 0, $2)
+         ON CONFLICT (user_id) DO UPDATE SET plan = 'trial', expires_at = GREATEST(premium_subscriptions.expires_at, $2), status = 'active'`,
+        [userId, expiresAt]
+      );
+
+      logger.info('Trial activated', { userId, expiresAt });
+      return res.json({ ok: true, expiresAt: expiresAt.toISOString() });
+    } catch (error) {
+      logger.error('Activate trial error:', error);
+      return sendError(res, 500, 'TRIAL_ACTIVATE_FAILED', 'Failed to activate trial');
     }
   });
 
@@ -367,4 +416,34 @@ async function processStarsPayment(pool, bot, { userId, payload, telegramPayment
   }
 }
 
-module.exports = { createStarsRoutes, handleStarsCatalog, processStarsPayment, STORE_CATALOG };
+// ─── Award premium days (e.g. referral milestones). Extends existing premium or sets from now.
+async function awardPremiumDays(pool, userId, days) {
+  if (!pool || !userId || !days || days < 1) return;
+  const now = new Date();
+  const result = await pool.query(
+    `SELECT premium_expires_at FROM profiles WHERE user_id = $1`,
+    [userId]
+  );
+  if (!result.rows[0]) return;
+  let expiresAt = new Date(now);
+  expiresAt.setDate(expiresAt.getDate() + days);
+  const current = result.rows[0].premium_expires_at;
+  if (current && new Date(current) > now) {
+    const fromCurrent = new Date(current);
+    fromCurrent.setDate(fromCurrent.getDate() + days);
+    expiresAt = fromCurrent;
+  }
+  await pool.query(
+    `UPDATE profiles SET is_premium = true, premium_expires_at = $2 WHERE user_id = $1`,
+    [userId, expiresAt]
+  );
+  await pool.query(
+    `INSERT INTO premium_subscriptions (user_id, plan, stars_paid, expires_at)
+     VALUES ($1, 'milestone', 0, $2)
+     ON CONFLICT (user_id) DO UPDATE SET expires_at = GREATEST(premium_subscriptions.expires_at, $2), status = 'active'`,
+    [userId, expiresAt]
+  );
+  logger.info('Premium days awarded', { userId, days, expiresAt });
+}
+
+module.exports = { createStarsRoutes, handleStarsCatalog, processStarsPayment, STORE_CATALOG, awardPremiumDays };

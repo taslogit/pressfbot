@@ -5,10 +5,10 @@
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 
-// Free tier monthly limits
+// Free tier monthly limits (Freemium модель для виральности)
 const FREE_LIMITS = {
-  letters: 5,       // letters per month
-  duels: 3,         // duels per month  
+  letters: 3,       // letters per month (было 5, стало 3)
+  duels: 2,         // duels per month (было 3, стало 2)
   gifts: 2,         // gifts per month
   witnesses: 3,     // witness invites per month
 };

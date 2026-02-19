@@ -4,6 +4,7 @@ import { Activity, FileText, Swords, Gift, CheckCircle, Trophy, Sparkles } from 
 import { activityAPI } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
 import { ActivityFeedItem } from '../types';
+import ListSkeleton from './ListSkeleton';
 
 const ActivityFeed: React.FC = () => {
   const { t } = useTranslation();

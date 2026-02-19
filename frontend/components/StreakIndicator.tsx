@@ -60,7 +60,7 @@ const StreakIndicator: React.FC<Props> = ({ className = '' }) => {
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-sm font-black text-orange-400">
-              {t('streak_title') || 'СТРИК'}
+              {t('streak_title') || 'ДНЕЙ ПОДРЯД'}
             </span>
             <span className="text-lg font-black text-white">
               {current} {t('days') || 'дней'}

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Skull, Swords, ChevronRight, Terminal, X, FileText } from 'lucide-react';
+import { Skull, Swords, ChevronRight, Terminal, X } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { analytics } from '../utils/analytics';
 
@@ -16,7 +16,7 @@ const OnboardingGuide: React.FC<Props> = ({ isVisible, onClose }) => {
   const [step, setStep] = useState(0);
   const [bootSequence, setBootSequence] = useState(true);
 
-  // Define steps: welcome, timer, beefs (biffs), drops
+  // 3 steps: welcome, timer, beefs + drops (combined)
   const steps = [
     {
       id: 'welcome',
@@ -35,20 +35,12 @@ const OnboardingGuide: React.FC<Props> = ({ isVisible, onClose }) => {
       bg: 'bg-accent-lime/10'
     },
     {
-      id: 'beefs',
+      id: 'beefs_drops',
       icon: <Swords size={64} className="text-orange-500" />,
-      title: 'guide_step_beefs_title',
-      desc: 'guide_step_beefs_desc',
+      title: 'guide_step_beefs_drops_title',
+      desc: 'guide_step_beefs_drops_desc',
       color: 'border-orange-500 text-orange-500',
       bg: 'bg-orange-500/10'
-    },
-    {
-      id: 'drops',
-      icon: <FileText size={64} className="text-accent-pink" />,
-      title: 'guide_step3_title',
-      desc: 'guide_step3_desc',
-      color: 'border-accent-pink text-accent-pink',
-      bg: 'bg-accent-pink/10'
     }
   ];
 
