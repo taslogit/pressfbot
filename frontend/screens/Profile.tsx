@@ -21,6 +21,8 @@ import LoadingState from '../components/LoadingState';
 
 // Default avatar is pressf from server (free for everyone)
 const DEFAULT_AVATAR_ID = 'pressf';
+// Only show avatars that exist in repo (server/static/avatars) — hides broken/placeholder slots
+const KNOWN_AVATAR_IDS = new Set(['pressf', 'skull', 'ghost', 'robot', 'crown']);
 
 // Avatar frame styles (applied to avatar border)
 const AVATAR_FRAME_STYLES: Record<string, string> = {
@@ -310,7 +312,10 @@ const Profile = () => {
   const deadline = lastCheckIn + deadManSwitchDays * 24 * 60 * 60 * 1000;
   const isDead = Date.now() > deadline;
   const displayedAvatars = availableAvatars.filter(
-    (a) => ownedAvatarIds.has(a.id) && !avatarLoadFailedIds.has(a.id)
+    (a) =>
+      ownedAvatarIds.has(a.id) &&
+      (KNOWN_AVATAR_IDS.has(a.id) || a.id === profile?.avatar) &&
+      !avatarLoadFailedIds.has(a.id)
   );
 
   const handleAvatarChange = async (avatarId: string) => {
@@ -323,6 +328,7 @@ const Profile = () => {
         storage.saveUserProfile(updated);
         setProfile(updated);
         setShowAvatarSelector(false);
+        await refreshProfile();
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       } else {
         const msg = result.error || result.code === 'AVATAR_NOT_FOUND'
