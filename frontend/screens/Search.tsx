@@ -142,7 +142,7 @@ const SearchScreen = () => {
           )}
         </div>
 
-      </div>
+      </div>}
       </div>
     </div>
   );
