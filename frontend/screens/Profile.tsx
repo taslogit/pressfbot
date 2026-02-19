@@ -311,11 +311,14 @@ const Profile = () => {
   const funeralTrackId = settings?.funeralTrack || 'astronomia';
   const deadline = lastCheckIn + deadManSwitchDays * 24 * 60 * 60 * 1000;
   const isDead = Date.now() > deadline;
-  const displayedAvatars = availableAvatars.filter(
+  const displayedAvatarsRaw = availableAvatars.filter(
     (a) =>
       ownedAvatarIds.has(a.id) &&
       (KNOWN_AVATAR_IDS.has(a.id) || a.id === profile?.avatar) &&
       !avatarLoadFailedIds.has(a.id)
+  );
+  const displayedAvatars = displayedAvatarsRaw.filter(
+    (a, i, arr) => arr.findIndex((x) => x.id === a.id) === i
   );
 
   const handleAvatarChange = async (avatarId: string) => {
@@ -488,7 +491,8 @@ const Profile = () => {
                     </h4>
                     <div className="grid grid-cols-3 gap-3">
                       {displayedAvatars.map((avatar) => {
-                        const isSelected = profile.avatar === avatar.id || (!profile.avatar && avatar.id === DEFAULT_AVATAR_ID);
+                        const currentAvatarId = profile?.avatar || DEFAULT_AVATAR_ID;
+                        const isSelected = currentAvatarId === avatar.id;
                         return (
                           <motion.button
                             key={avatar.id}
