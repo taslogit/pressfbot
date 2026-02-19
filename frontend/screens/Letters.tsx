@@ -10,6 +10,7 @@ import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
 import EmptyState from '../components/EmptyState';
 import { tg } from '../utils/telegram';
+import { confirmCritical } from '../utils/confirm';
 import { useApiAbort } from '../hooks/useApiAbort';
 import { useApiError } from '../contexts/ApiErrorContext';
 import { useToast } from '../contexts/ToastContext';
@@ -285,9 +286,15 @@ const Letters = () => {
     setHistoryOpen(false);
   };
 
-  const handleDelete = useCallback((id: string, e: React.MouseEvent) => {
+  const handleDelete = useCallback(async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm(t('confirm_delete'))) {
+    const ok = await confirmCritical({
+      message: t('confirm_delete'),
+      confirmLabel: t('delete_letter') || 'Delete',
+      cancelLabel: t('cancel') || 'Cancel',
+      destructive: true
+    });
+    if (ok) {
       storage.deleteLetterAsync(id).finally(() => {
         const updated = letters.filter(l => l.id !== id);
         setLetters(updated);

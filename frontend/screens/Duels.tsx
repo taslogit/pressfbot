@@ -23,6 +23,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useProfile } from '../contexts/ProfileContext';
 import PaywallModal from '../components/PaywallModal';
 import { analytics } from '../utils/analytics';
+import { confirmCritical } from '../utils/confirm';
 
 type DuelTab = 'mine' | 'hype' | 'shame';
 
@@ -312,10 +313,14 @@ const Duels = () => {
     setIsPublic(!!duel.isPublic);
     setIsTeam(!!duel.isTeam);
   };
-  const handleDelete = (id: string) => {
-    if (!confirm(t('confirm_delete'))) {
-      return;
-    }
+  const handleDelete = async (id: string) => {
+    const ok = await confirmCritical({
+      message: t('confirm_delete'),
+      confirmLabel: t('delete_letter') || 'Delete',
+      cancelLabel: t('cancel') || 'Cancel',
+      destructive: true
+    });
+    if (!ok) return;
     storage.deleteDuelAsync(id).finally(() => {
       setDuels((prev) => prev.filter(d => d.id !== id));
     });

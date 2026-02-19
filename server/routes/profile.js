@@ -1004,9 +1004,9 @@ const createProfileRoutes = (pool) => {
       const referralCode = profileResult.rows[0].referral_code;
       const referralsCount = profileResult.rows[0].referrals_count || 0;
 
-      // Get list of referred users
+      // Get list of referred users (with title for challenge modal)
       const referralsResult = await pool.query(
-        `SELECT p.user_id, p.created_at, re.reward_given
+        `SELECT p.user_id, p.title, p.created_at, re.reward_given
          FROM profiles p
          JOIN referral_events re ON p.user_id = re.referred_id
          WHERE re.referrer_id = $1
@@ -1017,6 +1017,7 @@ const createProfileRoutes = (pool) => {
 
       const referrals = referralsResult.rows.map(row => ({
         userId: row.user_id,
+        title: row.title || null,
         joinedAt: row.created_at,
         rewardGiven: row.reward_given
       }));

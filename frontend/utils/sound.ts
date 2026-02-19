@@ -1,5 +1,5 @@
-
 import { storage } from './storage';
+import { haptic } from './haptic';
 
 // Simple synth so we don't need external assets
 const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
@@ -15,6 +15,12 @@ const getCtx = () => {
 type SoundType = 'click' | 'success' | 'error' | 'hover' | 'open' | 'charge';
 
 export const playSound = (type: SoundType) => {
+  // Haptic in Telegram (always, independent of sound setting)
+  if (type === 'click' || type === 'hover') haptic('selection');
+  else if (type === 'success') haptic('success');
+  else if (type === 'error') haptic('error');
+  else if (type === 'charge' || type === 'open') haptic('impact_medium');
+
   const settings = storage.getSettings();
   if (!settings.soundEnabled) return;
 

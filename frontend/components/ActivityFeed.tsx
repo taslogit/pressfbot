@@ -5,6 +5,7 @@ import { activityAPI } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
 import { ActivityFeedItem } from '../types';
 import ListSkeleton from './ListSkeleton';
+import LoadingState from './LoadingState';
 
 type FeedTab = 'all' | 'friends';
 
@@ -146,9 +147,11 @@ const ActivityFeed: React.FC = () => {
 
   if (loading && activities.length === 0) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="text-muted text-sm">{t('loading') || 'Loading...'}</div>
-      </div>
+      <LoadingState
+        terminal
+        message={t('loading') || 'Loading...'}
+        className="py-8 min-h-0"
+      />
     );
   }
 
