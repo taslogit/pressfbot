@@ -12,7 +12,6 @@ import InfoSection from '../components/InfoSection';
 import { playSound } from '../utils/sound';
 import { calculateLevel, getLevelProgress, getTitleForLevel, xpForLevel } from '../utils/levelSystem';
 import confetti from 'canvas-confetti';
-import ReferralSection from '../components/ReferralSection';
 import SendGiftModal from '../components/SendGiftModal';
 import { giftsAPI } from '../utils/api';
 import { useApiAbort } from '../hooks/useApiAbort';
@@ -1000,8 +999,6 @@ const Profile = () => {
                  </div>
                )}
 
-               {/* Referral Section */}
-               <ReferralSection className="mt-4" />
             </motion.div>
           )}
 

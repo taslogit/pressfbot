@@ -73,6 +73,12 @@ const Landing = () => {
   
   // Quest State removed - use Daily Quests instead
 
+  // Timer protocol: local state so button selection updates immediately on click
+  const [timerDays, setTimerDays] = useState(() => effectiveSettings.deadManSwitchDays ?? 30);
+  useEffect(() => {
+    setTimerDays(effectiveSettings.deadManSwitchDays ?? 30);
+  }, [effectiveSettings.deadManSwitchDays]);
+
   // System Log State
   const [currentLog, setCurrentLog] = useState(0);
   const logs = ['log_connected', 'log_sync', 'log_secure'];
@@ -265,13 +271,15 @@ const Landing = () => {
   };
 
   const handleSetTimer = async (days: number) => {
-    if (effectiveSettings.deadManSwitchDays === days) return;
+    if (timerDays === days) return;
     playSound('click');
+    setTimerDays(days); // Update button state immediately
     try {
       await profileAPI.updateSettings({ deadManSwitchDays: days });
-      await refreshProfile(); // Refresh from DB - UI will update via effectiveSettings
+      await refreshProfile();
     } catch (err) {
       console.error('Failed to update timer:', err);
+      setTimerDays(effectiveSettings.deadManSwitchDays ?? 30); // Revert on error
     }
     imAlive(); // Reset the timer logic immediately
 
@@ -700,12 +708,12 @@ const Landing = () => {
                    key={days}
                    onClick={() => handleSetTimer(days)}
                    className={`relative flex-1 py-3 rounded-xl text-xs font-black transition-all overflow-hidden ${
-                     effectiveSettings.deadManSwitchDays === days
+                     timerDays === days
                        ? 'text-black shadow-lg'
                        : 'text-muted hover:text-white hover:bg-white/5'
                    }`}
                  >
-                    {effectiveSettings.deadManSwitchDays === days && (
+                    {timerDays === days && (
                        <motion.div 
                          layoutId="activeTimer"
                          className="absolute inset-0 bg-accent-cyan"
