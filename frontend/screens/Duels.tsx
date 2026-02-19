@@ -262,8 +262,7 @@ const Duels = () => {
           window.dispatchEvent(new CustomEvent('questProgressUpdated'));
         } else {
           const msg = t('duel_updated') || t('duel_created');
-          toast.success(msg);
-          tg.showPopup({ message: msg });
+        toast.success(msg);
         }
       } else {
         const result = await storage.saveDuelAsync(newDuel);
@@ -286,7 +285,6 @@ const Duels = () => {
           setXpNotification({ xp: result.xp, level: levelUp ? newLevel : undefined, levelUp });
         }
         toast.success(t('duel_created'));
-        tg.showPopup({ message: t('duel_created') });
       }
       
       storage.getDuelsAsync(buildQueryParams()).then((nextDuels) => setDuels(nextDuels));
@@ -371,7 +369,6 @@ const Duels = () => {
   const copyWitnessLink = () => {
     navigator.clipboard.writeText(witnessLink);
     toast.success(t('link_copied'));
-    tg.showPopup({ message: t('link_copied') });
   };
 
   const normalizeName = (value?: string) => (value || '').replace('@', '').trim().toLowerCase();

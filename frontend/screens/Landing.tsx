@@ -286,7 +286,6 @@ const Landing = () => {
     }
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     toast.success(t('timer_updated'));
-    if (tg.showPopup) tg.showPopup({ message: t('timer_updated') });
   };
 
   const handleCheckIn = async () => {

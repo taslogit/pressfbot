@@ -617,7 +617,6 @@ const Store = () => {
                 } else {
                   const errMsg = res.error || t('store_buy_failed');
                   toast.error(errMsg);
-                  tg.showPopup?.({ message: errMsg });
                 }
               }}
               disabled={userXP < 120 || mysteryBoxLoading}
@@ -916,7 +915,6 @@ const Store = () => {
                         const isAvatarOrFrame = selectedItem.id?.startsWith('avatar_');
                         const msg = isAvatarOrFrame ? t('store_buy_success_equip') : t('store_buy_success');
                         toast.success(msg);
-                        tg.showPopup?.({ message: msg });
                         if (res.data.remainingXp != null) {
                           setProfile((p: any) => p ? { ...p, spendableXp: res.data.remainingXp } : p);
                         }
@@ -925,7 +923,6 @@ const Store = () => {
                       } else {
                         const msg = res.code === 'ALREADY_OWNED' ? t('store_already_owned') : (res.error || t('store_buy_failed'));
                         toast.error(msg);
-                        tg.showPopup?.({ message: msg });
                       }
                     }
                   }}

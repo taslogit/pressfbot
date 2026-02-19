@@ -118,7 +118,7 @@ function ToastItem({ item, onRemove }: { item: ToastItem; onRemove: (id: string)
       className={`pointer-events-auto flex items-center gap-3 min-w-[200px] max-w-[min(100%,340px)] py-2.5 px-4 rounded-xl border shadow-lg backdrop-blur-md ${bg}`}
     >
       <Icon size={20} className={`shrink-0 ${iconColor}`} />
-      <p className="text-sm font-medium text-white flex-1 leading-snug">{item.message}</p>
+      <p className="text-sm font-bold text-primary leading-snug flex-1">{item.message}</p>
       <button
         type="button"
         onClick={() => onRemove(item.id)}
