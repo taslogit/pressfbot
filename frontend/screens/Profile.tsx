@@ -56,7 +56,6 @@ const Profile = () => {
   const [scanning, setScanning] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const [notificationEvents, setNotificationEvents] = useState<any[]>([]);
-  const [shareHistory, setShareHistory] = useState(() => storage.getShareHistory());
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const unreadCount = notificationEvents.filter((e) => !e.is_read).length;
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -109,10 +108,6 @@ const Profile = () => {
   useEffect(() => {
     let isMounted = true;
     const opts = { signal: getSignal() };
-
-    setShareHistory(storage.getShareHistory());
-
-    // Avatars will be loaded lazily when avatar selector is opened
 
     // Load gifts
     loadGifts();
@@ -714,25 +709,6 @@ const Profile = () => {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
-
-        <div className="mb-6 bg-card/60 border border-border rounded-2xl p-4">
-          <div className="text-xs uppercase tracking-widest text-muted mb-3">{t('share_history_title')}</div>
-          {shareHistory.length === 0 ? (
-            <div className="text-xs text-muted">{t('share_history_empty')}</div>
-          ) : (
-            <div className="space-y-2">
-              {shareHistory.map((item) => (
-                <div key={item.id} className="bg-black/40 border border-border rounded-xl p-3">
-                  <div className="text-sm font-bold text-primary">
-                    {item.type === 'duel_win' ? t('share_duel_win') : item.type === 'letter_unlock' ? t('share_letter') : t('share_pulse')}
-                  </div>
-                  {item.title && <div className="text-xs text-muted">{item.title}</div>}
-                  {item.opponent && <div className="text-xs text-muted">vs {item.opponent}</div>}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Identity Card */}

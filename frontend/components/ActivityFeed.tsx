@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Activity, FileText, Swords, Gift, CheckCircle, Trophy, Sparkles } from 'lucide-react';
 import { activityAPI } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -159,34 +159,35 @@ const ActivityFeed: React.FC = () => {
     ? (t('activity_feed_friends_empty') || 'No activity from friends yet. Invite friends!')
     : (t('no_activities') || 'No activities yet');
 
+  const tabButtons = (
+    <div className="flex gap-1 p-0.5 rounded-lg bg-white/5 border border-border/50">
+      <button
+        type="button"
+        onClick={() => setTab('all')}
+        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tab === 'all' ? 'bg-purple-500/40 text-purple-300' : 'text-muted hover:text-primary'}`}
+      >
+        {t('activity_feed_all') || 'All'}
+      </button>
+      <button
+        type="button"
+        onClick={() => setTab('friends')}
+        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tab === 'friends' ? 'bg-purple-500/40 text-purple-300' : 'text-muted hover:text-primary'}`}
+      >
+        {t('activity_feed_friends') || 'Friends'}
+      </button>
+    </div>
+  );
+
   if (activities.length === 0 && !loading) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-2 mb-4">
-          <div className="flex items-center gap-2">
-            <Activity size={18} className="text-accent-cyan" />
-            <h3 className="font-heading text-xs font-black uppercase tracking-wider text-purple-400">
-              {t('activity_feed') || 'ACTIVITY FEED'}
-            </h3>
-          </div>
-          <div className="flex rounded-lg border border-border overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setTab('all')}
-              className={`px-2 py-1 text-xs font-bold ${tab === 'all' ? 'bg-purple-500/30 text-purple-400' : 'text-muted hover:text-primary'}`}
-            >
-              {t('activity_feed_all') || 'All'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('friends')}
-              className={`px-2 py-1 text-xs font-bold ${tab === 'friends' ? 'bg-purple-500/30 text-purple-400' : 'text-muted hover:text-primary'}`}
-            >
-              {t('activity_feed_friends') || 'Friends'}
-            </button>
-          </div>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h3 className="font-heading text-xs font-bold text-muted uppercase tracking-wider">
+            {t('activity_feed') || 'Activity'}
+          </h3>
+          {tabButtons}
         </div>
-        <div className="text-center py-8 text-muted text-xs">
+        <div className="text-center py-10 text-muted text-sm">
           {emptyMessage}
         </div>
       </div>
@@ -194,50 +195,32 @@ const ActivityFeed: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2 mb-4">
-        <div className="flex items-center gap-2">
-          <Activity size={18} className="text-accent-cyan" />
-          <h3 className="font-heading text-xs font-black uppercase tracking-wider text-purple-400">
-            {t('activity_feed') || 'ACTIVITY FEED'}
-          </h3>
-        </div>
-        <div className="flex rounded-lg border border-border overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setTab('all')}
-            className={`px-2 py-1 text-xs font-bold ${tab === 'all' ? 'bg-purple-500/30 text-purple-400' : 'text-muted hover:text-primary'}`}
-          >
-            {t('activity_feed_all') || 'All'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('friends')}
-            className={`px-2 py-1 text-xs font-bold ${tab === 'friends' ? 'bg-purple-500/30 text-purple-400' : 'text-muted hover:text-primary'}`}
-          >
-            {t('activity_feed_friends') || 'Friends'}
-          </button>
-        </div>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <h3 className="font-heading text-xs font-bold text-muted uppercase tracking-wider">
+          {t('activity_feed') || 'Activity'}
+        </h3>
+        {tabButtons}
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {activities.map((activity) => (
           <motion.div
             key={activity.id}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="bg-card/50 border border-border/50 rounded-lg p-3 flex items-start gap-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center gap-3 rounded-xl py-2.5 px-3 bg-card/40 hover:bg-card/60 border border-transparent hover:border-border/50 transition-colors"
           >
-            <div className="flex-shrink-0 mt-0.5">
+            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
               {getActivityIcon(activity.activityType)}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-xs text-white leading-relaxed">
+              <div className="text-sm text-primary leading-snug">
                 {getActivityText(activity)}
               </div>
-              <div className="text-xs text-muted mt-1">
-                {getTimeAgo(activity.createdAt)}
-              </div>
+            </div>
+            <div className="flex-shrink-0 text-xs text-muted tabular-nums">
+              {getTimeAgo(activity.createdAt)}
             </div>
           </motion.div>
         ))}
@@ -245,10 +228,11 @@ const ActivityFeed: React.FC = () => {
 
       {hasMore && (
         <button
+          type="button"
           onClick={() => loadActivities(true, tab)}
-          className="w-full py-2 rounded-lg text-xs font-bold text-muted hover:text-primary transition-colors border border-border"
+          className="w-full py-2.5 rounded-xl text-xs font-bold text-muted hover:text-primary hover:bg-card/40 transition-colors"
         >
-          {t('load_more') || 'Load More'}
+          {t('load_more') || 'Load more'}
         </button>
       )}
     </div>
