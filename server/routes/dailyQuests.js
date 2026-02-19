@@ -231,7 +231,8 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
       client.release();
-      logger.error('Claim quest reward error:', { error: error?.message || error });
+      const errMsg = error?.message ?? (typeof error === 'object' ? JSON.stringify(error) : String(error));
+      logger.error('Claim quest reward error:', { message: errMsg, stack: error?.stack });
       return sendError(res, 500, 'QUEST_CLAIM_FAILED', 'Failed to claim quest reward');
     }
   });

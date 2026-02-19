@@ -561,6 +561,53 @@ app.post('/api/analytics', getLimiter, async (req, res) => {
   res.status(204).end();
 });
 
+// GET /api/analytics/dashboard — базовые метрики по событиям (для PM/разработчика)
+app.get('/api/analytics/dashboard', getLimiter, authMiddleware, async (req, res) => {
+  try {
+    if (!pool) {
+      return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+    }
+    const since = req.query.since || '24h'; // 24h | 7d
+    const hours = since === '7d' ? 24 * 7 : 24;
+
+    const countsResult = await pool.query(
+      `SELECT event, COUNT(*) as count
+       FROM analytics_events
+       WHERE created_at > now() - ($1::text || ' hours')::interval
+       GROUP BY event
+       ORDER BY count DESC`,
+      [String(hours)]
+    );
+    const eventsByType = {};
+    countsResult.rows.forEach((row) => {
+      eventsByType[row.event] = parseInt(row.count, 10);
+    });
+
+    const totalResult = await pool.query(
+      `SELECT COUNT(*) as total FROM analytics_events WHERE created_at > now() - ($1::text || ' hours')::interval`,
+      [String(hours)]
+    );
+    const uniqueResult = await pool.query(
+      `SELECT COUNT(DISTINCT user_id) as uniq
+       FROM analytics_events
+       WHERE created_at > now() - ($1::text || ' hours')::interval AND user_id IS NOT NULL`,
+      [String(hours)]
+    );
+
+    return res.json({
+      ok: true,
+      period: since,
+      periodHours: hours,
+      totalEvents: parseInt(totalResult.rows[0]?.total || '0', 10),
+      uniqueUsers: parseInt(uniqueResult.rows[0]?.uniq || '0', 10),
+      eventsByType
+    });
+  } catch (err) {
+    logger.error('Analytics dashboard error', { error: err?.message });
+    return sendError(res, 500, 'DASHBOARD_FAILED', 'Failed to load analytics');
+  }
+});
+
 // Global search across letters, duels, legacy (with rate limiting and pagination)
 app.get('/api/search', searchLimiter, authMiddleware, async (req, res) => {
   try {

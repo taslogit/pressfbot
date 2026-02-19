@@ -9,6 +9,7 @@ import { useProfile } from '../contexts/ProfileContext';
 import InfoSection from '../components/InfoSection';
 import { tg } from '../utils/telegram';
 import { playSound } from '../utils/sound';
+import LoadingState from '../components/LoadingState';
 
 const Settings = () => {
   const { t, language, setLanguage } = useTranslation();
@@ -429,7 +430,7 @@ const Settings = () => {
                         )}
                       </div>
                     ) : (
-                      <div className="text-xs text-muted">{t('settings_loading')}</div>
+                      <LoadingState terminal message={t('settings_loading')} className="py-2 min-h-0 text-xs" />
                     )}
                   </div>
                   <div className="bg-black/30 border border-border rounded-xl p-3">

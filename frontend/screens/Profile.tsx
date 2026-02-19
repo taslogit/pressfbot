@@ -17,6 +17,7 @@ import SendGiftModal from '../components/SendGiftModal';
 import { giftsAPI } from '../utils/api';
 import { useApiAbort } from '../hooks/useApiAbort';
 import { FUNERAL_TRACKS } from '../constants/funeralTracks';
+import LoadingState from '../components/LoadingState';
 
 // Default avatar is pressf from server (free for everyone)
 const DEFAULT_AVATAR_ID = 'pressf';
@@ -526,7 +527,7 @@ const Profile = () => {
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <p className="text-muted text-sm mb-4">{t('loading_avatars') || 'Loading avatars...'}</p>
+                    <LoadingState terminal message={t('loading_avatars') || 'Loading avatars...'} className="py-4 min-h-0 mb-4" />
                     <button
                       onClick={() => { playSound('click'); setShowAvatarSelector(false); navigate('/store'); }}
                       className="py-2 px-4 rounded-xl border border-accent-cyan/50 text-accent-cyan hover:bg-accent-cyan/10 text-xs font-bold uppercase"
@@ -667,7 +668,7 @@ const Profile = () => {
                   </button>
                 </div>
                 {notificationsLoading ? (
-                  <div className="text-xs text-muted">{t('notifications_loading')}</div>
+                  <LoadingState terminal message={t('notifications_loading')} className="py-4 min-h-0 text-xs" />
                 ) : notificationEvents.length === 0 ? (
                   <div className="text-xs text-muted">{t('notifications_empty')}</div>
                 ) : (

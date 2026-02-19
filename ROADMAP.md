@@ -30,7 +30,7 @@
 | 2.1 | Onboarding 3 шага | ✅ welcome + timer + beefs/drops |
 | 2.2 | PaywallModal (лимиты, trial) | ✅ |
 | 2.3 | Progress bar уровня (XP до следующего уровня) | ✅ В профиле (XP bar) |
-| 2.4 | Единые состояния загрузки | ✅ LoadingState в ActivityFeed, Referral, Letters, Tournaments, SeasonalEvents |
+| 2.4 | Единые состояния загрузки | ✅ LoadingState: ActivityFeed, Referral, Profile, Settings, Letters, Tournaments, SeasonalEvents |
 | 2.5 | Подтверждения критичных действий | ✅ confirmCritical + Letters/Duels delete |
 | 2.6 | Haptic feedback | ✅ haptic.ts + в playSound |
 
@@ -39,7 +39,7 @@
 | # | Задача | Статус |
 |---|--------|--------|
 | 3.1 | North Star + воронки (onboarding, monetization, viral) | 🔲 |
-| 3.2 | Дашборд /api/analytics/dashboard | 🔲 |
+| 3.2 | Дашборд /api/analytics/dashboard | ✅ GET ?since=24h|7d: totalEvents, uniqueUsers, eventsByType |
 | 3.3 | Событийное трекирование (paywall_shown, trial_started, referral_link_copied…) | частично |
 
 ---

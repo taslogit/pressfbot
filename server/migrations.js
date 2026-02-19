@@ -352,6 +352,7 @@ const createTables = async (pool) => {
     // Performance: Index for quest_type filtering
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_daily_quests_quest_type ON daily_quests(quest_type)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_daily_quests_user_type_date ON daily_quests(user_id, quest_type, quest_date)`);
+    await pool.query(`ALTER TABLE daily_quests ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMP`);
 
     // Notification events log
     await pool.query(`
