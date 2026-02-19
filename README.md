@@ -39,3 +39,14 @@ TON and blockchain. The idea is simple: keep proofs on-chain and keep content of
 The tone is intentionally memey and bold because it matches the audience. If something sounds too serious, it probably needs another pass 0)))
 
 In one sentence: PRESS F is your digital vault and your arena for public drama, built around Telegram and meme culture 0)))
+
+---
+
+**Docker build: `TLS handshake timeout` / `failed to resolve source metadata`**
+
+Ошибка возникает, когда хост не может достучаться до Docker Hub (registry-1.docker.io). Это сетевая проблема на сервере, не баг кода.
+
+- Повторить сборку через несколько минут: `docker compose -f docker-compose.traefik.yml up -d --build --force-recreate`
+- Проверить доступ: `curl -sI --connect-timeout 5 https://registry-1.docker.io/v2/`
+- Если есть VPN/прокси или зеркало Docker — настроить Docker daemon (mirror) или собирать в сети с доступом к Docker Hub
+- Заранее подтянуть образы при хорошей сети: `docker pull node:18-alpine && docker pull node:20-alpine && docker pull nginx:stable-alpine`
