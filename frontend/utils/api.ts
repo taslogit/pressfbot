@@ -450,13 +450,43 @@ export const tournamentsAPI = {
 
 // Activity Feed API
 export const activityAPI = {
-  getFeed: async (limit = 50, offset = 0, type?: string) => {
-    const query = type ? `?limit=${limit}&offset=${offset}&type=${type}` : `?limit=${limit}&offset=${offset}`;
-    return apiRequest<{ activities: any[]; hasMore: boolean }>(`/api/activity/feed${query}`);
+  getFeed: async (limit = 50, offset = 0, type?: string, options?: { friends?: boolean }) => {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (type) params.set('type', type);
+    if (options?.friends) params.set('friends', '1');
+    return apiRequest<{ activities: any[]; hasMore: boolean }>(`/api/activity/feed?${params.toString()}`);
   },
   getUserActivity: async (userId: number, limit = 50, offset = 0) => {
     return apiRequest<{ activities: any[]; hasMore: boolean }>(`/api/activity/user/${userId}?limit=${limit}&offset=${offset}`);
   },
+};
+
+// ─── Challenges API ──────────────────────────────────
+export const challengesAPI = {
+  create: async (data: {
+    opponentId?: number;
+    opponentName?: string;
+    stakeType?: 'pride' | 'xp' | 'rep';
+    stakeAmount?: number;
+    expiresInDays?: number;
+  }) => {
+    return apiRequest<{ challenge: any }>('/api/challenges/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  list: async (status?: 'pending' | 'active' | 'completed' | 'expired', limit = 50, offset = 0) => {
+    const params: Record<string, string> = { limit: limit.toString(), offset: offset.toString() };
+    if (status) params.status = status;
+    return apiRequest<{ challenges: any[] }>(
+      `/api/challenges?${toQueryString(params)}`
+    );
+  },
+  accept: async (challengeId: string) => {
+    return apiRequest(`/api/challenges/${challengeId}/accept`, {
+      method: 'POST',
+    });
+  }
 };
 
 // Squads API

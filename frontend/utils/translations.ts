@@ -824,6 +824,28 @@ export const translations = {
     milestone_7d_share: "🎉 7 days in a row! Share achievement?",
     milestone_30d_share: "🏆 30 days in a row! Legend! Share?",
     
+    // Streak Challenges
+    challenges_title: "STREAK CHALLENGES",
+    challenge_create: "Create Challenge",
+    challenge_accept: "Accept",
+    challenge_pending: "Pending",
+    challenge_active: "Active",
+    challenge_completed: "Completed",
+    challenge_expired: "Expired",
+    challenge_you_won: "You Won!",
+    challenge_you_lost: "You Lost",
+    challenge_opponent: "Opponent",
+    challenge_stake_pride: "Pride",
+    challenge_stake_xp: "XP",
+    challenge_stake_rep: "REP",
+    challenge_rewards: "Rewards",
+    challenge_no_challenges: "No challenges yet",
+    challenge_create_desc: "Challenge a friend to see who can maintain the longest days-in-a-row series!",
+    challenge_created: "Challenge created!",
+    challenge_accepted: "Challenge accepted!",
+    challenge_notification_title: "Streak Challenge!",
+    challenge_notification_body: "{{name}} challenged you to a days-in-a-row competition!",
+    
     // Paywall
     paywall_letters_title: "Letter limit reached",
     paywall_letters_desc: "Free users can create only {{limit}} letters.",
@@ -889,6 +911,9 @@ export const translations = {
     
     // Activity Feed
     activity_feed: "ACTIVITY FEED",
+    activity_feed_all: "All",
+    activity_feed_friends: "Friends",
+    activity_feed_friends_empty: "No activity from friends yet. Invite friends!",
     no_activities: "Nothing yet",
     activity_created_letter: "created a letter",
     activity_created_duel: "created a duel",
@@ -1716,6 +1741,29 @@ export const translations = {
     share_streak_30d: "🔥 30 дней подряд! Легенда! Присоединяйся!",
     milestone_7d_share: "🎉 7 дней подряд! Поделись достижением?",
     milestone_30d_share: "🏆 30 дней подряд! Легенда! Поделись?",
+    
+    // Челенджи «дней подряд»
+    challenges_title: "ЧЕЛЕНДЖИ «ДНЕЙ ПОДРЯД»",
+    challenge_create: "Создать челендж",
+    challenge_accept: "Принять",
+    challenge_pending: "Ожидает",
+    challenge_active: "Активен",
+    challenge_completed: "Завершён",
+    challenge_expired: "Истёк",
+    challenge_you_won: "Ты выиграл!",
+    challenge_you_lost: "Ты проиграл",
+    challenge_opponent: "Оппонент",
+    challenge_stake_pride: "Честь",
+    challenge_stake_xp: "XP",
+    challenge_stake_rep: "REP",
+    challenge_rewards: "Награды",
+    challenge_no_challenges: "Пока нет челенджей",
+    challenge_create_desc: "Брось вызов другу — кто дольше продержит серию дней подряд!",
+    challenge_created: "Челендж создан!",
+    challenge_accepted: "Челендж принят!",
+    challenge_notification_title: "Челендж «дней подряд»!",
+    challenge_notification_body: "{{name}} бросил тебе вызов на соревнование по дням подряд!",
+    
     paywall_letters_title: "Лимит писем достигнут",
     paywall_letters_desc: "Бесплатные пользователи могут создать только {{limit}} письма.",
     paywall_letters_benefit: "Premium: неограниченное количество писем",
@@ -1781,6 +1829,9 @@ export const translations = {
     
     // Activity Feed
     activity_feed: "ЛЕНТА АКТИВНОСТИ",
+    activity_feed_all: "Все",
+    activity_feed_friends: "Друзья",
+    activity_feed_friends_empty: "Активности друзей пока нет. Пригласи друзей!",
     no_activities: "Активности пока нет",
     activity_created_letter: "создал письмо",
     activity_created_duel: "создал дуэль",

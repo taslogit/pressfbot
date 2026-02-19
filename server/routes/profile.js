@@ -588,8 +588,16 @@ const createProfileRoutes = (pool) => {
       await client.query('COMMIT');
       client.release();
 
+      // Update active streak challenges (outside transaction)
+      try {
+        await updateStreakChallenges(pool, userId, newStreak, currentStreak, bot);
+      } catch (challengeError) {
+        logger.debug('Failed to update streak challenges', { error: challengeError?.message });
+      }
+
       // Invalidate cache after check-in
       await cache.del(`profile:${userId}`);
+      await cache.del(`challenges:${userId}`);
 
       // Log activity (outside transaction to not block on activity logging)
       try {
@@ -1071,5 +1079,100 @@ const createProfileRoutes = (pool) => {
 
   return router;
 };
+
+// Helper function to update streak challenges after check-in
+async function updateStreakChallenges(pool, userId, newStreak, oldStreak, bot) {
+  try {
+    // Get active challenges where user is participant
+    const activeChallenges = await pool.query(
+      `SELECT * FROM streak_challenges 
+       WHERE status = 'active' 
+       AND (challenger_id = $1 OR opponent_id = $1)
+       AND expires_at > now()`,
+      [userId]
+    );
+
+    for (const challenge of activeChallenges.rows) {
+      const isChallenger = challenge.challenger_id === userId;
+      const opponentId = isChallenger ? challenge.opponent_id : challenge.challenger_id;
+
+      // Update current streak for this user
+      if (isChallenger) {
+        await pool.query(
+          `UPDATE streak_challenges 
+           SET challenger_current_streak = $1 
+           WHERE id = $2`,
+          [newStreak, challenge.id]
+        );
+      } else {
+        await pool.query(
+          `UPDATE streak_challenges 
+           SET opponent_current_streak = $1 
+           WHERE id = $2`,
+          [newStreak, challenge.id]
+        );
+      }
+
+      // Check if streak was reset (lost challenge)
+      if (newStreak < oldStreak && oldStreak > 0) {
+        // User lost - opponent wins
+        await pool.query(
+          `UPDATE streak_challenges 
+           SET status = 'completed', 
+               winner_id = $1,
+               ended_at = now()
+           WHERE id = $2`,
+          [opponentId, challenge.id]
+        );
+
+        // Award rewards to winner
+        if (challenge.reward_xp > 0 || challenge.reward_rep > 0) {
+          await pool.query(
+            `UPDATE profiles 
+             SET xp = xp + $1, 
+                 reputation = reputation + $2,
+                 updated_at = now()
+             WHERE user_id = $3`,
+            [challenge.reward_xp || 0, challenge.reward_rep || 0, opponentId]
+          );
+        }
+
+        // Notify both users
+        if (bot) {
+          try {
+            const winnerProfile = await pool.query(
+              'SELECT title FROM profiles WHERE user_id = $1',
+              [opponentId]
+            );
+            const winnerName = winnerProfile.rows[0]?.title || 'Opponent';
+            
+            // Notify winner
+            await bot.telegram.sendMessage(
+              opponentId.toString(),
+              `🏆 <b>Challenge Won!</b>\n\nYou won the streak challenge against ${isChallenger ? 'challenger' : 'opponent'}! You lasted longer.\n\nRewards: +${challenge.reward_xp || 0} XP, +${challenge.reward_rep || 0} REP`,
+              { parse_mode: 'HTML' }
+            );
+
+            // Notify loser
+            await bot.telegram.sendMessage(
+              userId.toString(),
+              `💔 <b>Challenge Lost</b>\n\nYour streak was reset. ${winnerName} won the challenge.\n\nKeep going! 🔥`,
+              { parse_mode: 'HTML' }
+            );
+          } catch (notifError) {
+            logger.debug('Failed to send challenge result notifications', { error: notifError?.message });
+          }
+        }
+
+        // Invalidate cache
+        await cache.del(`challenges:${userId}`);
+        await cache.del(`challenges:${opponentId}`);
+      }
+    }
+  } catch (error) {
+    logger.error('Update streak challenges error:', error);
+    throw error;
+  }
+}
 
 module.exports = { createProfileRoutes };

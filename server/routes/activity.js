@@ -17,6 +17,7 @@ const createActivityRoutes = (pool) => {
       const limit = parseInt(req.query.limit) || 50;
       const offset = parseInt(req.query.offset) || 0;
       const type = req.query.type; // Optional filter by activity type
+      const friendsOnly = req.query.friends === '1' || req.query.friends === 'true';
 
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
@@ -38,11 +39,42 @@ const createActivityRoutes = (pool) => {
         });
       }
 
+      let friendIds = [];
+      if (friendsOnly) {
+        const referrerResult = await pool.query(
+          'SELECT referred_by FROM profiles WHERE user_id = $1 AND referred_by IS NOT NULL',
+          [userId]
+        );
+        const referredResult = await pool.query(
+          'SELECT referred_id FROM referral_events WHERE referrer_id = $1',
+          [userId]
+        );
+        friendIds = [
+          ...(referrerResult.rows[0]?.referred_by ? [referrerResult.rows[0].referred_by] : []),
+          ...referredResult.rows.map(r => r.referred_id)
+        ].filter((id, i, arr) => arr.indexOf(id) === i);
+        if (friendIds.length === 0) {
+          return res.json({ ok: true, activities: [], hasMore: false });
+        }
+      }
+
       // Build query
       let query = '';
       let params = [];
 
-      if (type) {
+      if (friendsOnly && friendIds.length > 0) {
+        const placeholders = friendIds.map((_, i) => `$${i + 1}`).join(',');
+        const baseWhere = `af.is_public = true AND af.user_id IN (${placeholders})`;
+        const typeWhere = type ? ` AND af.activity_type = $${friendIds.length + 1}` : '';
+        const orderLimit = type
+          ? ` ORDER BY af.created_at DESC LIMIT $${friendIds.length + 2} OFFSET $${friendIds.length + 3}`
+          : ` ORDER BY af.created_at DESC LIMIT $${friendIds.length + 1} OFFSET $${friendIds.length + 2}`;
+        query = `SELECT af.*, p.avatar, p.title, p.level
+                 FROM activity_feed af
+                 LEFT JOIN profiles p ON af.user_id = p.user_id
+                 WHERE ${baseWhere}${typeWhere}${orderLimit}`;
+        params = type ? [...friendIds, type, limit, offset] : [...friendIds, limit, offset];
+      } else if (type) {
         query = `SELECT af.*, p.avatar, p.title, p.level
                  FROM activity_feed af
                  LEFT JOIN profiles p ON af.user_id = p.user_id

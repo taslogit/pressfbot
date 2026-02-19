@@ -382,6 +382,33 @@ const createTables = async (pool) => {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_referral_events_referrer ON referral_events(referrer_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_referral_events_referred ON referral_events(referred_id)`);
 
+    // Streak Challenges table (Viral mechanics - friends compete on days in a row)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS streak_challenges (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        challenger_id BIGINT NOT NULL,
+        opponent_id BIGINT,
+        opponent_name VARCHAR(255),
+        status VARCHAR(50) DEFAULT 'pending',
+        challenger_start_streak INTEGER DEFAULT 0,
+        opponent_start_streak INTEGER DEFAULT 0,
+        challenger_current_streak INTEGER DEFAULT 0,
+        opponent_current_streak INTEGER DEFAULT 0,
+        winner_id BIGINT,
+        stake_type VARCHAR(50) DEFAULT 'pride',
+        stake_amount INTEGER DEFAULT 0,
+        reward_xp INTEGER DEFAULT 0,
+        reward_rep INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT now(),
+        accepted_at TIMESTAMP,
+        ended_at TIMESTAMP,
+        expires_at TIMESTAMP
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_streak_challenges_challenger ON streak_challenges(challenger_id, status)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_streak_challenges_opponent ON streak_challenges(opponent_id, status)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_streak_challenges_status ON streak_challenges(status, expires_at)`);
+
     // Gifts table (Gamification)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS gifts (

@@ -491,6 +491,7 @@ const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const { createLettersRoutes } = require('./routes/letters');
 const { createProfileRoutes } = require('./routes/profile');
 const { createDuelsRoutes } = require('./routes/duels');
+const { createChallengesRoutes } = require('./routes/challenges');
 const { createLegacyRoutes } = require('./routes/legacy');
 const { createNotificationsRoutes } = require('./routes/notifications');
 const { createTonRoutes } = require('./routes/ton');
@@ -533,6 +534,7 @@ app.use('/api/gifts', authMiddleware, getLimiter, createGiftsRoutes(pool, giftLi
 app.use('/api/events', authMiddleware, getLimiter, createEventsRoutes(pool));
 app.use('/api/tournaments', authMiddleware, getLimiter, createTournamentsRoutes(pool));
 app.use('/api/activity', authMiddleware, getLimiter, createActivityRoutes(pool));
+app.use('/api/challenges', authMiddleware, getLimiter, createChallengesRoutes(pool, bot));
 app.use('/api/squads', authMiddleware, getLimiter, createSquadsRoutes(pool));
 app.use('/api/witnesses', authMiddleware, getLimiter, createWitnessesRoutes(pool));
 // Monetization routes
