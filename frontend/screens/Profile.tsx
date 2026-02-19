@@ -72,6 +72,7 @@ const Profile = () => {
   const [fCount, setFCount] = useState(0);
   const [ownedAvatarIds, setOwnedAvatarIds] = useState<Set<string>>(new Set([DEFAULT_AVATAR_ID]));
   const [avatarLoadFailedIds, setAvatarLoadFailedIds] = useState<Set<string>>(new Set());
+  const [mainAvatarError, setMainAvatarError] = useState(false);
   const [ownedFrameIds, setOwnedFrameIds] = useState<Set<string>>(new Set(['default']));
   const [showFrameSelector, setShowFrameSelector] = useState(false);
   const [frameLoading, setFrameLoading] = useState(false);
@@ -368,15 +369,18 @@ const Profile = () => {
     setProfile(updated);
   };
 
-  // Get current avatar (server avatar or default pressf.jpg)
+  // Get current avatar (server avatar or default pressf)
   const currentAvatar = serverAvatar || availableAvatars.find(av => av.id === DEFAULT_AVATAR_ID) || null;
-  
-  // If no avatar selected or avatar not found, use default (pressf.svg)
   const displayAvatar = currentAvatar || {
     id: DEFAULT_AVATAR_ID,
     url: `/api/static/avatars/${DEFAULT_AVATAR_ID}.svg`,
     name: 'PressF'
   };
+
+  // Reset main avatar error when selection changes so we retry loading
+  useEffect(() => {
+    setMainAvatarError(false);
+  }, [displayAvatar?.id]);
 
 
   return (
@@ -416,13 +420,19 @@ const Profile = () => {
                 >
                     <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-accent-lime via-accent-cyan to-accent-pink" />
                     <div className="text-center">
-                        <div className="w-32 h-32 mx-auto mb-4 relative rounded-full overflow-hidden">
-                            <img
-                              src={getStaticUrl(displayAvatar.url)}
-                              alt={displayAvatar.name}
-                              className="w-full h-full object-cover drop-shadow-[0_0_15px_rgba(0,224,255,0.5)]"
-                              onError={(e) => { (e.target as HTMLImageElement).src = getStaticUrl(`/api/static/avatars/${DEFAULT_AVATAR_ID}.svg`); }}
-                            />
+                        <div className="w-32 h-32 mx-auto mb-4 relative rounded-full overflow-hidden bg-[#1a1a1a]">
+                            {mainAvatarError ? (
+                              <div className="w-full h-full flex items-center justify-center bg-[#1a1a1a]">
+                                <span className="text-5xl font-bold text-[#B4FF00] font-mono">F</span>
+                              </div>
+                            ) : (
+                              <img
+                                src={getStaticUrl(displayAvatar.url)}
+                                alt={displayAvatar.name}
+                                className="w-full h-full object-cover drop-shadow-[0_0_15px_rgba(0,224,255,0.5)]"
+                                onError={() => setMainAvatarError(true)}
+                              />
+                            )}
                         </div>
                         <h2 className="font-heading text-2xl font-black text-white">{tg.initDataUnsafe?.user?.first_name}</h2>
                         <p className="font-heading text-accent-cyan tracking-widest text-xs mb-4">LVL {currentLevel} // {displayTitle}</p>
@@ -744,14 +754,20 @@ const Profile = () => {
                    <motion.button
                      whileTap={{ scale: 0.95 }}
                      onClick={handleOpenAvatarSelector}
-                     className={`w-32 h-32 relative z-10 rounded-full overflow-hidden hover:opacity-90 transition-all ${isDead ? 'border-2 border-red-500/50 opacity-70 grayscale' : ''} ${AVATAR_FRAME_STYLES[currentFrame] || AVATAR_FRAME_STYLES.default}`}
+                     className={`w-32 h-32 relative z-10 rounded-full overflow-hidden hover:opacity-90 transition-all bg-[#1a1a1a] ${isDead ? 'border-2 border-red-500/50 opacity-70 grayscale' : ''} ${AVATAR_FRAME_STYLES[currentFrame] || AVATAR_FRAME_STYLES.default}`}
                    >
-                   <img 
-                     src={getStaticUrl(displayAvatar.url)}
-                     alt={displayAvatar.name}
-                     className={`w-full h-full object-cover drop-shadow-[0_0_20px_rgba(0,0,0,0.5)] ${isDead ? 'opacity-80' : ''}`}
-                     onError={(e) => { (e.target as HTMLImageElement).src = getStaticUrl(`/api/static/avatars/${DEFAULT_AVATAR_ID}.svg`); }}
-                   />
+                   {mainAvatarError ? (
+                     <div className="w-full h-full flex items-center justify-center bg-[#1a1a1a]">
+                       <span className="text-5xl font-bold text-[#B4FF00] font-mono">F</span>
+                     </div>
+                   ) : (
+                     <img
+                       src={getStaticUrl(displayAvatar.url)}
+                       alt={displayAvatar.name}
+                       className={`w-full h-full object-cover drop-shadow-[0_0_20px_rgba(0,0,0,0.5)] ${isDead ? 'opacity-80' : ''}`}
+                       onError={() => setMainAvatarError(true)}
+                     />
+                   )}
                    <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center">
                      <Edit2 size={16} className="opacity-0 hover:opacity-100 transition-opacity text-white" />
                    </div>
