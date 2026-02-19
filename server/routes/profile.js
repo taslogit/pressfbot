@@ -11,12 +11,12 @@ const { getActiveXpMultiplier } = require('../utils/boosts');
 
 const profileUpdateSchema = z.object({
   avatar: z.string().optional(),
-  bio: z.string().optional(),
+  bio: z.string().optional().nullable(),
   // Security: level, reputation, karma removed - they are system-managed
   title: z.string().optional(),
   tonAddress: z.string().optional(),
   gifts: z.array(z.any()).optional(),
-  achievements: z.array(z.any()).optional(),
+  achievements: z.union([z.array(z.any()), z.record(z.any())]).optional(),
   perks: z.array(z.any()).optional(),
   contracts: z.array(z.any()).optional(),
   stats: z.object({
@@ -270,29 +270,8 @@ const createProfileRoutes = (pool) => {
 
         // Only allow whitelisted fields to be updated
         if (avatar !== undefined && allowedFields.avatar) {
-          // Security: Validate that avatar exists on server
           if (typeof avatar === 'string' && avatar.trim()) {
-            const fs = require('fs');
-            const path = require('path');
-            const avatarsDir = path.join(__dirname, '..', 'static', 'avatars');
-            const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
-            
-            // Check if avatar file exists
-            let avatarExists = false;
-            if (fs.existsSync(avatarsDir)) {
-              const files = fs.readdirSync(avatarsDir);
-              avatarExists = files.some(file => {
-                const ext = path.extname(file).toLowerCase();
-                const name = path.basename(file, ext);
-                return name === avatar && imageExtensions.includes(ext);
-              });
-            }
-            
-            if (!avatarExists) {
-              logger.warn('Avatar not found on server', { avatar, userId });
-              return sendError(res, 400, 'AVATAR_NOT_FOUND', 'Selected avatar does not exist on server');
-            }
-            // Check ownership: pressf is free, others require purchase
+            // Check ownership only (allow save even if file missing — e.g. after deploy; UI can fallback)
             if (avatar !== 'pressf') {
               const owned = await pool.query(
                 'SELECT 1 FROM store_purchases WHERE user_id = $1 AND item_id = $2',
@@ -303,16 +282,16 @@ const createProfileRoutes = (pool) => {
               }
             }
           }
-          
           updateFields.push(`avatar = $${paramIndex++}`);
           updateValues.push(avatar);
         }
         if (bio !== undefined && allowedFields.bio) {
-          if (typeof bio === 'string' && bio.length > maxBioLen) {
+          const bioStr = bio == null ? '' : String(bio);
+          if (bioStr.length > maxBioLen) {
             return sendError(res, 400, 'BIO_TOO_LONG', `Bio must be at most ${maxBioLen} characters`);
           }
           updateFields.push(`bio = $${paramIndex++}`);
-          updateValues.push(bio);
+          updateValues.push(bioStr);
         }
         if (title !== undefined && allowedFields.title) {
           const hasTitleCustom = !!(currentAchievements.title_custom || (Array.isArray(currentAchievements) && currentAchievements.includes('title_custom')));

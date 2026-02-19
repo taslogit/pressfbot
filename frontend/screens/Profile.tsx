@@ -69,6 +69,7 @@ const Profile = () => {
   const [settings, setSettings] = useState<{ avatar_frame?: string; lastCheckIn?: number; deadManSwitchDays?: number; funeralTrack?: string }>({});
   const [fCount, setFCount] = useState(0);
   const [ownedAvatarIds, setOwnedAvatarIds] = useState<Set<string>>(new Set([DEFAULT_AVATAR_ID]));
+  const [avatarLoadFailedIds, setAvatarLoadFailedIds] = useState<Set<string>>(new Set());
   const [ownedFrameIds, setOwnedFrameIds] = useState<Set<string>>(new Set(['default']));
   const [showFrameSelector, setShowFrameSelector] = useState(false);
   const [frameLoading, setFrameLoading] = useState(false);
@@ -204,13 +205,10 @@ const Profile = () => {
   const handleSave = async () => {
     if (!profile) return;
     playSound('success');
-    const updated = { ...profile, bio: tempBio };
-    if (hasTitleCustom) {
-      (updated as Record<string, unknown>).title = tempTitle.slice(0, 100);
-    }
+    const payload: Record<string, unknown> = { bio: tempBio ?? '' };
+    if (hasTitleCustom) payload.title = tempTitle.slice(0, 100);
     try {
-      // Update via API (saves to DB)
-      await profileAPI.update(updated);
+      await profileAPI.update(payload);
       // Refresh profile from DB to get latest data
       await refreshProfile();
       setIsEditing(false);
@@ -258,6 +256,7 @@ const Profile = () => {
 
   // Lazy load avatars + owned items when selector opens
   const handleOpenAvatarSelector = async () => {
+    setAvatarLoadFailedIds(new Set());
     setShowAvatarSelector(true);
     try {
       const [avatarsRes, myItemsRes] = await Promise.all([
@@ -310,7 +309,9 @@ const Profile = () => {
   const funeralTrackId = settings?.funeralTrack || 'astronomia';
   const deadline = lastCheckIn + deadManSwitchDays * 24 * 60 * 60 * 1000;
   const isDead = Date.now() > deadline;
-  const displayedAvatars = availableAvatars.filter(a => ownedAvatarIds.has(a.id));
+  const displayedAvatars = availableAvatars.filter(
+    (a) => ownedAvatarIds.has(a.id) && !avatarLoadFailedIds.has(a.id)
+  );
 
   const handleAvatarChange = async (avatarId: string) => {
     playSound('click');
@@ -407,10 +408,11 @@ const Profile = () => {
                     <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-accent-lime via-accent-cyan to-accent-pink" />
                     <div className="text-center">
                         <div className="w-32 h-32 mx-auto mb-4 relative rounded-full overflow-hidden">
-                            <img 
-                              src={getStaticUrl(displayAvatar.url)} 
+                            <img
+                              src={getStaticUrl(displayAvatar.url)}
                               alt={displayAvatar.name}
                               className="w-full h-full object-cover drop-shadow-[0_0_15px_rgba(0,224,255,0.5)]"
+                              onError={(e) => { (e.target as HTMLImageElement).src = getStaticUrl(`/api/static/avatars/${DEFAULT_AVATAR_ID}.svg`); }}
                             />
                         </div>
                         <h2 className="font-heading text-2xl font-black text-white">{tg.initDataUnsafe?.user?.first_name}</h2>
@@ -493,10 +495,11 @@ const Profile = () => {
                                 : 'border-border hover:border-purple-500/50'
                             } ${avatarLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
-                            <img 
-                              src={getStaticUrl(avatar.url)} 
+                            <img
+                              src={getStaticUrl(avatar.url)}
                               alt={avatar.name}
                               className="w-full h-full object-cover"
+                              onError={() => setAvatarLoadFailedIds((prev) => new Set(prev).add(avatar.id))}
                             />
                             {isSelected && (
                               <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
@@ -734,9 +737,10 @@ const Profile = () => {
                      className={`w-32 h-32 relative z-10 rounded-full overflow-hidden hover:opacity-90 transition-all ${isDead ? 'border-2 border-red-500/50 opacity-70 grayscale' : ''} ${AVATAR_FRAME_STYLES[currentFrame] || AVATAR_FRAME_STYLES.default}`}
                    >
                    <img 
-                     src={getStaticUrl(displayAvatar.url)} 
+                     src={getStaticUrl(displayAvatar.url)}
                      alt={displayAvatar.name}
                      className={`w-full h-full object-cover drop-shadow-[0_0_20px_rgba(0,0,0,0.5)] ${isDead ? 'opacity-80' : ''}`}
+                     onError={(e) => { (e.target as HTMLImageElement).src = getStaticUrl(`/api/static/avatars/${DEFAULT_AVATAR_ID}.svg`); }}
                    />
                    <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center">
                      <Edit2 size={16} className="opacity-0 hover:opacity-100 transition-opacity text-white" />
