@@ -22,6 +22,7 @@ import { useApiError } from '../contexts/ApiErrorContext';
 import { useToast } from '../contexts/ToastContext';
 import { useProfile } from '../contexts/ProfileContext';
 import PaywallModal from '../components/PaywallModal';
+import { analytics } from '../utils/analytics';
 
 type DuelTab = 'mine' | 'hype' | 'shame';
 

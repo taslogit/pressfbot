@@ -51,12 +51,12 @@ async function apiRequest<T>(
   options: RequestInit = {},
   retryCount = 0
 ): Promise<{ ok: boolean; data?: T; error?: string; code?: string; details?: any }> {
+  const externalSignal = options?.signal;
   try {
     const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
 
     // Support external AbortController (for component unmount cancellation)
     // If caller provides a signal, use it; otherwise create a timeout-based one
-    const externalSignal = options.signal;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
@@ -344,9 +344,10 @@ export const profileAPI = {
 };
 
 export const searchAPI = {
-  search: async (q: string, limit = 10) => {
+  search: async (q: string, limit = 10, options?: RequestInit) => {
     return apiRequest<{ letters: any[]; duels: any[]; legacy: any[] }>(
-      `/api/search${toQueryString({ q, limit })}`
+      `/api/search${toQueryString({ q, limit })}`,
+      options
     );
   }
 };
