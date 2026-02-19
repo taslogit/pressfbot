@@ -21,8 +21,6 @@ import LoadingState from '../components/LoadingState';
 
 // Default avatar is pressf from server (free for everyone)
 const DEFAULT_AVATAR_ID = 'pressf';
-// Only show avatars that exist in repo (server/static/avatars) — hides broken/placeholder slots
-const KNOWN_AVATAR_IDS = new Set(['pressf', 'skull', 'ghost', 'robot', 'crown']);
 
 // Avatar frame styles (applied to avatar border)
 const AVATAR_FRAME_STYLES: Record<string, string> = {
@@ -307,12 +305,17 @@ const Profile = () => {
   const funeralTrackId = settings?.funeralTrack || 'astronomia';
   const deadline = lastCheckIn + deadManSwitchDays * 24 * 60 * 60 * 1000;
   const isDead = Date.now() > deadline;
-  const displayedAvatarsRaw = availableAvatars.filter(
-    (a) =>
-      ownedAvatarIds.has(a.id) &&
-      (KNOWN_AVATAR_IDS.has(a.id) || a.id === profile?.avatar) &&
-      !avatarLoadFailedIds.has(a.id)
-  );
+  const idsFromApi = new Set(availableAvatars.map((a) => a.id));
+  const ownedNotInList = [...ownedAvatarIds].filter((id) => !idsFromApi.has(id));
+  const syntheticAvatars = ownedNotInList.map((id) => ({
+    id,
+    name: id.charAt(0).toUpperCase() + id.slice(1).replace(/[-_]/g, ' '),
+    url: `/api/static/avatars/${id}.svg`
+  }));
+  const displayedAvatarsRaw = [
+    ...availableAvatars.filter((a) => ownedAvatarIds.has(a.id)),
+    ...syntheticAvatars
+  ];
   const displayedAvatars = displayedAvatarsRaw.filter(
     (a, i, arr) => arr.findIndex((x) => x.id === a.id) === i
   );
@@ -510,12 +513,18 @@ const Profile = () => {
                                 : 'border-border hover:border-purple-500/50'
                             } ${avatarLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
-                            <img
-                              src={getStaticUrl(avatar.url)}
-                              alt={avatar.name}
-                              className="w-full h-full object-cover"
-                              onError={() => setAvatarLoadFailedIds((prev) => new Set(prev).add(avatar.id))}
-                            />
+                            {avatarLoadFailedIds.has(avatar.id) ? (
+                              <div className="w-full h-full flex items-center justify-center bg-[#1a1a1a]">
+                                <span className="text-2xl font-bold text-[#B4FF00] font-mono">F</span>
+                              </div>
+                            ) : (
+                              <img
+                                src={getStaticUrl(avatar.url)}
+                                alt={avatar.name}
+                                className="w-full h-full object-cover"
+                                onError={() => setAvatarLoadFailedIds((prev) => new Set(prev).add(avatar.id))}
+                              />
+                            )}
                             {isSelected && (
                               <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-400">
