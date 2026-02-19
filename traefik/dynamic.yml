@@ -9,6 +9,16 @@ http:
         - redirect-to-https
       service: noop@internal
 
+    # Bot webhook — явная маршрутизация на backend (высший приоритет для POST /bot)
+    bot-webhook:
+      rule: "Host(`pressfbot.ru`) && PathPrefix(`/bot`)"
+      priority: 200
+      entryPoints:
+        - websecure
+      service: backend-api
+      tls:
+        certResolver: le
+    
     # API & static — явная маршрутизация на backend (приоритет выше frontend)
     api:
       rule: "Host(`pressfbot.ru`) && (PathPrefix(`/api`) || PathPrefix(`/static`))"

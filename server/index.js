@@ -308,8 +308,15 @@ if (USE_WEBHOOK) {
     logger.debug('GET /bot received');
     res.status(200).json({ ok: true, message: 'Webhook endpoint is active' });
   });
-
-  // Error handling middleware for webhook
+  
+  // Register webhook callback - bot.webhookCallback handles POST /bot
+  // Note: webhookCallback must be registered AFTER express.json() middleware (line 183)
+  // bot.webhookCallback('/bot') returns middleware that handles POST requests to /bot
+  app.use(bot.webhookCallback('/bot', {
+    secretToken: process.env.WEBHOOK_SECRET || undefined
+  }));
+  
+  // Error handling middleware for webhook (AFTER webhookCallback)
   app.use((err, req, res, next) => {
     if (req.path === '/bot') {
       // Security: Log full error details but don't expose to client
@@ -326,10 +333,6 @@ if (USE_WEBHOOK) {
     }
     next(err);
   });
-  
-  app.use(bot.webhookCallback('/bot', {
-    secretToken: process.env.WEBHOOK_SECRET || undefined
-  }));
   logger.info('✅ Webhook callback registered at /bot', { webhookUrl: WEBHOOK_URL });
 } else {
   logger.warn('⚠️  Webhook callback NOT registered. USE_WEBHOOK=false');
