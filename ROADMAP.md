@@ -30,7 +30,7 @@
 | 2.1 | Onboarding 3 шага | ✅ welcome + timer + beefs/drops |
 | 2.2 | PaywallModal (лимиты, trial) | ✅ |
 | 2.3 | Progress bar уровня (XP до следующего уровня) | ✅ В профиле (XP bar) |
-| 2.4 | Единые состояния загрузки | 🟦 ActivityFeed + Referral используют LoadingState |
+| 2.4 | Единые состояния загрузки | ✅ LoadingState в ActivityFeed, Referral, Letters, Tournaments, SeasonalEvents |
 | 2.5 | Подтверждения критичных действий | ✅ confirmCritical + Letters/Duels delete |
 | 2.6 | Haptic feedback | ✅ haptic.ts + в playSound |
 

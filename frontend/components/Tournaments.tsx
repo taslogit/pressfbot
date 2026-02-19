@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Users, Calendar, Award, Play, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { tournamentsAPI } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
+import LoadingState from './LoadingState';
 import { Tournament, TournamentParticipant } from '../types';
 import { tg } from '../utils/telegram';
 import { playSound } from '../utils/sound';
@@ -82,9 +83,11 @@ const Tournaments: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="text-muted text-sm">{t('loading') || 'Loading...'}</div>
-      </div>
+      <LoadingState
+        terminal
+        message={t('loading') || 'Loading...'}
+        className="py-8 min-h-0"
+      />
     );
   }
 

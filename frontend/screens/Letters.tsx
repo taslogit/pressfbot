@@ -16,6 +16,7 @@ import { useApiError } from '../contexts/ApiErrorContext';
 import { useToast } from '../contexts/ToastContext';
 import { isEncrypted, decryptPayload } from '../utils/security';
 import PaywallModal from '../components/PaywallModal';
+import LoadingState from '../components/LoadingState';
 
 type Tab = 'all' | 'draft' | 'scheduled' | 'sent';
 
@@ -745,7 +746,7 @@ const Letters = () => {
                         </button>
                       </div>
                       {historyLoading ? (
-                        <p className="text-xs text-muted">Loading...</p>
+                        <LoadingState terminal message={t('loading')} className="py-3 min-h-0 text-xs" />
                       ) : historyItems.length === 0 ? (
                         <p className="text-xs text-muted">No history yet.</p>
                       ) : (

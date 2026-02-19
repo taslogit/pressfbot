@@ -298,4 +298,4 @@ const createChallengesRoutes = (pool, bot) => {
   return router;
 };
 
-module.exports = createChallengesRoutes;
+module.exports = { createChallengesRoutes };
