@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X, Package, Box, ChevronDown, ChevronRight, Square, Banknote, FileText, Award, ScrollText } from 'lucide-react';
+import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X, Package, Box, ChevronDown, ChevronRight, Square, Banknote, FileText, Award, ScrollText, User } from 'lucide-react';
 import { useTonAddress } from '@tonconnect/ui-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { starsAPI, storeAPI, profileAPI, getStaticUrl } from '../utils/api';
@@ -28,6 +28,50 @@ const CATEGORY_LABELS: Record<string, string> = {
   avatar_frame: 'store_cat_avatar_frame',
   other: 'store_cat_other'
 };
+
+const CATEGORY_ICONS: Record<string, typeof Sparkles> = {
+  avatar: User,
+  avatar_frame: Square,
+  boost: Zap,
+  profile: Sparkles,
+  template: FileText,
+  badge: Award,
+  duel: Zap,
+  social: Gift,
+  other: Box
+};
+
+type SectionColors = {
+  sectionTitle: string;
+  sectionIconBg: string;
+  sectionIcon: string;
+  itemIconBg: string;
+  itemIcon: string;
+  itemHover: string;
+  itemPrice: string;
+};
+const CATEGORY_COLORS: Record<string, SectionColors> = {
+  avatar: { sectionTitle: 'text-cyan-400', sectionIconBg: 'bg-cyan-500/25', sectionIcon: 'text-cyan-400', itemIconBg: 'bg-cyan-400/20', itemIcon: 'text-cyan-400', itemHover: 'hover:border-cyan-400/50', itemPrice: 'text-cyan-300' },
+  avatar_frame: { sectionTitle: 'text-violet-400', sectionIconBg: 'bg-violet-500/25', sectionIcon: 'text-violet-400', itemIconBg: 'bg-violet-400/20', itemIcon: 'text-violet-400', itemHover: 'hover:border-violet-400/50', itemPrice: 'text-violet-300' },
+  boost: { sectionTitle: 'text-amber-400', sectionIconBg: 'bg-amber-500/25', sectionIcon: 'text-amber-400', itemIconBg: 'bg-amber-400/20', itemIcon: 'text-amber-400', itemHover: 'hover:border-amber-400/50', itemPrice: 'text-amber-300' },
+  profile: { sectionTitle: 'text-pink-400', sectionIconBg: 'bg-pink-500/25', sectionIcon: 'text-pink-400', itemIconBg: 'bg-pink-400/20', itemIcon: 'text-pink-400', itemHover: 'hover:border-pink-400/50', itemPrice: 'text-pink-300' },
+  template: { sectionTitle: 'text-emerald-400', sectionIconBg: 'bg-emerald-500/25', sectionIcon: 'text-emerald-400', itemIconBg: 'bg-emerald-400/20', itemIcon: 'text-emerald-400', itemHover: 'hover:border-emerald-400/50', itemPrice: 'text-emerald-300' },
+  badge: { sectionTitle: 'text-rose-400', sectionIconBg: 'bg-rose-500/25', sectionIcon: 'text-rose-400', itemIconBg: 'bg-rose-400/20', itemIcon: 'text-rose-400', itemHover: 'hover:border-rose-400/50', itemPrice: 'text-rose-300' },
+  duel: { sectionTitle: 'text-orange-400', sectionIconBg: 'bg-orange-500/25', sectionIcon: 'text-orange-400', itemIconBg: 'bg-orange-400/20', itemIcon: 'text-orange-400', itemHover: 'hover:border-orange-400/50', itemPrice: 'text-orange-300' },
+  social: { sectionTitle: 'text-sky-400', sectionIconBg: 'bg-sky-500/25', sectionIcon: 'text-sky-400', itemIconBg: 'bg-sky-400/20', itemIcon: 'text-sky-400', itemHover: 'hover:border-sky-400/50', itemPrice: 'text-sky-300' },
+  other: { sectionTitle: 'text-slate-400', sectionIconBg: 'bg-slate-500/25', sectionIcon: 'text-slate-400', itemIconBg: 'bg-slate-400/20', itemIcon: 'text-slate-400', itemHover: 'hover:border-slate-400/50', itemPrice: 'text-slate-300' }
+};
+const STARS_SECTION_COLORS: Record<string, SectionColors> = {
+  premium: { sectionTitle: 'text-amber-400', sectionIconBg: 'bg-amber-500/25', sectionIcon: 'text-amber-400', itemIconBg: 'bg-amber-400/20', itemIcon: 'text-amber-400', itemHover: 'hover:border-amber-400/50', itemPrice: 'text-amber-300' },
+  boosts: { sectionTitle: 'text-orange-400', sectionIconBg: 'bg-orange-500/25', sectionIcon: 'text-orange-400', itemIconBg: 'bg-orange-400/20', itemIcon: 'text-orange-400', itemHover: 'hover:border-orange-400/50', itemPrice: 'text-orange-300' },
+  templates: { sectionTitle: 'text-emerald-400', sectionIconBg: 'bg-emerald-500/25', sectionIcon: 'text-emerald-400', itemIconBg: 'bg-emerald-400/20', itemIcon: 'text-emerald-400', itemHover: 'hover:border-emerald-400/50', itemPrice: 'text-emerald-300' },
+  profile: { sectionTitle: 'text-violet-400', sectionIconBg: 'bg-violet-500/25', sectionIcon: 'text-violet-400', itemIconBg: 'bg-violet-400/20', itemIcon: 'text-violet-400', itemHover: 'hover:border-violet-400/50', itemPrice: 'text-violet-300' },
+  gifts: { sectionTitle: 'text-pink-400', sectionIconBg: 'bg-pink-500/25', sectionIcon: 'text-pink-400', itemIconBg: 'bg-pink-400/20', itemIcon: 'text-pink-400', itemHover: 'hover:border-pink-400/50', itemPrice: 'text-pink-300' },
+  letters: { sectionTitle: 'text-cyan-400', sectionIconBg: 'bg-cyan-500/25', sectionIcon: 'text-cyan-400', itemIconBg: 'bg-cyan-400/20', itemIcon: 'text-cyan-400', itemHover: 'hover:border-cyan-400/50', itemPrice: 'text-cyan-300' },
+  ton: { sectionTitle: 'text-sky-400', sectionIconBg: 'bg-sky-500/25', sectionIcon: 'text-sky-400', itemIconBg: 'bg-sky-400/20', itemIcon: 'text-sky-400', itemHover: 'hover:border-sky-400/50', itemPrice: 'text-sky-300' }
+};
+const TON_COLORS: SectionColors = { sectionTitle: 'text-sky-400', sectionIconBg: 'bg-sky-500/25', sectionIcon: 'text-sky-400', itemIconBg: 'bg-sky-400/20', itemIcon: 'text-sky-400', itemHover: 'hover:border-sky-400/50', itemPrice: 'text-sky-300' };
+const MY_COLORS: SectionColors = { sectionTitle: 'text-emerald-400', sectionIconBg: 'bg-emerald-500/25', sectionIcon: 'text-emerald-400', itemIconBg: 'bg-emerald-400/20', itemIcon: 'text-emerald-400', itemHover: 'hover:border-emerald-400/50', itemPrice: 'text-emerald-300' };
 
 const TON_ITEMS = [
   { id: 'storage_eternal', priceTon: '0.5', settingsAnchor: 'ton_storage' },
@@ -106,6 +150,7 @@ const Store = () => {
   const [starsRetryInSec, setStarsRetryInSec] = useState<number | null>(null);
   const [retryInSec, setRetryInSec] = useState<number | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [expandedStarsSections, setExpandedStarsSections] = useState<Set<string>>(new Set());
   const catalogRetryCountRef = useRef(0);
   const starsRetryCountRef = useRef(0);
   const starsRetryCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -421,13 +466,22 @@ const Store = () => {
     ([a], [b]) => (CATEGORY_ORDER.indexOf(a) >= 0 ? CATEGORY_ORDER.indexOf(a) : 99) - (CATEGORY_ORDER.indexOf(b) >= 0 ? CATEGORY_ORDER.indexOf(b) : 99)
   );
 
-  // Открыть первую категорию по умолчанию во вкладке XP (после того как sortedCategoryEntries доступен)
+  // Открыть первую категорию по умолчанию во вкладке XP
   useEffect(() => {
     if (tab !== 'xp' || sortedCategoryEntries.length === 0) return;
     if (expandedCategories.size === 0) {
       setExpandedCategories(new Set([sortedCategoryEntries[0][0]]));
     }
   }, [tab, sortedCategoryEntries.length]);
+
+  // Открыть первый подраздел по умолчанию во вкладке Stars
+  useEffect(() => {
+    if (tab !== 'stars' || !starsCatalog?.length) return;
+    const order = STARS_SECTION_ORDER.filter((s) => (starsCatalog as any[]).some((it: any) => getStarsSection(it.id) === s));
+    if (order.length > 0 && expandedStarsSections.size === 0) {
+      setExpandedStarsSections(new Set([order[0]]));
+    }
+  }, [tab, starsCatalog?.length]);
 
   const ownedItemIds = new Set(myItems.map((i) => i.item_id));
 
@@ -601,40 +655,68 @@ const Store = () => {
               }, {});
               const orderedSections = STARS_SECTION_ORDER.filter((s) => starsBySection[s]?.length);
               return (
-                <div className="space-y-5">
+                <div className="space-y-4">
                   {orderedSections.map((sectionKey) => {
                     const items = starsBySection[sectionKey] || [];
                     const SectionIcon = STARS_SECTION_ICONS[sectionKey];
-                    const isPremium = sectionKey === 'premium';
+                    const isExpanded = expandedStarsSections.has(sectionKey);
+                    const colors = STARS_SECTION_COLORS[sectionKey] || STARS_SECTION_COLORS.profile;
                     return (
                       <div key={sectionKey} className="rounded-xl border border-border/60 overflow-hidden bg-black/20">
-                        <div className="flex items-center gap-2 px-4 py-3 border-b border-border/40 bg-black/30">
-                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${isPremium ? 'bg-amber-500/20 text-amber-400' : 'bg-accent-lime/20 text-accent-lime'}`}>
-                            <SectionIcon size={18} strokeWidth={2} />
-                          </div>
-                          <h3 className="font-heading text-xs font-black uppercase tracking-widest text-primary">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playSound('click');
+                            setExpandedStarsSections((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(sectionKey)) next.delete(sectionKey);
+                              else next.add(sectionKey);
+                              return next;
+                            });
+                          }}
+                          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-white/5 transition-colors"
+                        >
+                          <h4 className={`font-heading text-xs font-black uppercase tracking-widest flex items-center gap-2 ${colors.sectionTitle}`}>
+                            <span className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${colors.sectionIconBg}`}>
+                              <SectionIcon size={18} className={colors.sectionIcon} strokeWidth={2} />
+                            </span>
                             {t(`store_stars_section_${sectionKey}` as any)}
-                          </h3>
-                        </div>
-                        <div className="grid gap-2 p-4">
-                          {items.map((item: any) => (
-                            <motion.button
-                              key={item.id}
-                              whileTap={{ scale: 0.98 }}
-                              onClick={() => openItemModal(item, 'stars')}
-                              className="w-full flex items-center gap-3 p-4 rounded-xl border border-border bg-black/40 hover:border-accent-lime/50 text-left"
+                          </h4>
+                          <span className="text-muted flex-shrink-0">
+                            {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                          </span>
+                        </button>
+                        <AnimatePresence initial={false}>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.25, ease: 'easeInOut' }}
+                              className="overflow-hidden"
                             >
-                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${sectionKey === 'premium' ? 'bg-amber-500/20 text-amber-400' : 'bg-accent-lime/20 text-accent-lime'}`}>
-                                <SectionIcon size={22} strokeWidth={2} />
+                              <div className="grid gap-2 px-4 pb-4 pt-0">
+                                {items.map((item: any) => (
+                                  <motion.button
+                                    key={item.id}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => openItemModal(item, 'stars')}
+                                    className={`w-full flex items-center gap-3 p-4 rounded-xl border border-border bg-black/40 text-left transition-colors ${colors.itemHover}`}
+                                  >
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${colors.itemIconBg}`}>
+                                      <SectionIcon size={22} className={colors.itemIcon} strokeWidth={2} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <span className="font-bold text-primary block truncate">{t(`store_stars_${item.id}` as any) || item.title}</span>
+                                      <span className="text-xs text-muted line-clamp-2">{t(`store_stars_${item.id}_desc` as any) || item.description}</span>
+                                    </div>
+                                    <span className={`font-bold flex-shrink-0 ${colors.itemPrice}`}>{item.stars} ⭐</span>
+                                  </motion.button>
+                                ))}
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <span className="font-bold text-primary block truncate">{t(`store_stars_${item.id}` as any) || item.title}</span>
-                                <span className="text-xs text-muted line-clamp-2">{t(`store_stars_${item.id}_desc` as any) || item.description}</span>
-                              </div>
-                              <span className={`font-bold flex-shrink-0 ${sectionKey === 'premium' ? 'text-amber-400' : 'text-accent-lime'}`}>{item.stars} ⭐</span>
-                            </motion.button>
-                          ))}
-                        </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     );
                   })}
@@ -707,6 +789,7 @@ const Store = () => {
               <div className="text-center py-8 text-muted text-sm">{t('store_no_items') || 'No items available'}</div>
             ) : sortedCategoryEntries.map(([category, items]) => {
               const isExpanded = expandedCategories.has(category);
+              const colors = CATEGORY_COLORS[category] || CATEGORY_COLORS.other;
               return (
               <div key={category} className="rounded-xl border border-border/60 overflow-hidden bg-black/20">
                 <button
@@ -722,8 +805,15 @@ const Store = () => {
                   }}
                   className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-white/5 transition-colors"
                 >
-                  <h4 className="font-heading text-xs font-black uppercase tracking-widest text-accent-pink flex items-center gap-2">
-                    {category === 'avatar_frame' && <Square size={16} className="text-accent-cyan/90" strokeWidth={2} />}
+                  <h4 className={`font-heading text-xs font-black uppercase tracking-widest flex items-center gap-2 ${colors.sectionTitle}`}>
+                    {(() => {
+                      const Icon = CATEGORY_ICONS[category];
+                      return Icon ? (
+                        <span className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${colors.sectionIconBg}`}>
+                          <Icon size={18} className={colors.sectionIcon} strokeWidth={2} />
+                        </span>
+                      ) : null;
+                    })()}
                     {t(CATEGORY_LABELS[category] as any) || category}
                   </h4>
                   <span className="text-muted flex-shrink-0">
@@ -753,7 +843,7 @@ const Store = () => {
                         key={item.id}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => openItemModal(item, 'xp')}
-                        className="w-full flex items-center gap-3 p-4 rounded-xl border border-border bg-black/40 hover:border-accent-pink/50 text-left"
+                        className={`w-full flex items-center gap-3 p-4 rounded-xl border border-border bg-black/40 text-left transition-colors ${colors.itemHover}`}
                       >
                         {category === 'avatar' ? (
                           <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 border border-border bg-black/60">
@@ -769,8 +859,8 @@ const Store = () => {
                         ) : category === 'avatar_frame' ? (
                           <StoreFramePreview frameKey={getFrameKey(item.id) || 'fire'} size="sm" />
                         ) : (
-                          <div className="w-12 h-12 rounded-xl bg-accent-pink/20 flex items-center justify-center flex-shrink-0">
-                            <Sparkles size={22} className="text-accent-pink" />
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${colors.itemIconBg}`}>
+                            <Sparkles size={22} className={colors.itemIcon} />
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
@@ -785,7 +875,7 @@ const Store = () => {
                           </span>
                           <span className="text-xs text-muted line-clamp-2">{(() => { const tk = t(`store_item_${item.id}_desc` as any); return tk !== `store_item_${item.id}_desc` ? tk : item.description; })()}</span>
                         </div>
-                        <span className="text-accent-pink font-bold flex-shrink-0 text-sm">{costStr}</span>
+                        <span className={`font-bold flex-shrink-0 text-sm ${colors.itemPrice}`}>{costStr}</span>
                       </motion.button>
                     );
                   })}
@@ -808,35 +898,47 @@ const Store = () => {
             className="space-y-4"
           >
             <div className="text-xs text-muted mb-2">{t('store_ton_hint')}</div>
-            {TON_ITEMS.map((item) => {
-              const titleKey = `store_ton_${item.id === 'storage_eternal' ? 'storage' : item.id === 'inheritance' ? 'inheritance' : 'escrow'}`;
-              const descKey = `${titleKey}_desc`;
-              const Icon = item.id === 'storage_eternal' ? Lock : item.id === 'inheritance' ? Gift : Zap;
-              return (
-                <motion.div
-                  key={item.id}
-                  className="flex items-start gap-3 p-4 rounded-xl border border-border bg-black/40"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-accent-cyan/20 flex items-center justify-center flex-shrink-0">
-                    <Icon size={22} className="text-accent-cyan" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="font-bold text-primary block truncate">{t(titleKey)}</span>
-                    <p className="text-xs text-muted mt-1 line-clamp-2">{t(descKey)}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs px-2 py-0.5 rounded bg-accent-cyan/20 text-accent-cyan">TON</span>
-                      <span className="text-xs text-muted">{t('store_from')} {item.priceTon} TON</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleTonAction(item.id, item.settingsAnchor)}
-                    className="px-4 py-2 rounded-lg bg-accent-cyan/20 text-accent-cyan hover:bg-accent-cyan/30 text-xs font-bold uppercase"
-                  >
-                    {walletConnected ? t('store_configure') : t('store_connect_first')}
-                  </button>
-                </motion.div>
-              );
-            })}
+            <div className="rounded-xl border border-border/60 overflow-hidden bg-black/20">
+              <div className="w-full flex items-center justify-between gap-2 px-4 py-3 border-b border-border/40 bg-black/30">
+                <h4 className={`font-heading text-xs font-black uppercase tracking-widest flex items-center gap-2 ${TON_COLORS.sectionTitle}`}>
+                  <span className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${TON_COLORS.sectionIconBg}`}>
+                    <Wallet size={18} className={TON_COLORS.sectionIcon} strokeWidth={2} />
+                  </span>
+                  {t('store_tab_ton')}
+                </h4>
+              </div>
+              <div className="grid gap-2 px-4 pb-4 pt-4">
+                {TON_ITEMS.map((item) => {
+                  const titleKey = `store_ton_${item.id === 'storage_eternal' ? 'storage' : item.id === 'inheritance' ? 'inheritance' : 'escrow'}`;
+                  const descKey = `${titleKey}_desc`;
+                  const Icon = item.id === 'storage_eternal' ? Lock : item.id === 'inheritance' ? Gift : Zap;
+                  return (
+                    <motion.div
+                      key={item.id}
+                      className={`flex items-center gap-3 p-4 rounded-xl border border-border bg-black/40 transition-colors ${TON_COLORS.itemHover}`}
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-accent-cyan/20 flex items-center justify-center flex-shrink-0">
+                        <Icon size={22} className="text-accent-cyan" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-bold text-primary block truncate">{t(titleKey)}</span>
+                        <p className="text-xs text-muted mt-0.5 line-clamp-2">{t(descKey)}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs px-2 py-0.5 rounded bg-accent-cyan/20 text-accent-cyan">TON</span>
+                          <span className="text-xs text-muted">{t('store_from')} {item.priceTon} TON</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleTonAction(item.id, item.settingsAnchor)}
+                        className="shrink-0 px-4 py-2 rounded-lg bg-accent-cyan/20 text-accent-cyan hover:bg-accent-cyan/30 text-xs font-bold uppercase"
+                      >
+                        {walletConnected ? t('store_configure') : t('store_connect_first')}
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
           </motion.div>
         )}
 
@@ -849,38 +951,48 @@ const Store = () => {
             className="space-y-4"
           >
             <div className="text-xs text-muted mb-2">{t('store_my_hint')}</div>
-            {myItems.length === 0 ? (
-              <EmptyState
-                icon={<Package size={40} />}
-                title={t('store_my_empty')}
-                description={t('store_xp_hint')}
-                actionLabel={t('store_tab_xp')}
-                onAction={() => setTab('xp')}
-              />
-            ) : (
-              <div className="grid gap-2">
-                {myItems.map((p: any, idx: number) => {
-                  const label = getItemLabel(p.item_id, xpCatalog.find((x: any) => x.id === p.item_id)?.name || p.item_id);
-                  return (
-                    <div
-                      key={`${p.item_id}-${p.created_at ?? idx}`}
-                      className="flex items-center gap-3 p-4 rounded-xl border border-border bg-black/40"
-                    >
-                      <div className="w-12 h-12 rounded-xl bg-accent-lime/20 flex items-center justify-center flex-shrink-0">
-                        <Package size={22} className="text-accent-lime" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="font-bold text-primary block truncate">{label}</span>
-                        <span className="text-xs text-muted">
-                          {p.cost_xp ? `-${p.cost_xp} XP` : ''} {p.cost_rep ? `-${p.cost_rep} REP` : ''}
-                        </span>
-                      </div>
-                      <span className="text-accent-lime text-xs">✓</span>
-                    </div>
-                  );
-                })}
+            <div className="rounded-xl border border-border/60 overflow-hidden bg-black/20">
+              <div className="w-full flex items-center justify-between gap-2 px-4 py-3 border-b border-border/40 bg-black/30">
+                <h4 className={`font-heading text-xs font-black uppercase tracking-widest flex items-center gap-2 ${MY_COLORS.sectionTitle}`}>
+                  <span className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${MY_COLORS.sectionIconBg}`}>
+                    <Package size={18} className={MY_COLORS.sectionIcon} strokeWidth={2} />
+                  </span>
+                  {t('store_tab_my')}
+                </h4>
               </div>
-            )}
+              <div className="grid gap-2 px-4 pb-4 pt-4">
+                {myItems.length === 0 ? (
+                  <EmptyState
+                    icon={<Package size={40} />}
+                    title={t('store_my_empty')}
+                    description={t('store_xp_hint')}
+                    actionLabel={t('store_tab_xp')}
+                    onAction={() => setTab('xp')}
+                  />
+                ) : (
+                  myItems.map((p: any, idx: number) => {
+                    const label = getItemLabel(p.item_id, xpCatalog.find((x: any) => x.id === p.item_id)?.name || p.item_id);
+                    return (
+                      <div
+                        key={`${p.item_id}-${p.created_at ?? idx}`}
+                        className={`flex items-center gap-3 p-4 rounded-xl border border-border bg-black/40 transition-colors ${MY_COLORS.itemHover}`}
+                      >
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${MY_COLORS.itemIconBg}`}>
+                          <Package size={22} className={MY_COLORS.itemIcon} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-bold text-primary block truncate">{label}</span>
+                          <span className="text-xs text-muted">
+                            {p.cost_xp ? `-${p.cost_xp} XP` : ''} {p.cost_rep ? `-${p.cost_rep} REP` : ''}
+                          </span>
+                        </div>
+                        <span className="text-accent-lime text-xs">✓</span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
