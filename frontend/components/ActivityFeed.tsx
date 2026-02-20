@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, FileText, Swords, Gift, CheckCircle, Trophy, Sparkles } from 'lucide-react';
+import { Activity, FileText, Swords, Gift, CheckCircle, Trophy, Sparkles, UserPlus } from 'lucide-react';
 import { activityAPI } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
 import { ActivityFeedItem } from '../types';
@@ -64,6 +64,8 @@ const ActivityFeed: React.FC = () => {
         return <Trophy size={16} className="text-accent-gold" />;
       case 'level_up':
         return <Sparkles size={16} className="text-purple-400" />;
+      case 'friend_added':
+        return <UserPlus size={16} className="text-accent-cyan" />;
       default:
         return <Activity size={16} className="text-muted" />;
     }
@@ -119,6 +121,13 @@ const ActivityFeed: React.FC = () => {
             {activity.activityData.level && (
               <span className="text-purple-400"> (Level {activity.activityData.level})</span>
             )}
+          </span>
+        );
+      case 'friend_added':
+        const friendName = activity.activityData?.friendName || `User #${activity.activityData?.friendId || '?'}`;
+        return (
+          <span>
+            <span className="font-bold">{userName}</span> {t('activity_added_friend') || 'added'} <span className="font-bold text-accent-cyan">{friendName}</span> {t('activity_as_friend') || 'as a friend'}
           </span>
         );
       default:

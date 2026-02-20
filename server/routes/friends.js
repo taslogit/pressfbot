@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
+const { logActivity } = require('./activity');
 
 const FRIENDSHIP_STATUS = ['pending', 'accepted', 'blocked'];
 
@@ -131,18 +132,32 @@ const createFriendsRoutes = (pool) => {
       }
 
       const existing = await pool.query(
-        `SELECT id, status FROM friendships
+        `SELECT id, status, requested_by FROM friendships
          WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)`,
         [userId, friendId]
       );
 
       if (existing.rowCount > 0) {
-        const status = existing.rows[0].status;
-        if (status === 'accepted') {
+        // Check if already friends (any record with accepted status)
+        const hasAccepted = existing.rows.some(r => r.status === 'accepted');
+        if (hasAccepted) {
           return sendError(res, 400, 'ALREADY_FRIENDS', 'Already friends');
         }
-        if (status === 'pending') {
+        
+        // Check if there's already a pending request from current user
+        const hasPendingFromUser = existing.rows.some(r => 
+          r.status === 'pending' && Number(r.requested_by) === userId
+        );
+        if (hasPendingFromUser) {
           return sendError(res, 400, 'REQUEST_PENDING', 'Friend request already pending');
+        }
+        
+        // If there's a pending request from the other user, they should accept it instead
+        const hasPendingFromFriend = existing.rows.some(r => 
+          r.status === 'pending' && Number(r.requested_by) === friendId
+        );
+        if (hasPendingFromFriend) {
+          return sendError(res, 400, 'REQUEST_EXISTS', 'This user already sent you a friend request. Accept it instead.');
         }
       }
 
@@ -207,6 +222,38 @@ const createFriendsRoutes = (pool) => {
          ON CONFLICT (user_id, friend_id) DO UPDATE SET status = 'accepted', accepted_at = now()`,
         [userId, friendId]
       );
+
+      // Log activity for both users
+      try {
+        const friendProfile = await pool.query(
+          'SELECT title, avatar FROM profiles WHERE user_id = $1',
+          [friendId]
+        );
+        const userProfile = await pool.query(
+          'SELECT title, avatar FROM profiles WHERE user_id = $1',
+          [userId]
+        );
+        
+        const friendTitle = friendProfile.rows[0]?.title || `User #${friendId}`;
+        const userTitle = userProfile.rows[0]?.title || `User #${userId}`;
+
+        // Log for user who accepted (userId added friendId)
+        await logActivity(pool, userId, 'friend_added', {
+          friendId,
+          friendName: friendTitle,
+          friendAvatar: friendProfile.rows[0]?.avatar || 'pressf'
+        }, friendId.toString(), 'user', true);
+
+        // Log for friend who was accepted (friendId was added by userId)
+        await logActivity(pool, friendId, 'friend_added', {
+          friendId: userId,
+          friendName: userTitle,
+          friendAvatar: userProfile.rows[0]?.avatar || 'pressf'
+        }, userId.toString(), 'user', true);
+      } catch (activityError) {
+        // Don't fail the request if activity logging fails
+        logger.debug('Failed to log friend_added activity', { error: activityError?.message });
+      }
 
       return res.json({ ok: true, message: 'Friend request accepted' });
     } catch (error) {
