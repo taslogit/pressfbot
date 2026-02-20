@@ -10,11 +10,13 @@ const createFriendsRoutes = (pool) => {
   // GET /api/friends — list accepted friends with pagination
   router.get('/', async (req, res) => {
     try {
+      logger.debug('GET /api/friends - request received', { userId: req.userId, query: req.query });
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
       }
       const userId = req.userId;
       if (!userId) {
+        logger.warn('GET /api/friends - user not authenticated');
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
       const limit = Math.min(parseInt(req.query.limit) || 50, 100);
@@ -57,11 +59,13 @@ const createFriendsRoutes = (pool) => {
   // GET /api/friends/pending — incoming and outgoing requests
   router.get('/pending', async (req, res) => {
     try {
+      logger.debug('GET /api/friends/pending - request received', { userId: req.userId });
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
       }
       const userId = req.userId;
       if (!userId) {
+        logger.warn('GET /api/friends/pending - user not authenticated');
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 

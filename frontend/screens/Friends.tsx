@@ -70,12 +70,22 @@ const Friends: React.FC = () => {
   const loadFriends = async () => {
     try {
       setLoading(true);
+      if (import.meta.env.DEV) {
+        console.log('[Friends] Loading friends...');
+      }
       const result = await friendsAPI.getAll({ status: 'accepted', limit: 100 });
+      if (import.meta.env.DEV) {
+        console.log('[Friends] Friends API response:', result);
+      }
       if (result.ok && result.data) {
         setFriends(result.data.friends || []);
+      } else {
+        console.warn('[Friends] Failed to load friends:', result.error);
+        toast.error(result.error || t('friends_load_failed') || 'Failed to load friends');
       }
     } catch (error) {
-      console.error('Failed to load friends:', error);
+      console.error('[Friends] Failed to load friends:', error);
+      toast.error(t('friends_load_failed') || 'Failed to load friends');
     } finally {
       setLoading(false);
     }
@@ -83,15 +93,23 @@ const Friends: React.FC = () => {
 
   const loadPending = async () => {
     try {
+      if (import.meta.env.DEV) {
+        console.log('[Friends] Loading pending requests...');
+      }
       const result = await friendsAPI.getPending();
+      if (import.meta.env.DEV) {
+        console.log('[Friends] Pending API response:', result);
+      }
       if (result.ok && result.data) {
         setPending({
           incoming: result.data.incoming || [],
           outgoing: result.data.outgoing || []
         });
+      } else {
+        console.warn('[Friends] Failed to load pending:', result.error);
       }
     } catch (error) {
-      console.error('Failed to load pending:', error);
+      console.error('[Friends] Failed to load pending:', error);
     }
   };
 
