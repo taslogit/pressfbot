@@ -464,8 +464,7 @@ const createFriendsRoutes = (pool) => {
               OR p.user_id IN (SELECT referred_id FROM referral_events WHERE referrer_id = $1)
             )
         )
-        SELECT DISTINCT ON (s.user_id) 
-               p.user_id, p.avatar, p.title, p.level, MIN(s.priority) AS priority
+        SELECT p.user_id, p.avatar, p.title, p.level, MIN(s.priority) AS priority
         FROM suggestions s
         JOIN profiles p ON p.user_id = s.user_id
         WHERE p.user_id IS NOT NULL
@@ -487,7 +486,8 @@ const createFriendsRoutes = (pool) => {
 
       return res.json({ ok: true, suggestions });
     } catch (error) {
-      logger.error('Friends suggestions error:', { error: error?.message, stack: error?.stack });
+      const errorMessage = error?.message || (typeof error === 'string' ? error : JSON.stringify(error));
+      logger.error('Friends suggestions error:', { error: errorMessage, stack: error?.stack });
       return sendError(res, 500, 'FRIENDS_SUGGESTIONS_FAILED', 'Failed to load suggestions');
     }
   });

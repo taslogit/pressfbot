@@ -240,9 +240,13 @@ const Friends: React.FC = () => {
       const result = await friendsAPI.getSuggestions(20);
       if (result.ok && result.data) {
         setSuggestions(result.data.suggestions || []);
+      } else {
+        console.warn('[Friends] Failed to load suggestions:', result.error);
+        toast.error(result.error || t('suggestions_load_failed') || 'Failed to load suggestions');
       }
     } catch (error) {
-      console.error('Failed to load suggestions:', error);
+      console.error('[Friends] Failed to load suggestions:', error);
+      toast.error(t('suggestions_load_failed') || 'Failed to load suggestions');
     } finally {
       setSuggestionsLoading(false);
     }
