@@ -269,7 +269,7 @@ const createStoreRoutes = (pool) => {
       const achievementCount = typeof achievements === 'object' ? Object.keys(achievements).length : 0;
       const achievementDiscountPercent = Math.min(achievementCount, 10);
 
-      // Derive owned avatar IDs and frame IDs for Profile/Store UI
+      // Derive owned avatar IDs and frame IDs (XP + Stars purchases)
       const ownedAvatarIds = new Set(['pressf']);
       const ownedFrameIds = new Set(['default']);
       purchasesResult.rows.forEach((r) => {
@@ -278,6 +278,13 @@ const createStoreRoutes = (pool) => {
         } else if (r.item_id?.startsWith('avatar_frame_')) {
           ownedFrameIds.add(r.item_id.replace('avatar_frame_', ''));
         }
+      });
+      const starsFramesResult = await pool.query(
+        `SELECT item_id FROM stars_purchases WHERE user_id = $1 AND status = $2 AND item_id LIKE $3`,
+        [userId, 'completed', 'avatar_frame_%']
+      );
+      starsFramesResult.rows.forEach((r) => {
+        if (r.item_id) ownedFrameIds.add(r.item_id.replace('avatar_frame_', ''));
       });
 
       return res.json({

@@ -26,7 +26,7 @@ const profileUpdateSchema = z.object({
   }).optional()
 });
 
-const VALID_AVATAR_FRAMES = ['default', 'fire', 'diamond', 'neon', 'gold'];
+const VALID_AVATAR_FRAMES = ['default', 'fire', 'diamond', 'neon', 'gold', 'vip'];
 const settingsUpdateSchema = z.object({
   deadManSwitchDays: z.number().int().optional(),
   funeralTrack: z.string().optional(),
@@ -738,13 +738,13 @@ const createProfileRoutes = (pool) => {
           updateValues.push(checkinReminderIntervalMinutes);
         }
         if (avatarFrame !== undefined && allowedFields.avatar_frame) {
-          // Validate frame ownership: default is free, others require purchase
+          // Validate frame ownership: default is free, others require purchase (XP or Stars)
           if (avatarFrame !== 'default') {
-            const ownedFrame = await pool.query(
-              'SELECT 1 FROM store_purchases WHERE user_id = $1 AND item_id = $2',
-              [userId, `avatar_frame_${avatarFrame}`]
-            );
-            if (ownedFrame.rowCount === 0) {
+            const [xpFrame, starsFrame] = await Promise.all([
+              pool.query('SELECT 1 FROM store_purchases WHERE user_id = $1 AND item_id = $2', [userId, `avatar_frame_${avatarFrame}`]),
+              pool.query('SELECT 1 FROM stars_purchases WHERE user_id = $1 AND item_id = $2 AND status = $3', [userId, `avatar_frame_${avatarFrame}`, 'completed'])
+            ]);
+            if (xpFrame.rowCount === 0 && starsFrame.rowCount === 0) {
               return sendError(res, 403, 'FRAME_NOT_OWNED', 'You must purchase this frame in the Store first');
             }
           }

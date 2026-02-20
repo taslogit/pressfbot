@@ -711,6 +711,19 @@ select:focus-visible {
   --frame-c3: #fde68a;
   box-shadow: 0 0 12px rgba(251, 191, 36, 0.5), 0 0 24px rgba(251, 191, 36, 0.25);
 }
+/* VIP: gradient runs around the circle (premium / Stars) */
+.store-frame-ring.store-frame-vip {
+  --frame-c1: #a855f7;
+  --frame-c2: #ec4899;
+  --frame-c3: #f97316;
+  --frame-c4: #eab308;
+  --frame-c5: #22c55e;
+  --frame-c6: #06b6d4;
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.5), 0 0 32px rgba(236, 72, 153, 0.3);
+}
+.store-frame-ring.store-frame-vip::before {
+  background: conic-gradient(from 0deg, var(--frame-c1), var(--frame-c2), var(--frame-c3), var(--frame-c4), var(--frame-c5), var(--frame-c6), var(--frame-c1));
+}
 .store-frame-inner {
   position: absolute;
   inset: 2px;
@@ -724,4 +737,28 @@ select:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .store-frame-ring { animation: none; }
   .store-frame-ring::before { animation: none; }
+}
+
+/* Profile: VIP frame (same rotating gradient ring around avatar) */
+.avatar-frame-vip {
+  position: relative;
+}
+.avatar-frame-vip::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #a855f7, #ec4899, #f97316, #eab308, #22c55e, #06b6d4, #a855f7);
+  -webkit-mask: radial-gradient(circle at 50% 50%, transparent calc(50% - 3px), #fff 50%);
+  mask: radial-gradient(circle at 50% 50%, transparent calc(50% - 3px), #fff 50%);
+  animation: store-frame-rotate 6s linear infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+.avatar-frame-vip > * {
+  position: relative;
+  z-index: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .avatar-frame-vip::before { animation: none; }
 }

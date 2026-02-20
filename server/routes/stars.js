@@ -66,6 +66,12 @@ const STORE_CATALOG = {
     stars: 150,
     type: 'permanent'
   },
+  avatar_frame_vip: {
+    title: 'VIP Avatar Frame',
+    description: 'Animated gradient ring around your avatar. Premium look.',
+    stars: 200,
+    type: 'permanent'
+  },
   custom_badge: {
     title: 'Custom Profile Badge',
     description: 'Unique badge displayed on your profile',

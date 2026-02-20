@@ -28,7 +28,8 @@ const AVATAR_FRAME_STYLES: Record<string, string> = {
   fire: 'border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.6)]',
   diamond: 'border-2 border-cyan-400 shadow-[0_0_25px_rgba(34,211,238,0.5)]',
   neon: 'border-2 border-accent-cyan shadow-[0_0_20px_rgba(0,224,255,0.7)]',
-  gold: 'border-2 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)]'
+  gold: 'border-2 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)]',
+  vip: 'avatar-frame-vip'
 };
 
 // Icon Helper
@@ -596,7 +597,7 @@ const Profile = () => {
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                {(['default', 'fire', 'diamond', 'neon', 'gold'] as const).map((frameId) => {
+                {(['default', 'fire', 'diamond', 'neon', 'gold', 'vip'] as const).map((frameId) => {
                   const owned = ownedFrameIds.has(frameId);
                   const isSelected = currentFrame === frameId;
                   return (

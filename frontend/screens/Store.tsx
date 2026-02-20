@@ -57,7 +57,7 @@ const STARS_SECTION_ICONS: Record<(typeof STARS_SECTION_ORDER)[number], typeof B
   ton: Wallet
 };
 
-const VALID_FRAME_KEYS = ['fire', 'diamond', 'neon', 'gold'] as const;
+const VALID_FRAME_KEYS = ['fire', 'diamond', 'neon', 'gold', 'vip'] as const;
 const getFrameKey = (itemId: string): string | null => {
   if (!itemId?.startsWith('avatar_frame_')) return null;
   const key = itemId.replace(/^avatar_frame_/, '');
@@ -913,7 +913,7 @@ const Store = () => {
                   <X size={24} />
                 </button>
               </div>
-              {itemType === 'xp' && getFrameKey(selectedItem.id) && (
+              {(itemType === 'xp' || itemType === 'stars') && getFrameKey(selectedItem.id) && (
                 <div className="flex justify-center mb-4">
                   <StoreFramePreview frameKey={getFrameKey(selectedItem.id)!} size="md" />
                 </div>
