@@ -5,6 +5,7 @@ import { giftsAPI } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
 import { tg } from '../utils/telegram';
 import { playSound } from '../utils/sound';
+import { useToast } from '../contexts/ToastContext';
 
 interface GiftType {
   type: string;
@@ -28,6 +29,7 @@ interface Props {
 
 const SendGiftModal: React.FC<Props> = ({ isOpen, onClose, recipientId, recipientName, onGiftSent }) => {
   const { t } = useTranslation();
+  const toast = useToast();
   const [giftTypes, setGiftTypes] = useState<GiftType[]>([]);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [message, setMessage] = useState('');
@@ -53,7 +55,7 @@ const SendGiftModal: React.FC<Props> = ({ isOpen, onClose, recipientId, recipien
 
   const handleSend = async () => {
     if (!selectedType) {
-      tg.showPopup({ message: t('select_gift') || 'Please select a gift' });
+      toast.error(t('select_gift') || 'Please select a gift');
       return;
     }
 
@@ -64,7 +66,7 @@ const SendGiftModal: React.FC<Props> = ({ isOpen, onClose, recipientId, recipien
       const result = await giftsAPI.send(recipientId, selectedType, message);
       if (result.ok) {
         playSound('success');
-        tg.showPopup({ message: t('gift_sent') || 'Gift sent!' });
+        toast.success(t('gift_sent') || 'Gift sent!');
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         onGiftSent?.();
         onClose();
@@ -75,7 +77,7 @@ const SendGiftModal: React.FC<Props> = ({ isOpen, onClose, recipientId, recipien
       }
     } catch (error: any) {
       playSound('error');
-      tg.showPopup({ message: error.message || t('gift_send_failed') || 'Failed to send gift' });
+      toast.error(error.message || t('gift_send_failed') || 'Failed to send gift');
       if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
     } finally {
       setSending(false);

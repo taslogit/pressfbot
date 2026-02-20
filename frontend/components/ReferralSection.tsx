@@ -4,6 +4,7 @@ import { Users, Copy, Share2, Trophy, Gift, TrendingUp } from 'lucide-react';
 import { profileAPI } from '../utils/api';
 import { ReferralInfo } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
+import { useToast } from '../contexts/ToastContext';
 import { tg } from '../utils/telegram';
 import { playSound } from '../utils/sound';
 import { QRCodeSVG } from 'qrcode.react';
@@ -15,6 +16,7 @@ interface Props {
 
 const ReferralSection: React.FC<Props> = ({ className = '' }) => {
   const { t } = useTranslation();
+  const toast = useToast();
   const [referralInfo, setReferralInfo] = useState<ReferralInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [showQR, setShowQR] = useState(false);
@@ -40,7 +42,7 @@ const ReferralSection: React.FC<Props> = ({ className = '' }) => {
     if (!referralInfo?.referralLink) return;
     navigator.clipboard.writeText(referralInfo.referralLink);
     playSound('success');
-    tg.showPopup({ message: t('referral_link_copied') || 'Link copied!' });
+    toast.success(t('referral_link_copied') || 'Link copied!');
     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     analytics.trackReferral(referralInfo.referralCode || '');
     analytics.track('referral_link_copied', { code: referralInfo.referralCode });

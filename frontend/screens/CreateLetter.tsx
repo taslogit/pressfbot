@@ -17,6 +17,7 @@ import { calculateLevel } from '../utils/levelSystem';
 import { analytics } from '../utils/analytics';
 import { useApiAbort } from '../hooks/useApiAbort';
 import { useApiError } from '../contexts/ApiErrorContext';
+import { useToast } from '../contexts/ToastContext';
 
 type Attachment = {
   id: string;
@@ -30,6 +31,7 @@ type Preset = 'crypto' | 'love' | 'roast' | 'confession';
 const CreateLetter = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const toast = useToast();
   const getSignal = useApiAbort();
   const { showApiError } = useApiError();
   const [title, setTitle] = useState('');
@@ -100,7 +102,7 @@ const CreateLetter = () => {
           previewUrl: '',
           file: undefined
         })));
-        tg.showPopup({ message: t('draft_attachments_restore') || 'Add files again' });
+        toast.info(t('draft_attachments_restore') || 'Add files again');
       }
     }
     setHasDraft(false);
@@ -174,7 +176,7 @@ const CreateLetter = () => {
   const handleSave = async () => {
     const validation = validateLetter();
     if (!validation.valid) {
-      tg.showPopup({ message: validation.error || t('save_error') });
+      toast.error(validation.error || t('save_error'));
       return;
     }
 
@@ -216,7 +218,7 @@ const CreateLetter = () => {
         for (const att of toUpload) {
           const res = await lettersAPI.uploadAttachment(letterId, att.file!, opts);
           if (!res.ok || !res.data?.url) {
-            tg.showPopup({ message: res.error || 'Upload failed' });
+            toast.error(res.error || 'Upload failed');
             setEncryptionStep(0);
             setIsSending(false);
             return;
@@ -225,7 +227,7 @@ const CreateLetter = () => {
         }
       } catch (e) {
         console.error('Attachment upload failed:', e);
-        tg.showPopup({ message: 'Upload failed' });
+        toast.error('Upload failed');
         setEncryptionStep(0);
         setIsSending(false);
         return;
@@ -366,7 +368,7 @@ const CreateLetter = () => {
         recordingInterval.current = window.setInterval(() => setRecordingTime(prev => prev + 1), 1000);
       } catch (e) {
         console.error('Mic access failed:', e);
-        tg.showPopup({ message: t('attach_voice') ? 'Microphone access required' : 'Нужен доступ к микрофону' });
+        toast.error(t('attach_voice') ? 'Microphone access required' : 'Нужен доступ к микрофону');
       }
     }
   };

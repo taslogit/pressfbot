@@ -15,6 +15,7 @@ import confetti from 'canvas-confetti';
 import SendGiftModal from '../components/SendGiftModal';
 import { giftsAPI } from '../utils/api';
 import { useApiAbort } from '../hooks/useApiAbort';
+import { useToast } from '../contexts/ToastContext';
 import { FUNERAL_TRACKS } from '../constants/funeralTracks';
 import LoadingState from '../components/LoadingState';
 
@@ -44,6 +45,7 @@ const Profile = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const getSignal = useApiAbort();
+  const toast = useToast();
   const { profile: profileFromContext, settings: settingsFromContext, refreshProfile } = useProfile();
   const [profile, setProfile] = useState<UserProfile | null>(profileFromContext);
   const [isEditing, setIsEditing] = useState(false);
@@ -210,7 +212,7 @@ const Profile = () => {
       dailyQuestsAPI.updateProgress('update_profile').catch(() => {});
     } catch (e) {
       console.error('Profile save failed', e);
-      tg.showPopup({ message: t('api_error_generic') || 'Something went wrong. Try again.' });
+      toast.error(t('api_error_generic') || 'Something went wrong. Try again.');
     }
   };
 
@@ -233,7 +235,7 @@ const Profile = () => {
       const result = await giftsAPI.claim(giftId);
       if (result.ok) {
         playSound('success');
-        tg.showPopup({ message: t('gift_claimed') || 'Gift claimed!' });
+        toast.success(t('gift_claimed') || 'Gift claimed!');
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         await loadGifts();
         // Refresh profile from DB to get updated reputation
@@ -243,7 +245,7 @@ const Profile = () => {
       }
     } catch (error: any) {
       playSound('error');
-      tg.showPopup({ message: error.message || t('gift_claim_failed') || 'Failed to claim gift' });
+      toast.error(error.message || t('gift_claim_failed') || 'Failed to claim gift');
     } finally {
       setGiftsLoading(false);
     }
@@ -281,10 +283,10 @@ const Profile = () => {
         setShowFrameSelector(false);
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       } else {
-        tg.showPopup?.({ message: res.error || 'Failed to update frame' });
+        toast.error(res.error || 'Failed to update frame');
       }
     } catch (e) {
-      tg.showPopup?.({ message: 'Failed to update frame' });
+      toast.error('Failed to update frame');
     } finally {
       setFrameLoading(false);
     }
@@ -336,12 +338,12 @@ const Profile = () => {
           ? (t('avatar_not_found_hint') || 'Avatar not found on server. Try choosing another.')
           : (t('avatar_update_failed') || 'Failed to update avatar');
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
-        tg.showPopup({ message: msg });
+        toast.error(msg);
       }
     } catch (error) {
       console.error('Failed to update avatar:', error);
       if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
-      tg.showPopup({ message: t('avatar_update_failed') || 'Failed to update avatar' });
+      toast.error(t('avatar_update_failed') || 'Failed to update avatar');
     } finally {
       setAvatarLoading(false);
     }

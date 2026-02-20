@@ -2,11 +2,13 @@ import React, { useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Trophy, Mail, X, Share2, ClipboardCopy } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
+import { useToast } from '../contexts/ToastContext';
 import { tg } from '../utils/telegram';
 import { storage } from '../utils/storage';
 
 const SharePost = () => {
   const { t } = useTranslation();
+  const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -132,10 +134,10 @@ const SharePost = () => {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(buildShareText());
-      tg.showPopup({ message: t('share_copied') });
+      toast.success(t('share_copied'));
       rememberShare();
     } catch {
-      tg.showPopup({ message: t('share_copy_failed') });
+      toast.error(t('share_copy_failed'));
     }
   };
 
@@ -153,7 +155,7 @@ const SharePost = () => {
       link.click();
       URL.revokeObjectURL(url);
     } catch {
-      tg.showPopup({ message: t('share_download_failed') });
+      toast.error(t('share_download_failed'));
     }
   };
 

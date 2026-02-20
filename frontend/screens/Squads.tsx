@@ -11,11 +11,13 @@ import { Squad, SquadMember, LeaderboardEntry } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 import { getAvatarComponent } from '../components/Avatars';
 import { squadsAPI, dailyQuestsAPI } from '../utils/api';
+import { useToast } from '../contexts/ToastContext';
 
 type Tab = 'pact' | 'leaderboard';
 
 const Squads = () => {
     const { t } = useTranslation();
+    const toast = useToast();
     const getSignal = useApiAbort();
     const isMountedRef = useRef(true);
     const [activeTab, setActiveTab] = useState<Tab>('pact');
@@ -101,14 +103,14 @@ const Squads = () => {
             if (result.ok && result.data?.squad) {
                 setSquad(result.data.squad);
                 playSound('success');
-                tg.showPopup({ message: t('squad_joined') || 'Joined squad successfully!' });
+                toast.success(t('squad_joined') || 'Joined squad successfully!');
             } else {
-                tg.showPopup({ message: result.error || 'Failed to join squad' });
+                toast.error(result.error || 'Failed to join squad');
             }
         } catch (error: any) {
             if (!isMountedRef.current || error?.name === 'AbortError') return;
             console.error('Failed to join squad:', error);
-            tg.showPopup({ message: 'Failed to join squad' });
+            toast.error('Failed to join squad');
         }
     };
 
@@ -126,12 +128,12 @@ const Squads = () => {
                 dailyQuestsAPI.updateProgress('create_squad').catch(() => {});
                 window.dispatchEvent(new CustomEvent('questProgressUpdated'));
             } else {
-                tg.showPopup({ message: result.error || 'Failed to create squad' });
+                toast.error(result.error || 'Failed to create squad');
             }
         } catch (error: any) {
             if (!isMountedRef.current || error?.name === 'AbortError') return;
             console.error('Failed to create squad:', error);
-            tg.showPopup({ message: 'Failed to create squad' });
+            toast.error('Failed to create squad');
         } finally {
             if (isMountedRef.current) setIsCreatingLoading(false);
         }
@@ -148,12 +150,12 @@ const Squads = () => {
                 setIsPactLocked(true);
                 playSound('success');
             } else {
-                tg.showPopup({ message: result.error || 'Failed to save payload' });
+                toast.error(result.error || 'Failed to save payload');
             }
         } catch (error: any) {
             if (!isMountedRef.current || error?.name === 'AbortError') return;
             console.error('Failed to save payload:', error);
-            tg.showPopup({ message: 'Failed to save payload' });
+            toast.error('Failed to save payload');
         } finally {
             if (isMountedRef.current) setIsSavingPayload(false);
         }
@@ -161,13 +163,13 @@ const Squads = () => {
 
     const copyLink = () => {
         navigator.clipboard.writeText(inviteLink);
-        tg.showPopup({ message: t('invite_copied') });
+        toast.success(t('invite_copied'));
     };
 
     const pingMember = (name: string) => {
         playSound('click');
         tg.HapticFeedback.notificationOccurred('success');
-        tg.showPopup({ message: `${t('ping_sent')}: ${name}` });
+        toast.success(`${t('ping_sent')}: ${name}`);
     };
 
     const leaveSquad = async () => {
@@ -184,14 +186,14 @@ const Squads = () => {
                 setSquad(null);
                 setSquadName('');
                 playSound('success');
-                tg.showPopup({ message: t('squad_left') || 'Left squad successfully' });
+                toast.success(t('squad_left') || 'Left squad successfully');
             } else {
-                tg.showPopup({ message: result.error || 'Failed to leave squad' });
+                toast.error(result.error || 'Failed to leave squad');
             }
         } catch (error: any) {
             if (!isMountedRef.current || error?.name === 'AbortError') return;
             console.error('Failed to leave squad:', error);
-            tg.showPopup({ message: 'Failed to leave squad' });
+            toast.error('Failed to leave squad');
         }
     };
 

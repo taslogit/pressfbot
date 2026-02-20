@@ -5,6 +5,7 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { tg } from '../utils/telegram';
 import { starsAPI } from '../utils/api';
 import { useProfile } from '../contexts/ProfileContext';
+import { useToast } from '../contexts/ToastContext';
 import { analytics } from '../utils/analytics';
 
 interface PaywallModalProps {
@@ -25,6 +26,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({
   onUpgrade
 }) => {
   const { t } = useTranslation();
+  const toast = useToast();
   const { profile, refreshProfile } = useProfile();
   const [trialUsed, setTrialUsed] = useState(false);
   const [trialLoading, setTrialLoading] = useState(false);
@@ -46,7 +48,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({
     } catch (e: any) {
       const code = e?.code || e?.body?.code;
       const msg = code === 'TRIAL_ALREADY_USED' ? (t('paywall_trial_already_used') || 'Триал уже использован') : (t('premium_purchase_failed') || 'Не удалось. Попробуйте позже.');
-      tg.showPopup({ message: msg });
+      toast.error(msg);
     } finally {
       setTrialLoading(false);
     }
@@ -66,7 +68,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({
       }
     } catch (error) {
       console.error('Failed to purchase premium:', error);
-      tg.showPopup({ message: t('premium_purchase_failed') || 'Не удалось купить Premium. Попробуйте позже.' });
+      toast.error(t('premium_purchase_failed') || 'Не удалось купить Premium. Попробуйте позже.');
     }
   };
 

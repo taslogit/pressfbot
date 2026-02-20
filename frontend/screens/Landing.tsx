@@ -431,7 +431,7 @@ const Landing = () => {
           /already\s*checked|уже\s*отмечен|already\s*claimed/i.test(String(result.error || ''));
 
         if (isAlreadyChecked) {
-          tg.showPopup({ message: t('checkin_already_done') });
+          toast.info(t('checkin_already_done'));
           imAlive();
           return;
         }

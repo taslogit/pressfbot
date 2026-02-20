@@ -907,7 +907,7 @@ const Store = () => {
                         tg.openLink?.(res.data.invoiceLink);
                         closeItemModal();
                       } else {
-                        tg.showPopup?.({ message: res.error || t('store_buy_failed') });
+                        toast.error(res.error || t('store_buy_failed'));
                       }
                     } else if (itemType === 'xp') {
                       const res = await storeAPI.buyItem(selectedItem.id);

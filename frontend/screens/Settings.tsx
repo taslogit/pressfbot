@@ -9,10 +9,12 @@ import { useProfile } from '../contexts/ProfileContext';
 import InfoSection from '../components/InfoSection';
 import { tg } from '../utils/telegram';
 import { playSound } from '../utils/sound';
+import { useToast } from '../contexts/ToastContext';
 import LoadingState from '../components/LoadingState';
 
 const Settings = () => {
   const { t, language, setLanguage } = useTranslation();
+  const toast = useToast();
   const { settings: settingsFromContext, refreshSettings } = useProfile();
   const [settings, setSettings] = useState(settingsFromContext || storage.getSettings());
   const wallet = useTonWallet();
@@ -169,7 +171,7 @@ const Settings = () => {
   const submitInheritance = async () => {
     const recipients = inheritanceRecipients.filter((r) => r.address && r.amount > 0);
     if (recipients.length === 0 || inheritanceTotal <= 0) {
-      tg.showPopup({ message: t('ton_error_fill_fields') });
+      toast.error(t('ton_error_fill_fields'));
       return;
     }
     const result = await tonAPI.createInheritancePlan({
@@ -178,12 +180,12 @@ const Settings = () => {
       totalAmount: inheritanceTotal,
       triggerType: 'deadman'
     });
-    tg.showPopup({ message: result.ok ? t('ton_inheritance_created') : t('ton_request_failed') });
+    result.ok ? toast.success(t('ton_inheritance_created')) : toast.error(t('ton_request_failed'));
   };
 
   const submitStorage = async () => {
     if (!storageProvider) {
-      tg.showPopup({ message: t('ton_error_fill_fields') });
+      toast.error(t('ton_error_fill_fields'));
       return;
     }
     const result = await tonAPI.createStoragePlan({
@@ -193,12 +195,12 @@ const Settings = () => {
       sizeBytes: storageSizeBytes || undefined,
       status: 'pending'
     });
-    tg.showPopup({ message: result.ok ? t('ton_storage_created') : t('ton_request_failed') });
+    result.ok ? toast.success(t('ton_storage_created')) : toast.error(t('ton_request_failed'));
   };
 
   const submitEscrow = async () => {
     if (!address || !escrowDuelId || escrowAmount <= 0) {
-      tg.showPopup({ message: t('ton_error_fill_fields') });
+      toast.error(t('ton_error_fill_fields'));
       return;
     }
     const result = await tonAPI.createDuelEscrow({
@@ -209,7 +211,7 @@ const Settings = () => {
       stakeAmount: escrowAmount,
       status: 'pending'
     });
-    tg.showPopup({ message: result.ok ? t('ton_escrow_created') : t('ton_request_failed') });
+    result.ok ? toast.success(t('ton_escrow_created')) : toast.error(t('ton_request_failed'));
   };
 
   return (

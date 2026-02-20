@@ -10,6 +10,7 @@ import InfoSection from '../components/InfoSection';
 import LoadingState from '../components/LoadingState';
 import { witnessesAPI } from '../utils/api';
 import { playSound } from '../utils/sound';
+import { useToast } from '../contexts/ToastContext';
 
 interface Witness {
   id: string;
@@ -22,6 +23,7 @@ interface Witness {
 
 const WitnessApproval = () => {
   const { t } = useTranslation();
+  const toast = useToast();
   const getSignal = useApiAbort();
   const isMountedRef = useRef(true);
   const [witnesses, setWitnesses] = useState<Witness[]>([]);
@@ -76,7 +78,7 @@ const WitnessApproval = () => {
 
   const copyLink = () => {
     navigator.clipboard.writeText(inviteLink);
-    tg.showPopup({ message: t('link_copied') });
+    toast.success(t('link_copied'));
     playSound('click');
   };
 
@@ -92,12 +94,12 @@ const WitnessApproval = () => {
         setIsAdding(false);
         playSound('success');
       } else {
-        tg.showPopup({ message: result.error || 'Failed to add witness' });
+        toast.error(result.error || 'Failed to add witness');
       }
     } catch (error: any) {
       if (!isMountedRef.current || error?.name === 'AbortError') return;
       console.error('Failed to add witness:', error);
-      tg.showPopup({ message: 'Failed to add witness' });
+      toast.error('Failed to add witness');
     } finally {
       if (isMountedRef.current) setIsAddingLoading(false);
     }
@@ -112,14 +114,14 @@ const WitnessApproval = () => {
       if (result.ok) {
         setWitnesses(prev => prev.map(w => w.id === witnessId ? { ...w, status: 'confirmed' as const } : w));
         playSound('success');
-        tg.showPopup({ message: t('witness_confirmed') || 'Witness confirmed!' });
+        toast.success(t('witness_confirmed') || 'Witness confirmed!');
       } else {
-        tg.showPopup({ message: result.error || 'Failed to confirm witness' });
+        toast.error(result.error || 'Failed to confirm witness');
       }
     } catch (error: any) {
       if (!isMountedRef.current || error?.name === 'AbortError') return;
       console.error('Failed to confirm witness:', error);
-      tg.showPopup({ message: 'Failed to confirm witness' });
+      toast.error('Failed to confirm witness');
     } finally {
       if (isMountedRef.current) setConfirmingIds(prev => {
         const next = new Set(prev);
@@ -139,12 +141,12 @@ const WitnessApproval = () => {
         setWitnesses(prev => prev.filter(w => w.id !== witnessId));
         playSound('success');
       } else {
-        tg.showPopup({ message: result.error || 'Failed to delete witness' });
+        toast.error(result.error || 'Failed to delete witness');
       }
     } catch (error: any) {
       if (!isMountedRef.current || error?.name === 'AbortError') return;
       console.error('Failed to delete witness:', error);
-      tg.showPopup({ message: 'Failed to delete witness' });
+      toast.error('Failed to delete witness');
     } finally {
       if (isMountedRef.current) setDeletingIds(prev => {
         const next = new Set(prev);

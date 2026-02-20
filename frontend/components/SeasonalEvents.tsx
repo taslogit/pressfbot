@@ -7,9 +7,11 @@ import LoadingState from './LoadingState';
 import { SeasonalEvent } from '../types';
 import { tg } from '../utils/telegram';
 import { playSound } from '../utils/sound';
+import { useToast } from '../contexts/ToastContext';
 
 const SeasonalEvents: React.FC = () => {
   const { t } = useTranslation();
+  const toast = useToast();
   const [events, setEvents] = useState<SeasonalEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<SeasonalEvent | null>(null);
@@ -44,7 +46,7 @@ const SeasonalEvents: React.FC = () => {
       const result = await eventsAPI.claimReward(eventId, rewardId);
       if (result.ok) {
         playSound('success');
-        tg.showPopup({ message: t('reward_claimed') || 'Reward claimed!' });
+        toast.success(t('reward_claimed') || 'Reward claimed!');
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         await loadEvents();
       } else {
@@ -52,7 +54,7 @@ const SeasonalEvents: React.FC = () => {
       }
     } catch (error: any) {
       playSound('error');
-      tg.showPopup({ message: error.message || t('reward_claim_failed') || 'Failed to claim reward' });
+      toast.error(error.message || t('reward_claim_failed') || 'Failed to claim reward');
       if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
     } finally {
       setClaiming(null);

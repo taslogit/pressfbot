@@ -7,9 +7,11 @@ import LoadingState from './LoadingState';
 import { Tournament, TournamentParticipant } from '../types';
 import { tg } from '../utils/telegram';
 import { playSound } from '../utils/sound';
+import { useToast } from '../contexts/ToastContext';
 
 const Tournaments: React.FC = () => {
   const { t } = useTranslation();
+  const toast = useToast();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'active' | 'past'>('upcoming');
@@ -42,7 +44,7 @@ const Tournaments: React.FC = () => {
       const result = await tournamentsAPI.register(tournamentId);
       if (result.ok) {
         playSound('success');
-        tg.showPopup({ message: t('tournament_registered') || 'Successfully registered!' });
+        toast.success(t('tournament_registered') || 'Successfully registered!');
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         await loadTournaments();
       } else {
@@ -50,7 +52,7 @@ const Tournaments: React.FC = () => {
       }
     } catch (error: any) {
       playSound('error');
-      tg.showPopup({ message: error.message || t('tournament_register_failed') || 'Failed to register' });
+      toast.error(error.message || t('tournament_register_failed') || 'Failed to register');
       if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
     } finally {
       setRegistering(null);

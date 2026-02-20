@@ -227,7 +227,7 @@ const Duels = () => {
     const validation = validateDuel();
     if (!validation.valid) {
       playSound('error');
-      tg.showPopup({ message: validation.error || t('save_error') });
+      toast.error(validation.error || t('save_error'));
       return;
     }
 
@@ -254,10 +254,7 @@ const Duels = () => {
         const result = await storage.updateDuelAsync(editingDuelId, newDuel);
         analytics.track('duel_updated', { duelId: editingDuelId });
         if (result?.ok && result?.data?.winnerTauntMessage) {
-          tg.showPopup({
-            message: result.data.winnerTauntMessage,
-            title: t('duel_winner_taunt_title') || 'Winner says'
-          });
+          toast.info(result.data.winnerTauntMessage);
           dailyQuestsAPI.updateProgress('win_duel').catch(() => {});
           window.dispatchEvent(new CustomEvent('questProgressUpdated'));
         } else {
