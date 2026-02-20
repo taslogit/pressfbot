@@ -161,9 +161,13 @@ const Squads = () => {
         }
     };
 
-    const copyLink = () => {
-        navigator.clipboard.writeText(inviteLink);
-        toast.success(t('invite_copied'));
+    const copyLink = async () => {
+        try {
+            await navigator.clipboard.writeText(inviteLink);
+            toast.success(t('invite_copied'));
+        } catch (error) {
+            toast.error(t('link_copy_failed') || 'Failed to copy link');
+        }
     };
 
     const pingMember = (name: string) => {

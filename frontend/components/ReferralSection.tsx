@@ -38,14 +38,18 @@ const ReferralSection: React.FC<Props> = ({ className = '' }) => {
     return () => { isMounted = false; };
   }, []);
 
-  const copyReferralLink = () => {
+  const copyReferralLink = async () => {
     if (!referralInfo?.referralLink) return;
-    navigator.clipboard.writeText(referralInfo.referralLink);
-    playSound('success');
-    toast.success(t('referral_link_copied') || 'Link copied!');
-    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-    analytics.trackReferral(referralInfo.referralCode || '');
-    analytics.track('referral_link_copied', { code: referralInfo.referralCode });
+    try {
+      await navigator.clipboard.writeText(referralInfo.referralLink);
+      playSound('success');
+      toast.success(t('referral_link_copied') || 'Link copied!');
+      if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      analytics.trackReferral(referralInfo.referralCode || '');
+      analytics.track('referral_link_copied', { code: referralInfo.referralCode });
+    } catch (error) {
+      toast.error(t('link_copy_failed') || 'Failed to copy link');
+    }
   };
 
   const shareReferralLink = () => {

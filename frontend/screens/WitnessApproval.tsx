@@ -76,10 +76,14 @@ const WitnessApproval = () => {
     }
   };
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(inviteLink);
-    toast.success(t('link_copied'));
-    playSound('click');
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      toast.success(t('link_copied'));
+      playSound('click');
+    } catch (error) {
+      toast.error(t('link_copy_failed') || 'Failed to copy link');
+    }
   };
 
   const handleAddWitness = async () => {

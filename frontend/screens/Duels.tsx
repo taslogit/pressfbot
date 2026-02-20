@@ -363,9 +363,13 @@ const Duels = () => {
     }
   };
 
-  const copyWitnessLink = () => {
-    navigator.clipboard.writeText(witnessLink);
-    toast.success(t('link_copied'));
+  const copyWitnessLink = async () => {
+    try {
+      await navigator.clipboard.writeText(witnessLink);
+      toast.success(t('link_copied'));
+    } catch (error) {
+      toast.error(t('link_copy_failed') || 'Failed to copy link');
+    }
   };
 
   const normalizeName = (value?: string) => (value || '').replace('@', '').trim().toLowerCase();
