@@ -299,7 +299,7 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
       )}
 
       {createPortal(
-        <AnimatePresence onExitComplete={handleExitComplete}>
+        <AnimatePresence>
           {isOpen && (
             <motion.div
               key="info-overlay"
@@ -334,6 +334,9 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
                     stiffness: 65,
                     opacity: { duration: 0.5 }
                   }
+                }}
+                onAnimationComplete={() => {
+                  if (!isOpen) handleExitComplete();
                 }}
                 className="relative w-full max-w-sm bg-[#0a0a0c] border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.9)] flex flex-col max-h-[70vh] overflow-hidden origin-center"
                 onClick={(e) => e.stopPropagation()}
