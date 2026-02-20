@@ -504,7 +504,6 @@ const { createActivityRoutes, logActivity } = require('./routes/activity');
 const { createFriendsRoutes } = require('./routes/friends');
 const { createSquadsRoutes } = require('./routes/squads');
 const { createWitnessesRoutes } = require('./routes/witnesses');
-const { createFriendsRoutes } = require('./routes/friends');
 const { createStarsRoutes, handleStarsCatalog, processStarsPayment } = require('./routes/stars');
 const { createStoreRoutes, handleStoreCatalog } = require('./routes/store');
 const { createLimitCheck, createLimitsRoute } = require('./middleware/freeTier');
