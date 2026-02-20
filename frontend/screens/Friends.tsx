@@ -512,6 +512,7 @@ const Friends: React.FC = () => {
               );
             })
           )}
+          </div>
         </div>
       )}
 
