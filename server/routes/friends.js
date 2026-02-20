@@ -459,8 +459,6 @@ const createFriendsRoutes = (pool) => {
           
           UNION
           
-          UNION
-          
           -- Referrals (referrer/referred)
           SELECT DISTINCT p.user_id, 4 AS priority
           FROM profiles p
@@ -491,15 +489,17 @@ const createFriendsRoutes = (pool) => {
               WHERE ((f.user_id = $1 AND f.friend_id = p.user_id) OR (f.user_id = p.user_id AND f.friend_id = $1))
             )
             AND p.created_at > now() - INTERVAL '30 days' -- Active in last 30 days
-          ORDER BY RANDOM()
-          LIMIT $3
+        ),
+        suggestions_count AS (
+          SELECT COUNT(*) as cnt FROM all_suggestions
         )
         SELECT user_id, avatar, title, level, priority
         FROM (
-          SELECT * FROM all_suggestions
+          SELECT user_id, avatar, title, level, priority FROM all_suggestions
           UNION ALL
-          SELECT * FROM fallback_users
-          WHERE NOT EXISTS (SELECT 1 FROM all_suggestions)
+          SELECT user_id, avatar, title, level, priority 
+          FROM fallback_users
+          WHERE (SELECT cnt FROM suggestions_count) = 0
         ) combined
         ORDER BY priority, RANDOM()
         LIMIT $3`,
