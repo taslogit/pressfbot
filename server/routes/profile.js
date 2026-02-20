@@ -419,7 +419,6 @@ const createProfileRoutes = (pool) => {
 
           if (lastCheckInStr === today) {
             await client.query('ROLLBACK');
-            client.release();
             return sendError(res, 400, 'ALREADY_CHECKED_IN', 'You have already checked in today');
           }
         }
@@ -565,7 +564,7 @@ const createProfileRoutes = (pool) => {
 
       // Commit transaction
       await client.query('COMMIT');
-      client.release();
+      // Do not release here — finally block will release the client
 
       // Update active streak challenges (outside transaction)
       try {
