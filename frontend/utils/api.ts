@@ -571,6 +571,9 @@ export const friendsAPI = {
   getSuggestions: async (limit = 10) => {
     return apiRequest<{ suggestions: any[] }>(`/api/friends/suggestions?limit=${limit}`);
   },
+  getOnline: async () => {
+    return apiRequest<{ friends: any[] }>('/api/friends/online');
+  },
 };
 
 // Witnesses API

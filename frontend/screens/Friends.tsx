@@ -50,8 +50,10 @@ const Friends: React.FC = () => {
   const [pending, setPending] = useState<{ incoming: PendingItem[]; outgoing: PendingItem[] }>({ incoming: [], outgoing: [] });
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [suggestions, setSuggestions] = useState<SearchUser[]>([]);
+  const [onlineFriends, setOnlineFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [onlineLoading, setOnlineLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
@@ -59,6 +61,12 @@ const Friends: React.FC = () => {
   useEffect(() => {
     loadFriends();
     loadPending();
+    loadOnlineFriends();
+    // Refresh online friends every 30 seconds
+    const interval = setInterval(() => {
+      loadOnlineFriends();
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -242,6 +250,43 @@ const Friends: React.FC = () => {
     }
   };
 
+  const loadOnlineFriends = async () => {
+    try {
+      setOnlineLoading(true);
+      if (import.meta.env.DEV) {
+        console.log('[Friends] Loading online friends...');
+      }
+      const result = await friendsAPI.getOnline();
+      if (import.meta.env.DEV) {
+        console.log('[Friends] Online friends API response:', result);
+      }
+      if (result.ok && result.data) {
+        const onlineList = result.data.friends || [];
+        if (import.meta.env.DEV) {
+          console.log('[Friends] Online friends loaded:', onlineList.length, onlineList);
+        }
+        // Map to Friend type format
+        setOnlineFriends(onlineList.map((f: any) => ({
+          id: `online-${f.userId}`,
+          userId: f.userId,
+          avatar: f.avatar,
+          title: f.title,
+          level: f.level,
+          experience: 0,
+          acceptedAt: f.lastSeenAt,
+        })));
+      } else {
+        console.warn('[Friends] Failed to load online friends:', result.error);
+        setOnlineFriends([]);
+      }
+    } catch (error) {
+      console.error('[Friends] Failed to load online friends:', error);
+      setOnlineFriends([]);
+    } finally {
+      setOnlineLoading(false);
+    }
+  };
+
   const loadSuggestions = async () => {
     try {
       setSuggestionsLoading(true);
@@ -310,7 +355,7 @@ const Friends: React.FC = () => {
               : 'text-muted hover:text-primary'
           }`}
         >
-          {t('my_friends') || 'Мои друзья'} {friends.length > 0 && `(${friends.length})`}
+          {t('my_friends') || 'Мои друзья'} {friends.length > 0 && `(${friends.length})`} {onlineFriends.length > 0 && <span className="text-green-400">• {onlineFriends.length}</span>}
         </button>
         <button
           type="button"
@@ -358,25 +403,82 @@ const Friends: React.FC = () => {
       {/* Content */}
       {activeTab === 'friends' && (
         <div className="space-y-3">
-          {loading ? (
-            <LoadingState terminal message={t('loading')} className="py-8 min-h-0" />
-          ) : friends.length === 0 ? (
-            <div className="text-center py-10 text-muted text-sm">
-              {t('no_friends') || 'У тебя пока нет друзей. Найди их через поиск!'}
+          {/* Online Friends Section */}
+          {onlineFriends.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-muted uppercase tracking-wider">
+                  {t('online_friends') || 'Онлайн друзья'} ({onlineFriends.length})
+                </h3>
+                {onlineLoading && <Loader2 size={12} className="animate-spin text-muted" />}
+              </div>
+              <div className="space-y-1.5">
+                {onlineFriends.map((friend) => {
+                  const AvatarComponent = getAvatarComponent(friend.avatar);
+                  return (
+                    <motion.div
+                      key={friend.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex items-center gap-3 p-2 rounded-xl bg-card/40 hover:bg-card/60 border border-border/50 transition-colors"
+                    >
+                      <div className="flex-shrink-0 relative">
+                        <AvatarComponent size={36} />
+                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background"></div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-primary truncate text-sm">
+                          {getFriendDisplayName(friend)}
+                        </div>
+                        <div className="text-xs text-muted">
+                          Level {friend.level}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/profile?userId=${friend.userId}`)}
+                        className="p-1.5 rounded-md hover:bg-white/5 text-muted hover:text-primary transition-colors"
+                        title={t('view_profile') || 'View profile'}
+                      >
+                        <User size={14} />
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
-          ) : (
-            friends.map((friend) => {
-              const AvatarComponent = getAvatarComponent(friend.avatar);
-              return (
-                <motion.div
-                  key={friend.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-card/40 hover:bg-card/60 border border-border/50 transition-colors"
-                >
-                  <div className="flex-shrink-0">
-                    <AvatarComponent size={48} />
-                  </div>
+          )}
+
+          {/* All Friends Section */}
+          <div className="space-y-2">
+            {onlineFriends.length > 0 && (
+              <h3 className="text-xs font-bold text-muted uppercase tracking-wider">
+                {t('all_friends') || 'Все друзья'} ({friends.length})
+              </h3>
+            )}
+            {loading ? (
+              <LoadingState terminal message={t('loading')} className="py-8 min-h-0" />
+            ) : friends.length === 0 ? (
+              <div className="text-center py-10 text-muted text-sm">
+                {t('no_friends') || 'У тебя пока нет друзей. Найди их через поиск!'}
+              </div>
+            ) : (
+              friends.map((friend) => {
+                const AvatarComponent = getAvatarComponent(friend.avatar);
+                const isOnline = onlineFriends.some(of => of.userId === friend.userId);
+                return (
+                  <motion.div
+                    key={friend.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-card/40 hover:bg-card/60 border border-border/50 transition-colors"
+                  >
+                    <div className="flex-shrink-0 relative">
+                      <AvatarComponent size={48} />
+                      {isOnline && (
+                        <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-background"></div>
+                      )}
+                    </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-primary truncate">
                       {getFriendDisplayName(friend)}

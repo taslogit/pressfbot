@@ -532,6 +532,72 @@ const createFriendsRoutes = (pool) => {
     }
   });
 
+  // GET /api/friends/online — get online friends (last_seen_at within last 5 minutes)
+  router.get('/online', async (req, res) => {
+    try {
+      logger.debug('GET /api/friends/online - request received', { userId: req.userId });
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+      const userId = req.userId;
+      if (!userId) {
+        logger.warn('GET /api/friends/online - user not authenticated');
+        return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+      }
+
+      // Get all accepted friends (both directions)
+      const friendshipsResult = await pool.query(
+        `SELECT friend_id AS friend_id FROM friendships 
+         WHERE user_id = $1 AND status = 'accepted'
+         UNION
+         SELECT user_id AS friend_id FROM friendships 
+         WHERE friend_id = $1 AND status = 'accepted'`,
+        [userId]
+      );
+
+      const friendIds = friendshipsResult.rows.map(r => Number(r.friend_id)).filter(id => id && id > 0);
+
+      if (friendIds.length === 0) {
+        return res.json({ ok: true, friends: [] });
+      }
+
+      // Get online friends (last_seen_at within last 5 minutes)
+      const onlineThreshold = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes ago
+      const placeholders = friendIds.map((_, i) => `$${i + 2}`).join(',');
+      
+      const result = await pool.query(
+        `SELECT DISTINCT s.telegram_id AS user_id, p.avatar, p.title, p.level, s.last_seen_at
+         FROM sessions s
+         JOIN profiles p ON p.user_id = s.telegram_id
+         WHERE s.telegram_id IN (${placeholders})
+           AND s.last_seen_at >= $1
+           AND s.expires_at > now()
+         ORDER BY s.last_seen_at DESC`,
+        [onlineThreshold, ...friendIds]
+      );
+
+      const onlineFriends = result.rows.map((row) => ({
+        userId: row.user_id,
+        avatar: row.avatar || 'pressf',
+        title: row.title,
+        level: row.level || 1,
+        lastSeenAt: row.last_seen_at?.toISOString(),
+      }));
+
+      logger.debug('Online friends result', { 
+        userId, 
+        onlineCount: onlineFriends.length,
+        totalFriends: friendIds.length 
+      });
+
+      return res.json({ ok: true, friends: onlineFriends });
+    } catch (error) {
+      const errorMessage = error?.message || (typeof error === 'string' ? error : JSON.stringify(error));
+      logger.error('Friends online error:', { error: errorMessage, stack: error?.stack });
+      return sendError(res, 500, 'FRIENDS_ONLINE_FAILED', 'Failed to load online friends');
+    }
+  });
+
   return router;
 };
 
