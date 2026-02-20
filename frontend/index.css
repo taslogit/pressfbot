@@ -656,3 +656,72 @@ select:focus-visible {
   .splash-screen [class*="splash-"] { animation: none !important; }
   .splash-phase-in { opacity: 1; }
 }
+
+/* ─── Store: анимированные градиентные рамки аватара (витрина и превью) ─── */
+@keyframes store-frame-glow-pulse {
+  0%, 100% { filter: brightness(1); opacity: 1; }
+  50% { filter: brightness(1.15); opacity: 1; }
+}
+@keyframes store-frame-rotate {
+  from { transform: rotate(0deg) translateZ(0); }
+  to { transform: rotate(360deg) translateZ(0); }
+}
+.store-frame-ring {
+  position: relative;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  animation: store-frame-glow-pulse 2.5s ease-in-out infinite;
+  will-change: filter;
+  backface-visibility: hidden;
+}
+.store-frame-ring::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, var(--frame-c1), var(--frame-c2), var(--frame-c3), var(--frame-c1));
+  -webkit-mask: radial-gradient(circle at 50% 50%, transparent calc(50% - 2px), #fff 50%);
+  mask: radial-gradient(circle at 50% 50%, transparent calc(50% - 2px), #fff 50%);
+  animation: store-frame-rotate 6s linear infinite;
+}
+.store-frame-ring.store-frame-fire {
+  --frame-c1: #f97316;
+  --frame-c2: #fb923c;
+  --frame-c3: #fdba74;
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.5), 0 0 24px rgba(249, 115, 22, 0.25);
+}
+.store-frame-ring.store-frame-diamond {
+  --frame-c1: #22d3ee;
+  --frame-c2: #67e8f9;
+  --frame-c3: #a5f3fc;
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.5), 0 0 24px rgba(34, 211, 238, 0.25);
+}
+.store-frame-ring.store-frame-neon {
+  --frame-c1: #00E0FF;
+  --frame-c2: #B4FF00;
+  --frame-c3: #00E0FF;
+  box-shadow: 0 0 12px rgba(0, 224, 255, 0.6), 0 0 24px rgba(180, 255, 0, 0.2);
+}
+.store-frame-ring.store-frame-gold {
+  --frame-c1: #fbbf24;
+  --frame-c2: #fcd34d;
+  --frame-c3: #fde68a;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.5), 0 0 24px rgba(251, 191, 36, 0.25);
+}
+.store-frame-inner {
+  position: absolute;
+  inset: 2px;
+  z-index: 1;
+  border-radius: 50%;
+  background: rgba(26, 26, 26, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .store-frame-ring { animation: none; }
+  .store-frame-ring::before { animation: none; }
+}

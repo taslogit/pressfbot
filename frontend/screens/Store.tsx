@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X, Package, Box, ChevronDown, ChevronRight } from 'lucide-react';
+import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X, Package, Box, ChevronDown, ChevronRight, Square } from 'lucide-react';
 import { useTonAddress } from '@tonconnect/ui-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { starsAPI, storeAPI, profileAPI, getStaticUrl } from '../utils/api';
@@ -34,6 +34,25 @@ const TON_ITEMS = [
   { id: 'inheritance', priceTon: '0.1', settingsAnchor: 'ton_inheritance' },
   { id: 'duel_escrow', priceTon: '—', settingsAnchor: 'ton_escrow' }
 ];
+
+const VALID_FRAME_KEYS = ['fire', 'diamond', 'neon', 'gold'] as const;
+const getFrameKey = (itemId: string): string | null => {
+  if (!itemId?.startsWith('avatar_frame_')) return null;
+  const key = itemId.replace(/^avatar_frame_/, '');
+  return VALID_FRAME_KEYS.includes(key as any) ? key : null;
+};
+
+const StoreFramePreview = ({ frameKey, size = 'sm' }: { frameKey: string; size?: 'sm' | 'md' }) => {
+  const sizeClass = size === 'sm' ? 'w-12 h-12' : 'w-20 h-20';
+  const frameClass = VALID_FRAME_KEYS.includes(frameKey as any)
+    ? `store-frame-ring store-frame-${frameKey}`
+    : 'store-frame-ring store-frame-fire';
+  return (
+    <div className={`${sizeClass} ${frameClass}`}>
+      <div className="store-frame-inner" />
+    </div>
+  );
+};
 
 const Store = () => {
   const { t } = useTranslation();
@@ -653,7 +672,8 @@ const Store = () => {
                   }}
                   className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-white/5 transition-colors"
                 >
-                  <h4 className="font-heading text-xs font-black uppercase tracking-widest text-accent-pink">
+                  <h4 className="font-heading text-xs font-black uppercase tracking-widest text-accent-pink flex items-center gap-2">
+                    {category === 'avatar_frame' && <Square size={16} className="text-accent-cyan/90" strokeWidth={2} />}
                     {t(CATEGORY_LABELS[category] as any) || category}
                   </h4>
                   <span className="text-muted flex-shrink-0">
@@ -697,15 +717,7 @@ const Store = () => {
                             />
                           </div>
                         ) : category === 'avatar_frame' ? (
-                          <div className={`w-12 h-12 rounded-xl flex-shrink-0 bg-black/60 flex items-center justify-center ${
-                            item.id === 'avatar_frame_fire' ? 'border-2 border-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.5)]' :
-                            item.id === 'avatar_frame_diamond' ? 'border-2 border-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)]' :
-                            item.id === 'avatar_frame_neon' ? 'border-2 border-accent-cyan shadow-[0_0_10px_rgba(0,224,255,0.5)]' :
-                            item.id === 'avatar_frame_gold' ? 'border-2 border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]' :
-                            'border-2 border-purple-500/30'
-                          }`}>
-                            ◫
-                          </div>
+                          <StoreFramePreview frameKey={getFrameKey(item.id) || 'fire'} size="sm" />
                         ) : (
                           <div className="w-12 h-12 rounded-xl bg-accent-pink/20 flex items-center justify-center flex-shrink-0">
                             <Sparkles size={22} className="text-accent-pink" />
@@ -851,6 +863,11 @@ const Store = () => {
                   <X size={24} />
                 </button>
               </div>
+              {itemType === 'xp' && getFrameKey(selectedItem.id) && (
+                <div className="flex justify-center mb-4">
+                  <StoreFramePreview frameKey={getFrameKey(selectedItem.id)!} size="md" />
+                </div>
+              )}
               <p className="text-sm text-muted mb-4">
                 {itemType === 'xp' ? (() => { const tk = t(`store_item_${selectedItem.id}_desc` as any); return tk !== `store_item_${selectedItem.id}_desc` ? tk : selectedItem.description; })() : (() => { const tk = t(`store_stars_${selectedItem.id}_desc` as any); return tk !== `store_stars_${selectedItem.id}_desc` ? tk : selectedItem.description; })()}
               </p>
