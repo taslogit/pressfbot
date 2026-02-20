@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X, Package, Box, ChevronDown, ChevronRight, Square } from 'lucide-react';
+import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X, Package, Box, ChevronDown, ChevronRight, Square, Banknote, FileText, Award, ScrollText } from 'lucide-react';
 import { useTonAddress } from '@tonconnect/ui-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { starsAPI, storeAPI, profileAPI, getStaticUrl } from '../utils/api';
@@ -34,6 +34,28 @@ const TON_ITEMS = [
   { id: 'inheritance', priceTon: '0.1', settingsAnchor: 'ton_inheritance' },
   { id: 'duel_escrow', priceTon: '—', settingsAnchor: 'ton_escrow' }
 ];
+
+// Stars catalog: map item id to section (for sub-sections with icons)
+const STARS_SECTION_ORDER = ['premium', 'boosts', 'templates', 'profile', 'gifts', 'letters', 'ton'] as const;
+const getStarsSection = (itemId: string): (typeof STARS_SECTION_ORDER)[number] => {
+  if (itemId?.startsWith('premium_')) return 'premium';
+  if (itemId === 'boost_duel') return 'boosts';
+  if (itemId?.startsWith('template_premium_')) return 'templates';
+  if (itemId?.startsWith('avatar_frame_') || itemId === 'custom_badge') return 'profile';
+  if (itemId?.startsWith('gift_')) return 'gifts';
+  if (itemId === 'witness_slots_5') return 'letters';
+  if (itemId === 'ton_storage_boost') return 'ton';
+  return 'profile';
+};
+const STARS_SECTION_ICONS: Record<(typeof STARS_SECTION_ORDER)[number], typeof Banknote> = {
+  premium: Banknote,
+  boosts: Zap,
+  templates: FileText,
+  profile: Award,
+  gifts: Gift,
+  letters: ScrollText,
+  ton: Wallet
+};
 
 const VALID_FRAME_KEYS = ['fire', 'diamond', 'neon', 'gold'] as const;
 const getFrameKey = (itemId: string): string | null => {
@@ -570,27 +592,55 @@ const Store = () => {
               </div>
             ) : starsCatalogLoading ? (
               <ListSkeleton rows={3} />
-            ) : (
-            <div className="grid gap-2">
-              {starsCatalog.map((item: any) => (
-                <motion.button
-                  key={item.id}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => openItemModal(item, 'stars')}
-                  className="w-full flex items-center gap-3 p-4 rounded-xl border border-border bg-black/40 hover:border-accent-lime/50 text-left"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-accent-lime/20 flex items-center justify-center flex-shrink-0">
-                    <Gift size={22} className="text-accent-lime" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="font-bold text-primary block truncate">{t(`store_stars_${item.id}` as any) || item.title}</span>
-                    <span className="text-xs text-muted line-clamp-2">{t(`store_stars_${item.id}_desc` as any) || item.description}</span>
-                  </div>
-                  <span className="text-accent-lime font-bold flex-shrink-0">{item.stars} ⭐</span>
-                </motion.button>
-              ))}
-            </div>
-            )}
+            ) : (() => {
+              const starsBySection = (starsCatalog as any[]).reduce((acc: Record<string, any[]>, item) => {
+                const section = getStarsSection(item.id);
+                if (!acc[section]) acc[section] = [];
+                acc[section].push(item);
+                return acc;
+              }, {});
+              const orderedSections = STARS_SECTION_ORDER.filter((s) => starsBySection[s]?.length);
+              return (
+                <div className="space-y-5">
+                  {orderedSections.map((sectionKey) => {
+                    const items = starsBySection[sectionKey] || [];
+                    const SectionIcon = STARS_SECTION_ICONS[sectionKey];
+                    const isPremium = sectionKey === 'premium';
+                    return (
+                      <div key={sectionKey} className="rounded-xl border border-border/60 overflow-hidden bg-black/20">
+                        <div className="flex items-center gap-2 px-4 py-3 border-b border-border/40 bg-black/30">
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${isPremium ? 'bg-amber-500/20 text-amber-400' : 'bg-accent-lime/20 text-accent-lime'}`}>
+                            <SectionIcon size={18} strokeWidth={2} />
+                          </div>
+                          <h3 className="font-heading text-xs font-black uppercase tracking-widest text-primary">
+                            {t(`store_stars_section_${sectionKey}` as any)}
+                          </h3>
+                        </div>
+                        <div className="grid gap-2 p-4">
+                          {items.map((item: any) => (
+                            <motion.button
+                              key={item.id}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => openItemModal(item, 'stars')}
+                              className="w-full flex items-center gap-3 p-4 rounded-xl border border-border bg-black/40 hover:border-accent-lime/50 text-left"
+                            >
+                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${sectionKey === 'premium' ? 'bg-amber-500/20 text-amber-400' : 'bg-accent-lime/20 text-accent-lime'}`}>
+                                <SectionIcon size={22} strokeWidth={2} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <span className="font-bold text-primary block truncate">{t(`store_stars_${item.id}` as any) || item.title}</span>
+                                <span className="text-xs text-muted line-clamp-2">{t(`store_stars_${item.id}_desc` as any) || item.description}</span>
+                              </div>
+                              <span className={`font-bold flex-shrink-0 ${sectionKey === 'premium' ? 'text-amber-400' : 'text-accent-lime'}`}>{item.stars} ⭐</span>
+                            </motion.button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </motion.div>
         )}
 
