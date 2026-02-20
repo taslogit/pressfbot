@@ -527,11 +527,11 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck) => {
       let winnerTauntMessage = null;
       if (loser !== undefined && loser != null) {
         const duelRow = await pool.query(
-          'SELECT challenger_id, opponent_id, loser_id FROM duels WHERE id = $1',
+          'SELECT challenger_id, opponent_id, loser_id, title FROM duels WHERE id = $1',
           [duelId]
         );
         if (duelRow.rows[0]) {
-          const { challenger_id, opponent_id, loser_id } = duelRow.rows[0];
+          const { challenger_id, opponent_id, loser_id, title } = duelRow.rows[0];
           const winnerId = loser_id === challenger_id ? opponent_id : challenger_id;
           if (winnerId) {
             const tauntRes = await pool.query(
@@ -539,6 +539,25 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck) => {
               [winnerId]
             );
             winnerTauntMessage = tauntRes.rows[0]?.duel_taunt_message || null;
+
+            // Log friend activity: friend won a duel
+            try {
+              const { logFriendActivity } = require('../utils/friendActivity');
+              await logFriendActivity(
+                pool,
+                winnerId,
+                'friend_duel_won',
+                {
+                  duelId,
+                  duelTitle: title || 'Untitled Duel',
+                  opponentId: loser_id === challenger_id ? challenger_id : opponent_id
+                },
+                duelId,
+                'duel'
+              );
+            } catch (friendActivityError) {
+              logger.debug('Failed to log friend duel won activity', { error: friendActivityError?.message });
+            }
           }
         }
       }

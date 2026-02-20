@@ -59,12 +59,71 @@ function getXPReward(action) {
   return XP_REWARDS[action] || 0;
 }
 
+/**
+ * Award XP and check for level up, then log friend activity if level increased
+ * @param {Pool} pool - Database pool
+ * @param {number} userId - User ID
+ * @param {number} xpAmount - XP to award
+ * @returns {Promise<{levelUp: boolean, newLevel: number, oldLevel: number}>}
+ */
+async function awardXPAndCheckLevelUp(pool, userId, xpAmount) {
+  if (!pool || !userId || !xpAmount || xpAmount <= 0) {
+    return { levelUp: false, newLevel: 0, oldLevel: 0 };
+  }
+
+  try {
+    // Get current XP and level
+    const profileResult = await pool.query(
+      'SELECT experience, level FROM profiles WHERE user_id = $1',
+      [userId]
+    );
+
+    if (profileResult.rowCount === 0) {
+      return { levelUp: false, newLevel: 0, oldLevel: 0 };
+    }
+
+    const oldXP = profileResult.rows[0].experience || 0;
+    const oldLevel = calculateLevel(oldXP);
+    const newXP = oldXP + xpAmount;
+    const newLevel = calculateLevel(newXP);
+
+    const levelUp = newLevel > oldLevel;
+
+    // Log friend activity if level increased
+    if (levelUp) {
+      try {
+        const { logFriendActivity } = require('./friendActivity');
+        await logFriendActivity(
+          pool,
+          userId,
+          'friend_level_up',
+          {
+            newLevel,
+            oldLevel,
+            xpGained: xpAmount
+          }
+        );
+      } catch (friendActivityError) {
+        const logger = require('./logger');
+        logger.debug('Failed to log friend level up activity', { error: friendActivityError?.message });
+      }
+    }
+
+    return { levelUp, newLevel, oldLevel };
+  } catch (error) {
+    const logger = require('./logger');
+    logger.error('Award XP and check level up error:', { error: error?.message, userId });
+    return { levelUp: false, newLevel: 0, oldLevel: 0 };
+  }
+}
+
 module.exports = {
   calculateLevel,
   xpForLevel,
   xpForNextLevel,
   getTitleForLevel,
   getXPReward,
+  awardXPAndCheckLevelUp,
   LEVEL_TITLES,
   XP_REWARDS
 };

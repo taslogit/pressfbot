@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, FileText, Swords, Gift, CheckCircle, Trophy, Sparkles, UserPlus } from 'lucide-react';
+import { Activity, FileText, Swords, Gift, CheckCircle, Trophy, Sparkles, UserPlus, Star, Award } from 'lucide-react';
 import { activityAPI } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
 import { ActivityFeedItem } from '../types';
@@ -66,6 +66,12 @@ const ActivityFeed: React.FC = () => {
         return <Sparkles size={16} className="text-purple-400" />;
       case 'friend_added':
         return <UserPlus size={16} className="text-accent-cyan" />;
+      case 'friend_level_up':
+        return <Sparkles size={16} className="text-purple-400" />;
+      case 'friend_achievement_unlocked':
+        return <Award size={16} className="text-accent-gold" />;
+      case 'friend_duel_won':
+        return <Trophy size={16} className="text-orange-500" />;
       default:
         return <Activity size={16} className="text-muted" />;
     }
@@ -128,6 +134,33 @@ const ActivityFeed: React.FC = () => {
         return (
           <span>
             <span className="font-bold">{userName}</span> {t('activity_added_friend') || 'added'} <span className="font-bold text-accent-cyan">{friendName}</span> {t('activity_as_friend') || 'as a friend'}
+          </span>
+        );
+      case 'friend_level_up':
+        const friendNameLevel = activity.activityData?.friendName || `User #${activity.activityData?.friendId || '?'}`;
+        return (
+          <span>
+            <span className="font-bold text-accent-cyan">{friendNameLevel}</span> {t('activity_friend_leveled_up') || 'leveled up'}
+            {activity.activityData.newLevel && (
+              <span className="text-purple-400"> (Level {activity.activityData.newLevel})</span>
+            )}
+          </span>
+        );
+      case 'friend_achievement_unlocked':
+        const friendNameAchievement = activity.activityData?.friendName || `User #${activity.activityData?.friendId || '?'}`;
+        const achievementName = activity.activityData?.achievementName || 'achievement';
+        const achievementIcon = activity.activityData?.achievementIcon || '🏆';
+        return (
+          <span>
+            <span className="font-bold text-accent-cyan">{friendNameAchievement}</span> {t('activity_friend_unlocked') || 'unlocked'} <span className="text-accent-gold">{achievementIcon} {achievementName}</span>
+          </span>
+        );
+      case 'friend_duel_won':
+        const friendNameDuel = activity.activityData?.friendName || `User #${activity.activityData?.friendId || '?'}`;
+        const duelTitle = activity.activityData?.duelTitle || 'duel';
+        return (
+          <span>
+            <span className="font-bold text-accent-cyan">{friendNameDuel}</span> {t('activity_friend_won_duel') || 'won'} <span className="text-orange-500">{duelTitle}</span>
           </span>
         );
       default:

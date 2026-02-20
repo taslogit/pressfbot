@@ -234,6 +234,28 @@ async function checkAchievements(pool, userId) {
         achievements: newAchievements.map(a => a.id),
         totalXp
       });
+
+      // Log friend activity for each new achievement
+      if (newAchievements.length > 0) {
+        try {
+          const { logFriendActivity } = require('./friendActivity');
+          for (const achievement of newAchievements) {
+            await logFriendActivity(
+              pool,
+              userId,
+              'friend_achievement_unlocked',
+              {
+                achievementId: achievement.id,
+                achievementName: achievement.name,
+                achievementIcon: achievement.icon || '🏆',
+                xpReward: achievement.xp_reward
+              }
+            );
+          }
+        } catch (friendActivityError) {
+          logger.debug('Failed to log friend achievement activity', { error: friendActivityError?.message });
+        }
+      }
     }
 
     return newAchievements;

@@ -53,8 +53,15 @@ const createActivityRoutes = (pool) => {
         
         friendIds = friendshipsResult.rows.map(r => Number(r.id)).filter(id => id && id > 0);
         
-        // Fallback: if no friendships, use referrals (backward compatibility)
+        logger.debug('Activity feed friends filter', { 
+          userId, 
+          friendsCount: friendIds.length,
+          friendsOnly: true 
+        });
+        
+        // Fallback: if no friendships, use referrals (backward compatibility for users without friends)
         if (friendIds.length === 0) {
+          logger.debug('No friendships found, falling back to referrals', { userId });
           const referrerResult = await pool.query(
             'SELECT referred_by FROM profiles WHERE user_id = $1 AND referred_by IS NOT NULL',
             [userId]
@@ -67,6 +74,8 @@ const createActivityRoutes = (pool) => {
             ...(referrerResult.rows[0]?.referred_by ? [referrerResult.rows[0].referred_by] : []),
             ...referredResult.rows.map(r => r.referred_id)
           ].filter((id, i, arr) => arr.indexOf(id) === i);
+          
+          logger.debug('Referrals fallback', { referralsCount: friendIds.length });
         }
         
         if (friendIds.length === 0) {
