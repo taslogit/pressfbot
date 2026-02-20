@@ -75,22 +75,27 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
     }
   }, [autoOpen, id]);
 
+  const PANEL_COLLAPSE_MS = 520;
+
   const handleClose = () => {
     setIsOpen(false);
-  };
-
-  const handleExitComplete = () => {
     if (blinkTimeoutRef.current) clearTimeout(blinkTimeoutRef.current);
-    setIconBlink(true);
     blinkTimeoutRef.current = setTimeout(() => {
-      setIconBlink(false);
-      blinkTimeoutRef.current = null;
-    }, 900);
+      setIconBlink(true);
+      blinkTimeoutRef.current = setTimeout(() => {
+        setIconBlink(false);
+        blinkTimeoutRef.current = null;
+      }, 900);
+    }, PANEL_COLLAPSE_MS);
   };
 
   useEffect(() => {
     return () => {
-      if (blinkTimeoutRef.current) clearTimeout(blinkTimeoutRef.current);
+      if (blinkTimeoutRef.current) {
+        clearTimeout(blinkTimeoutRef.current);
+        blinkTimeoutRef.current = null;
+      }
+      setIconBlink(false);
     };
   }, []);
 
@@ -99,6 +104,14 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
       storage.dismissInfo(id);
     }
     setIsOpen(false);
+    if (blinkTimeoutRef.current) clearTimeout(blinkTimeoutRef.current);
+    blinkTimeoutRef.current = setTimeout(() => {
+      setIconBlink(true);
+      blinkTimeoutRef.current = setTimeout(() => {
+        setIconBlink(false);
+        blinkTimeoutRef.current = null;
+      }, 900);
+    }, PANEL_COLLAPSE_MS);
   };
 
   const parseLine = (line: string, index: number, animateLines: boolean) => {
@@ -334,9 +347,6 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
                     stiffness: 65,
                     opacity: { duration: 0.5 }
                   }
-                }}
-                onAnimationComplete={() => {
-                  if (!isOpen) handleExitComplete();
                 }}
                 className="relative w-full max-w-sm bg-[#0a0a0c] border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.9)] flex flex-col max-h-[70vh] overflow-hidden origin-center"
                 onClick={(e) => e.stopPropagation()}
