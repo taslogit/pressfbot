@@ -36,6 +36,7 @@ type SearchUser = {
   level: number;
   isFriend: boolean;
   hasPending: boolean;
+  reason?: 'mutual_friend' | 'mutual_duel' | 'mutual_squad' | 'referral';
 };
 
 type Tab = 'friends' | 'pending' | 'search' | 'suggestions';
@@ -578,6 +579,14 @@ const Friends: React.FC = () => {
                       </div>
                       <div className="text-xs text-muted">
                         Level {user.level}
+                        {user.reason && (
+                          <span className="ml-2 text-accent-cyan">
+                            {user.reason === 'mutual_friend' && (t('suggestion_mutual_friend') || 'Общий друг')}
+                            {user.reason === 'mutual_duel' && (t('suggestion_mutual_duel') || 'Общая дуэль')}
+                            {user.reason === 'mutual_squad' && (t('suggestion_mutual_squad') || 'Общий сквад')}
+                            {user.reason === 'referral' && (t('suggestion_referral') || 'Реферал')}
+                          </span>
+                        )}
                       </div>
                     </div>
                     {user.isFriend ? (

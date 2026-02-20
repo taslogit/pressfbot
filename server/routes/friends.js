@@ -370,7 +370,7 @@ const createFriendsRoutes = (pool) => {
     }
   });
 
-  // GET /api/friends/suggestions — suggested friends (e.g. mutual referrals, not yet friends)
+  // GET /api/friends/suggestions — suggested friends (mutual friends, mutual duels, mutual squads, referrals)
   router.get('/suggestions', async (req, res) => {
     try {
       if (!pool) {
@@ -382,21 +382,93 @@ const createFriendsRoutes = (pool) => {
       }
       const limit = Math.min(parseInt(req.query.limit) || 20, 50);
 
+      // Get suggestions with priority:
+      // 1. Mutual friends (friends of friends) - priority 1
+      // 2. Mutual duels (users who dueled with same opponents) - priority 2
+      // 3. Mutual squads (same squad members) - priority 3
+      // 4. Referrals (referrer/referred) - priority 4
       const result = await pool.query(
-        `SELECT p.user_id, p.avatar, p.title, p.level
-         FROM profiles p
-         WHERE p.user_id != $1
-         AND NOT EXISTS (
-           SELECT 1 FROM friendships f
-           WHERE ((f.user_id = $1 AND f.friend_id = p.user_id) OR (f.user_id = p.user_id AND f.friend_id = $1))
-         )
-         AND (
-           p.referred_by = $1
-           OR p.user_id IN (SELECT referred_id FROM referral_events WHERE referrer_id = $1)
-         )
-         ORDER BY p.created_at DESC
-         LIMIT $2`,
-        [userId, limit]
+        `WITH user_duel_opponents AS (
+          -- Get all opponents the user has dueled with
+          SELECT DISTINCT 
+            CASE WHEN challenger_id = $1 THEN opponent_id ELSE challenger_id END AS opponent_id
+          FROM duels
+          WHERE (challenger_id = $1 OR opponent_id = $1) AND opponent_id IS NOT NULL
+        ),
+        mutual_duel_users AS (
+          -- Find users who also dueled with the same opponents
+          SELECT DISTINCT 
+            CASE WHEN d.challenger_id = uo.opponent_id THEN d.opponent_id ELSE d.challenger_id END AS user_id
+          FROM user_duel_opponents uo
+          JOIN duels d ON (d.challenger_id = uo.opponent_id OR d.opponent_id = uo.opponent_id)
+          WHERE (d.challenger_id != $1 AND d.opponent_id != $1)
+            AND d.opponent_id IS NOT NULL
+        ),
+        user_squad_members AS (
+          -- Get all members from squads where user is a member
+          SELECT DISTINCT (member->>'id')::bigint AS member_id
+          FROM squads
+          CROSS JOIN LATERAL jsonb_array_elements(members) AS member
+          WHERE creator_id = $1 OR members @> $2::jsonb
+        ),
+        suggestions AS (
+          -- Mutual friends (friends of friends)
+          SELECT DISTINCT f2.friend_id AS user_id, 1 AS priority
+          FROM friendships f1
+          JOIN friendships f2 ON f1.friend_id = f2.user_id AND f2.status = 'accepted'
+          WHERE f1.user_id = $1 AND f1.status = 'accepted'
+            AND f2.friend_id != $1
+            AND NOT EXISTS (
+              SELECT 1 FROM friendships f3
+              WHERE ((f3.user_id = $1 AND f3.friend_id = f2.friend_id) OR (f3.user_id = f2.friend_id AND f3.friend_id = $1))
+            )
+          
+          UNION
+          
+          -- Mutual duels (users who dueled with same opponents)
+          SELECT DISTINCT mdu.user_id, 2 AS priority
+          FROM mutual_duel_users mdu
+          WHERE mdu.user_id IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM friendships f
+              WHERE ((f.user_id = $1 AND f.friend_id = mdu.user_id) OR (f.user_id = mdu.user_id AND f.friend_id = $1))
+            )
+          
+          UNION
+          
+          -- Mutual squads (same squad members)
+          SELECT DISTINCT usm.member_id AS user_id, 3 AS priority
+          FROM user_squad_members usm
+          WHERE usm.member_id != $1 AND usm.member_id IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM friendships f
+              WHERE ((f.user_id = $1 AND f.friend_id = usm.member_id) OR (f.user_id = usm.member_id AND f.friend_id = $1))
+            )
+          
+          UNION
+          
+          -- Referrals (referrer/referred)
+          SELECT DISTINCT p.user_id, 4 AS priority
+          FROM profiles p
+          WHERE p.user_id != $1
+            AND NOT EXISTS (
+              SELECT 1 FROM friendships f
+              WHERE ((f.user_id = $1 AND f.friend_id = p.user_id) OR (f.user_id = p.user_id AND f.friend_id = $1))
+            )
+            AND (
+              p.referred_by = $1
+              OR p.user_id IN (SELECT referred_id FROM referral_events WHERE referrer_id = $1)
+            )
+        )
+        SELECT DISTINCT ON (s.user_id) 
+               p.user_id, p.avatar, p.title, p.level, MIN(s.priority) AS priority
+        FROM suggestions s
+        JOIN profiles p ON p.user_id = s.user_id
+        WHERE p.user_id IS NOT NULL
+        GROUP BY p.user_id, p.avatar, p.title, p.level
+        ORDER BY MIN(s.priority), p.created_at DESC
+        LIMIT $3`,
+        [userId, JSON.stringify([{ id: userId.toString() }]), limit]
       );
 
       const suggestions = result.rows.map((row) => ({
@@ -404,6 +476,9 @@ const createFriendsRoutes = (pool) => {
         avatar: row.avatar || 'pressf',
         title: row.title,
         level: row.level || 1,
+        reason: row.priority === 1 ? 'mutual_friend' : 
+                row.priority === 2 ? 'mutual_duel' :
+                row.priority === 3 ? 'mutual_squad' : 'referral',
       }));
 
       return res.json({ ok: true, suggestions });
