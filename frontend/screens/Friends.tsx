@@ -630,6 +630,7 @@ const Friends: React.FC = () => {
                             {user.reason === 'mutual_duel' && (t('suggestion_mutual_duel') || 'Общая дуэль')}
                             {user.reason === 'mutual_squad' && (t('suggestion_mutual_squad') || 'Общий сквад')}
                             {user.reason === 'referral' && (t('suggestion_referral') || 'Реферал')}
+                            {user.reason === 'popular' && (t('suggestion_popular') || 'Популярный пользователь')}
                           </span>
                         )}
                       </div>

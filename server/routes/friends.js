@@ -459,6 +459,8 @@ const createFriendsRoutes = (pool) => {
           
           UNION
           
+          UNION
+          
           -- Referrals (referrer/referred)
           SELECT DISTINCT p.user_id, 4 AS priority
           FROM profiles p
@@ -471,13 +473,35 @@ const createFriendsRoutes = (pool) => {
               p.referred_by = $1
               OR p.user_id IN (SELECT referred_id FROM referral_events WHERE referrer_id = $1)
             )
+        ),
+        all_suggestions AS (
+          SELECT p.user_id, p.avatar, p.title, p.level, MIN(s.priority) AS priority
+          FROM suggestions s
+          JOIN profiles p ON p.user_id = s.user_id
+          WHERE p.user_id IS NOT NULL
+          GROUP BY p.user_id, p.avatar, p.title, p.level, p.created_at
+        ),
+        fallback_users AS (
+          -- Fallback: random active users if no suggestions found
+          SELECT p.user_id, p.avatar, p.title, p.level, 5 AS priority
+          FROM profiles p
+          WHERE p.user_id != $1
+            AND NOT EXISTS (
+              SELECT 1 FROM friendships f
+              WHERE ((f.user_id = $1 AND f.friend_id = p.user_id) OR (f.user_id = p.user_id AND f.friend_id = $1))
+            )
+            AND p.created_at > now() - INTERVAL '30 days' -- Active in last 30 days
+          ORDER BY RANDOM()
+          LIMIT $3
         )
-        SELECT p.user_id, p.avatar, p.title, p.level, MIN(s.priority) AS priority
-        FROM suggestions s
-        JOIN profiles p ON p.user_id = s.user_id
-        WHERE p.user_id IS NOT NULL
-        GROUP BY p.user_id, p.avatar, p.title, p.level, p.created_at
-        ORDER BY MIN(s.priority), p.created_at DESC
+        SELECT user_id, avatar, title, level, priority
+        FROM (
+          SELECT * FROM all_suggestions
+          UNION ALL
+          SELECT * FROM fallback_users
+          WHERE NOT EXISTS (SELECT 1 FROM all_suggestions)
+        ) combined
+        ORDER BY priority, RANDOM()
         LIMIT $3`,
         [userId, JSON.stringify([{ id: userId.toString() }]), limit]
       );
@@ -489,7 +513,8 @@ const createFriendsRoutes = (pool) => {
         level: row.level || 1,
         reason: row.priority === 1 ? 'mutual_friend' : 
                 row.priority === 2 ? 'mutual_duel' :
-                row.priority === 3 ? 'mutual_squad' : 'referral',
+                row.priority === 3 ? 'mutual_squad' : 
+                row.priority === 4 ? 'referral' : 'popular',
       }));
 
       logger.debug('Friends suggestions result', { 
