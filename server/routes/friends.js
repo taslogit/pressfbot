@@ -49,6 +49,14 @@ const createFriendsRoutes = (pool) => {
       );
       const total = parseInt(countResult.rows[0]?.total || '0', 10);
 
+      logger.debug('Friends list result', { 
+        userId, 
+        friendsCount: friends.length, 
+        total, 
+        limit, 
+        offset 
+      });
+
       return res.json({ ok: true, friends, total, hasMore: offset + friends.length < total });
     } catch (error) {
       logger.error('Friends list error:', { error: error?.message, stack: error?.stack });
@@ -468,7 +476,7 @@ const createFriendsRoutes = (pool) => {
         FROM suggestions s
         JOIN profiles p ON p.user_id = s.user_id
         WHERE p.user_id IS NOT NULL
-        GROUP BY p.user_id, p.avatar, p.title, p.level
+        GROUP BY p.user_id, p.avatar, p.title, p.level, p.created_at
         ORDER BY MIN(s.priority), p.created_at DESC
         LIMIT $3`,
         [userId, JSON.stringify([{ id: userId.toString() }]), limit]
@@ -483,6 +491,13 @@ const createFriendsRoutes = (pool) => {
                 row.priority === 2 ? 'mutual_duel' :
                 row.priority === 3 ? 'mutual_squad' : 'referral',
       }));
+
+      logger.debug('Friends suggestions result', { 
+        userId, 
+        suggestionsCount: suggestions.length,
+        hasReferrals: suggestions.some(s => s.reason === 'referral'),
+        hasMutualFriends: suggestions.some(s => s.reason === 'mutual_friend')
+      });
 
       return res.json({ ok: true, suggestions });
     } catch (error) {

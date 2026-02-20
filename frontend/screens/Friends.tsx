@@ -78,10 +78,18 @@ const Friends: React.FC = () => {
         console.log('[Friends] Friends API response:', result);
       }
       if (result.ok && result.data) {
-        setFriends(result.data.friends || []);
+        const friendsList = result.data.friends || [];
+        if (import.meta.env.DEV) {
+          console.log('[Friends] Friends loaded:', friendsList.length, friendsList);
+        }
+        setFriends(friendsList);
       } else {
         console.warn('[Friends] Failed to load friends:', result.error);
-        toast.error(result.error || t('friends_load_failed') || 'Failed to load friends');
+        // Не показываем toast для пустых результатов - это нормально
+        if (result.error && !result.error.includes('empty')) {
+          toast.error(result.error || t('friends_load_failed') || 'Failed to load friends');
+        }
+        setFriends([]);
       }
     } catch (error) {
       console.error('[Friends] Failed to load friends:', error);
@@ -237,16 +245,31 @@ const Friends: React.FC = () => {
   const loadSuggestions = async () => {
     try {
       setSuggestionsLoading(true);
+      if (import.meta.env.DEV) {
+        console.log('[Friends] Loading suggestions...');
+      }
       const result = await friendsAPI.getSuggestions(20);
+      if (import.meta.env.DEV) {
+        console.log('[Friends] Suggestions API response:', result);
+      }
       if (result.ok && result.data) {
-        setSuggestions(result.data.suggestions || []);
+        const suggestionsList = result.data.suggestions || [];
+        if (import.meta.env.DEV) {
+          console.log('[Friends] Suggestions loaded:', suggestionsList.length, suggestionsList);
+        }
+        setSuggestions(suggestionsList);
       } else {
         console.warn('[Friends] Failed to load suggestions:', result.error);
-        toast.error(result.error || t('suggestions_load_failed') || 'Failed to load suggestions');
+        // Не показываем toast для пустых результатов - это нормально
+        if (result.error && !result.error.includes('empty')) {
+          toast.error(result.error || t('suggestions_load_failed') || 'Failed to load suggestions');
+        }
+        setSuggestions([]);
       }
     } catch (error) {
       console.error('[Friends] Failed to load suggestions:', error);
-      toast.error(t('suggestions_load_failed') || 'Failed to load suggestions');
+      // Не показываем toast для ошибок загрузки - просто пустой список
+      setSuggestions([]);
     } finally {
       setSuggestionsLoading(false);
     }
