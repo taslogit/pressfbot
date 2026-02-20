@@ -246,16 +246,29 @@ const createStarsRoutes = (pool, bot) => {
         expiresAt = currentEnd;
       }
 
-      await pool.query(
-        `UPDATE profiles SET is_premium = true, premium_expires_at = $2, trial_used_at = $3 WHERE user_id = $1`,
-        [userId, expiresAt, now]
-      );
-      await pool.query(
-        `INSERT INTO premium_subscriptions (user_id, plan, stars_paid, expires_at)
-         VALUES ($1, 'trial', 0, $2)
-         ON CONFLICT (user_id) DO UPDATE SET plan = 'trial', expires_at = GREATEST(premium_subscriptions.expires_at, $2), status = 'active'`,
-        [userId, expiresAt]
-      );
+      // Security: Use transaction for critical operation to ensure atomicity
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        
+        await client.query(
+          `UPDATE profiles SET is_premium = true, premium_expires_at = $2, trial_used_at = $3 WHERE user_id = $1`,
+          [userId, expiresAt, now]
+        );
+        await client.query(
+          `INSERT INTO premium_subscriptions (user_id, plan, stars_paid, expires_at)
+           VALUES ($1, 'trial', 0, $2)
+           ON CONFLICT (user_id) DO UPDATE SET plan = 'trial', expires_at = GREATEST(premium_subscriptions.expires_at, $2), status = 'active'`,
+          [userId, expiresAt]
+        );
+        
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
 
       logger.info('Trial activated', { userId, expiresAt });
       return res.json({ ok: true, expiresAt: expiresAt.toISOString() });

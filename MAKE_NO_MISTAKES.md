@@ -1,11 +1,11 @@
 ---
 name: make-no-mistakes
-description: Appends "MAKE NO MISTAKES." to every user prompt before processing it. Use this skill whenever you want Claude to be maximally precise, careful, and error-free in its responses.
+description: Appends "MAKE NO MISTAKES." to every user prompt before processing it. Use this skill whenever you want cursor to be maximally precise, careful, and error-free in its responses.
 ---
 
 # Make No Mistakes
 
-This skill instructs Claude to append the directive **"MAKE NO MISTAKES."** to every user prompt it receives before generating a response.
+This skill instructs Cursor to append the directive **"MAKE NO MISTAKES."** to every user prompt it receives before generating a response.
 
 ## Instructions
 

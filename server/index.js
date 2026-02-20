@@ -803,6 +803,8 @@ app.get('/api/metrics/prometheus', globalLimiter, (req, res) => {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)`);
     // Performance: Index for telegram_id lookups in auth middleware
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_telegram_id ON sessions(telegram_id)`);
+    // Performance: Composite index for online friends query (telegram_id, expires_at, last_seen_at)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_telegram_expires_seen ON sessions(telegram_id, expires_at, last_seen_at)`);
     logger.info('Sessions table initialized');
 
     if (SESSION_CLEANUP_INTERVAL_SECONDS > 0) {

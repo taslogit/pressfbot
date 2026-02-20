@@ -106,22 +106,33 @@ const createActivityRoutes = (pool) => {
         }
       }
 
+      // Security: Validate array size to prevent SQL injection and performance issues
+      const MAX_FRIENDS_FOR_QUERY = 1000;
+      if (friendsOnly && friendIds.length > MAX_FRIENDS_FOR_QUERY) {
+        logger.warn('Too many friends for activity feed query, truncating', { 
+          userId, 
+          totalFriends: friendIds.length,
+          maxAllowed: MAX_FRIENDS_FOR_QUERY 
+        });
+        friendIds.splice(MAX_FRIENDS_FOR_QUERY);
+      }
+
       // Build query
       let query = '';
       let params = [];
 
       if (friendsOnly && friendIds.length > 0) {
-        const placeholders = friendIds.map((_, i) => `$${i + 1}`).join(',');
-        const baseWhere = `af.is_public = true AND af.user_id IN (${placeholders})`;
-        const typeWhere = type ? ` AND af.activity_type = $${friendIds.length + 1}` : '';
+        // Security: Use parameterized query with array instead of dynamic IN clause
+        const baseWhere = `af.is_public = true AND af.user_id = ANY($1::bigint[])`;
+        const typeWhere = type ? ` AND af.activity_type = $2` : '';
         const orderLimit = type
-          ? ` ORDER BY af.created_at DESC LIMIT $${friendIds.length + 2} OFFSET $${friendIds.length + 3}`
-          : ` ORDER BY af.created_at DESC LIMIT $${friendIds.length + 1} OFFSET $${friendIds.length + 2}`;
+          ? ` ORDER BY af.created_at DESC LIMIT $3 OFFSET $4`
+          : ` ORDER BY af.created_at DESC LIMIT $2 OFFSET $3`;
         query = `SELECT af.*, p.avatar, p.title, p.level
                  FROM activity_feed af
                  LEFT JOIN profiles p ON af.user_id = p.user_id
                  WHERE ${baseWhere}${typeWhere}${orderLimit}`;
-        params = type ? [...friendIds, type, limit, offset] : [...friendIds, limit, offset];
+        params = type ? [friendIds, type, limit, offset] : [friendIds, limit, offset];
       } else if (type) {
         query = `SELECT af.*, p.avatar, p.title, p.level
                  FROM activity_feed af

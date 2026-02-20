@@ -402,6 +402,8 @@ const createTables = async (pool) => {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_friendships_friend_status ON friendships(friend_id, status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_friendships_requested_by ON friendships(requested_by)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status)`);
+    // Performance: Composite index for common query pattern (user_id, friend_id, status)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_friendships_user_friend_status ON friendships(user_id, friend_id, status)`);
 
     // Streak Challenges table (Viral mechanics - friends compete on days in a row)
     await pool.query(`

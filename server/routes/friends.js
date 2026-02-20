@@ -557,23 +557,35 @@ const createFriendsRoutes = (pool) => {
 
       const friendIds = friendshipsResult.rows.map(r => Number(r.friend_id)).filter(id => id && id > 0);
 
+      // Security: Validate array size to prevent SQL injection and performance issues
+      const MAX_FRIENDS_FOR_QUERY = 1000;
+      if (friendIds.length > MAX_FRIENDS_FOR_QUERY) {
+        logger.warn('Too many friends for online query, truncating', { 
+          userId, 
+          totalFriends: friendIds.length,
+          maxAllowed: MAX_FRIENDS_FOR_QUERY 
+        });
+        friendIds.splice(MAX_FRIENDS_FOR_QUERY);
+      }
+
       if (friendIds.length === 0) {
         return res.json({ ok: true, friends: [] });
       }
 
       // Get online friends (last_seen_at within last 5 minutes)
+      // Security: Use parameterized query with array instead of dynamic IN clause
+      // For large lists, PostgreSQL handles arrays efficiently
       const onlineThreshold = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes ago
-      const placeholders = friendIds.map((_, i) => `$${i + 2}`).join(',');
       
       const result = await pool.query(
         `SELECT DISTINCT s.telegram_id AS user_id, p.avatar, p.title, p.level, s.last_seen_at
          FROM sessions s
          JOIN profiles p ON p.user_id = s.telegram_id
-         WHERE s.telegram_id IN (${placeholders})
+         WHERE s.telegram_id = ANY($2::bigint[])
            AND s.last_seen_at >= $1
            AND s.expires_at > now()
          ORDER BY s.last_seen_at DESC`,
-        [onlineThreshold, ...friendIds]
+        [onlineThreshold, friendIds]
       );
 
       const onlineFriends = result.rows.map((row) => ({

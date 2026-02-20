@@ -82,9 +82,13 @@ function createLimitCheck(pool, resourceType, table, userColumn = 'user_id') {
       req.usageInfo = { used: usage, limit, remaining: limit - usage };
       next();
     } catch (error) {
-      logger.error('Free tier check error:', { error: error?.message, resourceType });
-      // Don't block user on error — fail open
-      next();
+      logger.error('Free tier check error:', { error: error?.message, resourceType, userId: req.userId });
+      // Security: Fail-safe instead of fail-open - block access on error to prevent abuse
+      return sendError(res, 500, 'LIMIT_CHECK_FAILED', 
+        'Unable to verify usage limits. Please try again later.', {
+          resourceType
+        }
+      );
     }
   };
 }
