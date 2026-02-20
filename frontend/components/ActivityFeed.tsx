@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, FileText, Swords, Gift, CheckCircle, Trophy, Sparkles, UserPlus, Star, Award } from 'lucide-react';
+import { Activity, FileText, Swords, Gift, CheckCircle, Trophy, Sparkles, UserPlus, Star, Award, ExternalLink } from 'lucide-react';
 import { activityAPI } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
 import { ActivityFeedItem } from '../types';
 import ListSkeleton from './ListSkeleton';
 import LoadingState from './LoadingState';
+import { useNavigate } from 'react-router-dom';
+import { getAvatarComponent } from './Avatars';
 
 type FeedTab = 'all' | 'friends' | 'referrals';
 
 const ActivityFeed: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [activities, setActivities] = useState<ActivityFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
@@ -257,26 +260,57 @@ const ActivityFeed: React.FC = () => {
       </div>
 
       <div className="space-y-1.5">
-        {activities.map((activity) => (
-          <motion.div
-            key={activity.id}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-3 rounded-xl py-2.5 px-3 bg-card/40 hover:bg-card/60 border border-transparent hover:border-border/50 transition-colors"
-          >
-            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
-              {getActivityIcon(activity.activityType)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm text-primary leading-snug">
-                {getActivityText(activity)}
+        {activities.map((activity) => {
+          const isFriendActivity = activity.activityType.startsWith('friend_');
+          // For friend activities, the userId is the friend who performed the action
+          // For regular activities, userId is the user who performed the action
+          const targetUserId = isFriendActivity ? activity.activityData?.friendId : activity.userId;
+          // Use friend avatar from activityData if available, otherwise use user avatar
+          const avatarToShow = isFriendActivity 
+            ? (activity.activityData?.friendAvatar || activity.user?.avatar)
+            : activity.user?.avatar;
+          const AvatarComponent = avatarToShow ? getAvatarComponent(avatarToShow) : null;
+          
+          return (
+            <motion.div
+              key={activity.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center gap-3 rounded-xl py-2.5 px-3 bg-card/40 hover:bg-card/60 border border-transparent hover:border-border/50 transition-colors"
+            >
+              {AvatarComponent && (
+                <div className="flex-shrink-0">
+                  <AvatarComponent size={32} />
+                </div>
+              )}
+              {!AvatarComponent && (
+                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                  {getActivityIcon(activity.activityType)}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm text-primary leading-snug">
+                  {getActivityText(activity)}
+                </div>
               </div>
-            </div>
-            <div className="flex-shrink-0 text-xs text-muted tabular-nums">
-              {getTimeAgo(activity.createdAt)}
-            </div>
-          </motion.div>
-        ))}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="text-xs text-muted tabular-nums">
+                  {getTimeAgo(activity.createdAt)}
+                </div>
+                {(friendUserId || activity.userId) && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/profile?userId=${friendUserId || activity.userId}`)}
+                    className="p-1.5 rounded-md hover:bg-white/5 text-muted hover:text-primary transition-colors"
+                    title={t('view_profile') || 'View profile'}
+                  >
+                    <ExternalLink size={14} />
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
       {hasMore && (
