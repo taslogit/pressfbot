@@ -14,10 +14,20 @@ interface Props {
   trigger?: React.ReactNode; // Custom trigger instead of default (i) button
 }
 
+type TriggerRect = { left: number; top: number; width: number; height: number } | null;
+
 const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false, trigger }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [triggerRect, setTriggerRect] = useState<TriggerRect>(null);
   const { t } = useTranslation();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+
+  const openPanel = () => {
+    const rect = triggerRef.current?.getBoundingClientRect() ?? null;
+    setTriggerRect(rect);
+    setIsOpen(true);
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -44,7 +54,11 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
       if (isDismissed) return;
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
       let idleId: number | null = null;
-      const open = () => setIsOpen(true);
+      const open = () => {
+        const rect = triggerRef.current?.getBoundingClientRect() ?? null;
+        setTriggerRect(rect);
+        setIsOpen(true);
+      };
       if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
         idleId = (window as any).requestIdleCallback(open, { timeout: 900 });
       } else {
@@ -242,31 +256,60 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
     return lines.map((line, i) => parseLine(line, i, animateLines));
   }, [isOpen, lines, t]);
 
+  const originX = typeof window !== 'undefined' && triggerRect
+    ? triggerRect.left + triggerRect.width / 2 - window.innerWidth / 2
+    : 0;
+  const originY = typeof window !== 'undefined' && triggerRect
+    ? triggerRect.top + triggerRect.height / 2 - window.innerHeight / 2
+    : 0;
+
   return (
     <>
       {trigger ? (
-        <div onClick={() => setIsOpen(true)} className="cursor-pointer">
+        <div ref={triggerRef} onClick={openPanel} className="cursor-pointer inline-flex">
           {trigger}
         </div>
       ) : (
-        <button 
-          onClick={() => setIsOpen(true)} 
-          className="p-1.5 rounded-full bg-white/5 border border-white/10 text-muted hover:text-accent-cyan hover:border-accent-cyan hover:bg-accent-cyan/10 transition-all active:scale-95 z-20 animate-pulse motion-reduce:animate-none shadow-[0_0_12px_rgba(0,224,255,0.45)]"
-        >
-          <Info size={18} />
-        </button>
+        <div ref={triggerRef} className="inline-flex">
+          <button
+            type="button"
+            onClick={openPanel}
+            className="p-1.5 rounded-full bg-white/5 border border-white/10 text-muted hover:text-accent-cyan hover:border-accent-cyan hover:bg-accent-cyan/10 transition-all active:scale-95 z-20 animate-pulse motion-reduce:animate-none shadow-[0_0_12px_rgba(0,224,255,0.45)]"
+          >
+            <Info size={18} />
+          </button>
+        </div>
       )}
 
-      {isOpen && createPortal(
+      {createPortal(
         <AnimatePresence>
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby={`infosection-title-${id ?? 'modal'}`}>
+          {isOpen && (
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 10 }}
-              transition={{ type: "spring", damping: 20, stiffness: 300 }}
-              className="relative w-full max-w-sm bg-[#0a0a0c] border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.9)] flex flex-col max-h-[70vh] overflow-hidden"
+              key="info-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={`infosection-title-${id ?? 'modal'}`}
+              onClick={(e) => e.target === e.currentTarget && handleClose()}
             >
+              <motion.div
+                key="info-panel"
+                initial={{ x: originX, y: originY, scale: 0.15, opacity: 0 }}
+                animate={{ x: 0, y: 0, scale: 1, opacity: 1 }}
+                exit={{ x: originX, y: originY, scale: 0.15, opacity: 0 }}
+                transition={{
+                  type: 'spring',
+                  damping: 26,
+                  stiffness: 300,
+                  opacity: { duration: 0.2 }
+                }}
+                className="relative w-full max-w-sm bg-[#0a0a0c] border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.9)] flex flex-col max-h-[70vh] overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
               {/* Decoration */}
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-accent-lime via-accent-cyan to-accent-pink z-20" />
               <div className="absolute top-1 left-4 right-4 h-px bg-white/10 z-20" />
@@ -306,8 +349,9 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
                   </button>
                 </div>
               )}
+              </motion.div>
             </motion.div>
-          </div>
+          )}
         </AnimatePresence>,
         document.body
       )}
