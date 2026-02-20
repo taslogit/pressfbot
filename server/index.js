@@ -540,7 +540,6 @@ app.use('/api/friends', authMiddleware, getLimiter, createFriendsRoutes(pool));
 app.use('/api/challenges', authMiddleware, getLimiter, createChallengesRoutes(pool, bot));
 app.use('/api/squads', authMiddleware, getLimiter, createSquadsRoutes(pool));
 app.use('/api/witnesses', authMiddleware, getLimiter, createWitnessesRoutes(pool));
-app.use('/api/friends', authMiddleware, getLimiter, createFriendsRoutes(pool));
 // Monetization routes
 app.use('/api/stars', authMiddleware, getLimiter, createStarsRoutes(pool, bot));
 app.use('/api/store', authMiddleware, getLimiter, createStoreRoutes(pool));
