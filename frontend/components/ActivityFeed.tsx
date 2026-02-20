@@ -7,7 +7,7 @@ import { ActivityFeedItem } from '../types';
 import ListSkeleton from './ListSkeleton';
 import LoadingState from './LoadingState';
 
-type FeedTab = 'all' | 'friends';
+type FeedTab = 'all' | 'friends' | 'referrals';
 
 const ActivityFeed: React.FC = () => {
   const { t } = useTranslation();
@@ -30,8 +30,10 @@ const ActivityFeed: React.FC = () => {
       }
 
       const currentOffset = loadMore ? offset : 0;
+      const isFriendsTab = feedTab === 'friends' || feedTab === 'referrals';
       const result = await activityAPI.getFeed(30, currentOffset, undefined, {
-        friends: feedTab === 'friends'
+        friends: isFriendsTab,
+        friendsFilter: feedTab === 'referrals' ? 'referrals' : feedTab === 'friends' ? 'all' : undefined
       });
       
       if (result.ok && result.data) {
@@ -199,6 +201,8 @@ const ActivityFeed: React.FC = () => {
 
   const emptyMessage = tab === 'friends'
     ? (t('activity_feed_friends_empty') || 'No activity from friends yet. Invite friends!')
+    : tab === 'referrals'
+    ? (t('activity_feed_referrals_empty') || 'No activity from referrals yet.')
     : (t('no_activities') || 'No activities yet');
 
   const tabButtons = (
@@ -216,6 +220,13 @@ const ActivityFeed: React.FC = () => {
         className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tab === 'friends' ? 'bg-purple-500/40 text-purple-300' : 'text-muted hover:text-primary'}`}
       >
         {t('activity_feed_friends') || 'Friends'}
+      </button>
+      <button
+        type="button"
+        onClick={() => setTab('referrals')}
+        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${tab === 'referrals' ? 'bg-purple-500/40 text-purple-300' : 'text-muted hover:text-primary'}`}
+      >
+        {t('activity_feed_referrals') || 'Referrals'}
       </button>
     </div>
   );

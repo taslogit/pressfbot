@@ -450,10 +450,11 @@ export const tournamentsAPI = {
 
 // Activity Feed API
 export const activityAPI = {
-  getFeed: async (limit = 50, offset = 0, type?: string, options?: { friends?: boolean }) => {
+  getFeed: async (limit = 50, offset = 0, type?: string, options?: { friends?: boolean; friendsFilter?: 'all' | 'close' | 'referrals' }) => {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (type) params.set('type', type);
     if (options?.friends) params.set('friends', '1');
+    if (options?.friendsFilter) params.set('friendsFilter', options.friendsFilter);
     return apiRequest<{ activities: any[]; hasMore: boolean }>(`/api/activity/feed?${params.toString()}`);
   },
   getUserActivity: async (userId: number, limit = 50, offset = 0) => {

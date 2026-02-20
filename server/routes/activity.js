@@ -18,6 +18,7 @@ const createActivityRoutes = (pool) => {
       const offset = parseInt(req.query.offset) || 0;
       const type = req.query.type; // Optional filter by activity type
       const friendsOnly = req.query.friends === '1' || req.query.friends === 'true';
+      const friendsFilter = req.query.friendsFilter; // 'all' | 'close' | 'referrals'
 
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
@@ -41,27 +42,8 @@ const createActivityRoutes = (pool) => {
 
       let friendIds = [];
       if (friendsOnly) {
-        // Get friends from friendships table (accepted friends) - both directions
-        const friendshipsResult = await pool.query(
-          `SELECT friend_id AS id FROM friendships 
-           WHERE user_id = $1 AND status = 'accepted'
-           UNION
-           SELECT user_id AS id FROM friendships 
-           WHERE friend_id = $1 AND status = 'accepted'`,
-          [userId]
-        );
-        
-        friendIds = friendshipsResult.rows.map(r => Number(r.id)).filter(id => id && id > 0);
-        
-        logger.debug('Activity feed friends filter', { 
-          userId, 
-          friendsCount: friendIds.length,
-          friendsOnly: true 
-        });
-        
-        // Fallback: if no friendships, use referrals (backward compatibility for users without friends)
-        if (friendIds.length === 0) {
-          logger.debug('No friendships found, falling back to referrals', { userId });
+        if (friendsFilter === 'referrals') {
+          // Filter by referrals only
           const referrerResult = await pool.query(
             'SELECT referred_by FROM profiles WHERE user_id = $1 AND referred_by IS NOT NULL',
             [userId]
@@ -75,7 +57,48 @@ const createActivityRoutes = (pool) => {
             ...referredResult.rows.map(r => r.referred_id)
           ].filter((id, i, arr) => arr.indexOf(id) === i);
           
-          logger.debug('Referrals fallback', { referralsCount: friendIds.length });
+          logger.debug('Activity feed referrals filter', { 
+            userId, 
+            referralsCount: friendIds.length 
+          });
+        } else {
+          // Get friends from friendships table (accepted friends) - both directions
+          // 'all' or 'close' both use all friends for now (close friends logic can be added later)
+          const friendshipsResult = await pool.query(
+            `SELECT friend_id AS id FROM friendships 
+             WHERE user_id = $1 AND status = 'accepted'
+             UNION
+             SELECT user_id AS id FROM friendships 
+             WHERE friend_id = $1 AND status = 'accepted'`,
+            [userId]
+          );
+          
+          friendIds = friendshipsResult.rows.map(r => Number(r.id)).filter(id => id && id > 0);
+          
+          logger.debug('Activity feed friends filter', { 
+            userId, 
+            friendsCount: friendIds.length,
+            filter: friendsFilter || 'all'
+          });
+          
+          // Fallback: if no friendships and filter is 'all', use referrals (backward compatibility)
+          if (friendIds.length === 0 && (!friendsFilter || friendsFilter === 'all')) {
+            logger.debug('No friendships found, falling back to referrals', { userId });
+            const referrerResult = await pool.query(
+              'SELECT referred_by FROM profiles WHERE user_id = $1 AND referred_by IS NOT NULL',
+              [userId]
+            );
+            const referredResult = await pool.query(
+              'SELECT referred_id FROM referral_events WHERE referrer_id = $1',
+              [userId]
+            );
+            friendIds = [
+              ...(referrerResult.rows[0]?.referred_by ? [referrerResult.rows[0].referred_by] : []),
+              ...referredResult.rows.map(r => r.referred_id)
+            ].filter((id, i, arr) => arr.indexOf(id) === i);
+            
+            logger.debug('Referrals fallback', { referralsCount: friendIds.length });
+          }
         }
         
         if (friendIds.length === 0) {
