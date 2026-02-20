@@ -281,6 +281,21 @@ select:focus-visible {
   }
 }
 
+/* Info icon: два мигания после закрытия панели */
+@keyframes info-icon-blink-keyframes {
+  0%, 100% { opacity: 1; filter: brightness(1); }
+  15% { opacity: 0.4; filter: brightness(1.4); }
+  30% { opacity: 1; filter: brightness(1); }
+  45% { opacity: 0.4; filter: brightness(1.4); }
+  60%, 100% { opacity: 1; filter: brightness(1); }
+}
+.info-icon-blink {
+  animation: info-icon-blink-keyframes 0.7s ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .info-icon-blink { animation: none; }
+}
+
 /* ─── Splash screen keyframes (PRESS F заставка) ─────────────────────────── */
 .splash-screen {
   --splash-bg: #0f0d16;

@@ -19,9 +19,11 @@ type TriggerRect = { left: number; top: number; width: number; height: number } 
 const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false, trigger }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [triggerRect, setTriggerRect] = useState<TriggerRect>(null);
+  const [iconBlink, setIconBlink] = useState(false);
   const { t } = useTranslation();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
+  const blinkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const openPanel = () => {
     const rect = triggerRef.current?.getBoundingClientRect() ?? null;
@@ -76,6 +78,21 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
   const handleClose = () => {
     setIsOpen(false);
   };
+
+  const handleExitComplete = () => {
+    if (blinkTimeoutRef.current) clearTimeout(blinkTimeoutRef.current);
+    setIconBlink(true);
+    blinkTimeoutRef.current = setTimeout(() => {
+      setIconBlink(false);
+      blinkTimeoutRef.current = null;
+    }, 700);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (blinkTimeoutRef.current) clearTimeout(blinkTimeoutRef.current);
+    };
+  }, []);
 
   const handleDismiss = () => {
     if (id) {
@@ -266,11 +283,11 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
   return (
     <>
       {trigger ? (
-        <div ref={triggerRef} onClick={openPanel} className="cursor-pointer inline-flex">
+        <div ref={triggerRef} onClick={openPanel} className={`cursor-pointer inline-flex ${iconBlink ? 'info-icon-blink' : ''}`}>
           {trigger}
         </div>
       ) : (
-        <div ref={triggerRef} className="inline-flex">
+        <div ref={triggerRef} className={`inline-flex ${iconBlink ? 'info-icon-blink' : ''}`}>
           <button
             type="button"
             onClick={openPanel}
@@ -282,13 +299,13 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
       )}
 
       {createPortal(
-        <AnimatePresence>
+        <AnimatePresence onExitComplete={handleExitComplete}>
           {isOpen && (
             <motion.div
               key="info-overlay"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              exit={{ opacity: 0, transition: { duration: 0.42 } }}
               transition={{ duration: 0.28 }}
               className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
               role="dialog"
@@ -299,13 +316,19 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
               <motion.div
                 key="info-panel"
                 initial={{ x: originX, y: originY, scale: 0.04, opacity: 0 }}
-                animate={{ x: 0, y: 0, scale: 1, opacity: 1 }}
-                exit={{ x: originX, y: originY, scale: 0.04, opacity: 0 }}
-                transition={{
-                  type: 'spring',
-                  damping: 28,
-                  stiffness: 200,
-                  opacity: { duration: 0.22 }
+                animate={{
+                  x: 0,
+                  y: 0,
+                  scale: 1,
+                  opacity: 1,
+                  transition: { type: 'spring', damping: 28, stiffness: 200, opacity: { duration: 0.22 } }
+                }}
+                exit={{
+                  x: originX,
+                  y: originY,
+                  scale: 0.04,
+                  opacity: 0,
+                  transition: { type: 'spring', damping: 30, stiffness: 95, opacity: { duration: 0.38 } }
                 }}
                 className="relative w-full max-w-sm bg-[#0a0a0c] border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.9)] flex flex-col max-h-[70vh] overflow-hidden origin-center"
                 onClick={(e) => e.stopPropagation()}
