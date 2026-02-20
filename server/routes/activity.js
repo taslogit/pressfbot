@@ -41,18 +41,34 @@ const createActivityRoutes = (pool) => {
 
       let friendIds = [];
       if (friendsOnly) {
-        const referrerResult = await pool.query(
-          'SELECT referred_by FROM profiles WHERE user_id = $1 AND referred_by IS NOT NULL',
+        // Get friends from friendships table (accepted friends) - both directions
+        const friendshipsResult = await pool.query(
+          `SELECT friend_id AS id FROM friendships 
+           WHERE user_id = $1 AND status = 'accepted'
+           UNION
+           SELECT user_id AS id FROM friendships 
+           WHERE friend_id = $1 AND status = 'accepted'`,
           [userId]
         );
-        const referredResult = await pool.query(
-          'SELECT referred_id FROM referral_events WHERE referrer_id = $1',
-          [userId]
-        );
-        friendIds = [
-          ...(referrerResult.rows[0]?.referred_by ? [referrerResult.rows[0].referred_by] : []),
-          ...referredResult.rows.map(r => r.referred_id)
-        ].filter((id, i, arr) => arr.indexOf(id) === i);
+        
+        friendIds = friendshipsResult.rows.map(r => Number(r.id)).filter(id => id && id > 0);
+        
+        // Fallback: if no friendships, use referrals (backward compatibility)
+        if (friendIds.length === 0) {
+          const referrerResult = await pool.query(
+            'SELECT referred_by FROM profiles WHERE user_id = $1 AND referred_by IS NOT NULL',
+            [userId]
+          );
+          const referredResult = await pool.query(
+            'SELECT referred_id FROM referral_events WHERE referrer_id = $1',
+            [userId]
+          );
+          friendIds = [
+            ...(referrerResult.rows[0]?.referred_by ? [referrerResult.rows[0].referred_by] : []),
+            ...referredResult.rows.map(r => r.referred_id)
+          ].filter((id, i, arr) => arr.indexOf(id) === i);
+        }
+        
         if (friendIds.length === 0) {
           return res.json({ ok: true, activities: [], hasMore: false });
         }

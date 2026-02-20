@@ -501,8 +501,10 @@ const { createGiftsRoutes } = require('./routes/gifts');
 const { createEventsRoutes } = require('./routes/events');
 const { createTournamentsRoutes } = require('./routes/tournaments');
 const { createActivityRoutes, logActivity } = require('./routes/activity');
+const { createFriendsRoutes } = require('./routes/friends');
 const { createSquadsRoutes } = require('./routes/squads');
 const { createWitnessesRoutes } = require('./routes/witnesses');
+const { createFriendsRoutes } = require('./routes/friends');
 const { createStarsRoutes, handleStarsCatalog, processStarsPayment } = require('./routes/stars');
 const { createStoreRoutes, handleStoreCatalog } = require('./routes/store');
 const { createLimitCheck, createLimitsRoute } = require('./middleware/freeTier');
@@ -534,9 +536,11 @@ app.use('/api/gifts', authMiddleware, getLimiter, createGiftsRoutes(pool, giftLi
 app.use('/api/events', authMiddleware, getLimiter, createEventsRoutes(pool));
 app.use('/api/tournaments', authMiddleware, getLimiter, createTournamentsRoutes(pool));
 app.use('/api/activity', authMiddleware, getLimiter, createActivityRoutes(pool));
+app.use('/api/friends', authMiddleware, getLimiter, createFriendsRoutes(pool));
 app.use('/api/challenges', authMiddleware, getLimiter, createChallengesRoutes(pool, bot));
 app.use('/api/squads', authMiddleware, getLimiter, createSquadsRoutes(pool));
 app.use('/api/witnesses', authMiddleware, getLimiter, createWitnessesRoutes(pool));
+app.use('/api/friends', authMiddleware, getLimiter, createFriendsRoutes(pool));
 // Monetization routes
 app.use('/api/stars', authMiddleware, getLimiter, createStarsRoutes(pool, bot));
 app.use('/api/store', authMiddleware, getLimiter, createStoreRoutes(pool));

@@ -532,6 +532,46 @@ export const squadsAPI = {
   },
 };
 
+// Friends API
+export const friendsAPI = {
+  getAll: async (params?: { limit?: number; offset?: number; status?: 'accepted' | 'pending' }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.set('limit', String(params.limit));
+    if (params?.offset) queryParams.set('offset', String(params.offset));
+    if (params?.status) queryParams.set('status', params.status);
+    return apiRequest<{ friends: any[]; hasMore: boolean }>(`/api/friends?${queryParams.toString()}`);
+  },
+  getPending: async () => {
+    return apiRequest<{ incoming: any[]; outgoing: any[] }>('/api/friends/pending');
+  },
+  sendRequest: async (userId: number) => {
+    return apiRequest(`/api/friends/request/${userId}`, {
+      method: 'POST',
+    });
+  },
+  accept: async (userId: number) => {
+    return apiRequest(`/api/friends/accept/${userId}`, {
+      method: 'POST',
+    });
+  },
+  decline: async (userId: number) => {
+    return apiRequest(`/api/friends/decline/${userId}`, {
+      method: 'POST',
+    });
+  },
+  remove: async (userId: number) => {
+    return apiRequest(`/api/friends/${userId}`, {
+      method: 'DELETE',
+    });
+  },
+  search: async (query: string, limit = 20) => {
+    return apiRequest<{ users: any[] }>(`/api/friends/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+  },
+  getSuggestions: async (limit = 10) => {
+    return apiRequest<{ suggestions: any[] }>(`/api/friends/suggestions?limit=${limit}`);
+  },
+};
+
 // Witnesses API
 export const witnessesAPI = {
   getAll: async (letterId?: string, options?: RequestInit) => {

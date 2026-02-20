@@ -31,7 +31,7 @@ const Layout: React.FC<Props> = ({ children }) => {
     { path: '/', icon: Home, label: t('nav_home'), color: 'text-accent-cyan', glow: 'drop-shadow-[0_0_8px_rgba(0,224,255,0.8)]' },
     { path: '/letters', icon: Mail, label: t('nav_letters'), color: 'text-accent-lime', glow: 'drop-shadow-[0_0_8px_rgba(180,255,0,0.8)]' },
     { path: '/store', icon: ShoppingBag, label: t('nav_store'), color: 'text-accent-lime', glow: 'drop-shadow-[0_0_8px_rgba(180,255,0,0.8)]' },
-    { path: '/referral', icon: Users, label: t('nav_referral') || 'Друзья', color: 'text-purple-500', glow: 'drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]' },
+    { path: '/friends', icon: Users, label: t('nav_friends') || 'Друзья', color: 'text-purple-500', glow: 'drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]' },
     { path: '/search', icon: Search, label: t('nav_search'), color: 'text-accent-cyan', glow: 'drop-shadow-[0_0_8px_rgba(0,224,255,0.8)]' },
     { path: '/duels', icon: Swords, label: t('nav_duels'), color: 'text-orange-500', glow: 'drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]' },
     { path: '/profile', icon: User, label: t('nav_profile'), color: 'text-purple-500', glow: 'drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]' },
