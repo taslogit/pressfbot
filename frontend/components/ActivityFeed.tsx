@@ -297,10 +297,10 @@ const ActivityFeed: React.FC = () => {
                 <div className="text-xs text-muted tabular-nums">
                   {getTimeAgo(activity.createdAt)}
                 </div>
-                {(friendUserId || activity.userId) && (
+                {targetUserId && (
                   <button
                     type="button"
-                    onClick={() => navigate(`/profile?userId=${friendUserId || activity.userId}`)}
+                    onClick={() => navigate(`/profile?userId=${targetUserId}`)}
                     className="p-1.5 rounded-md hover:bg-white/5 text-muted hover:text-primary transition-colors"
                     title={t('view_profile') || 'View profile'}
                   >
