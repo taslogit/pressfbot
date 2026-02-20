@@ -2,6 +2,7 @@
 // Provides caching layer for frequently accessed data
 
 const logger = require('./logger');
+const { redisWithCircuitBreaker } = require('./circuitBreaker');
 
 let redisClient = null;
 
@@ -45,11 +46,12 @@ const initCache = (redisUrl) => {
 const pendingRequests = new Map();
 
 const cache = {
-  // Get value from cache with stampede protection
+  // Get value from cache with stampede protection and circuit breaker
   get: async (key) => {
     if (!redisClient) return null;
     try {
-      const value = await redisClient.get(key);
+      // Reliability: Use circuit breaker for Redis operations
+      const value = await redisWithCircuitBreaker(redisClient, 'get', [key], null);
       if (value) {
         return JSON.parse(value);
       }
@@ -114,7 +116,8 @@ const cache = {
     if (!redisClient) return false;
     try {
       const serialized = JSON.stringify(value);
-      await redisClient.setex(key, ttl, serialized);
+      // Reliability: Use circuit breaker for Redis operations
+      await redisWithCircuitBreaker(redisClient, 'setex', [key, ttl, serialized], false);
       return true;
     } catch (error) {
       logger.warn(`Cache set error for key ${key}`, { error: error.message });
@@ -126,7 +129,8 @@ const cache = {
   del: async (key) => {
     if (!redisClient) return false;
     try {
-      await redisClient.del(key);
+      // Reliability: Use circuit breaker for Redis operations
+      await redisWithCircuitBreaker(redisClient, 'del', [key], false);
       return true;
     } catch (error) {
       logger.warn(`Cache delete error for key ${key}`, { error: error.message });
@@ -138,9 +142,10 @@ const cache = {
   delPattern: async (pattern) => {
     if (!redisClient) return false;
     try {
-      const keys = await redisClient.keys(pattern);
+      // Reliability: Use circuit breaker for Redis operations
+      const keys = await redisWithCircuitBreaker(redisClient, 'keys', [pattern], []);
       if (keys.length > 0) {
-        await redisClient.del(...keys);
+        await redisWithCircuitBreaker(redisClient, 'del', keys, false);
       }
       return true;
     } catch (error) {
@@ -173,7 +178,8 @@ const cache = {
   ping: async () => {
     if (!redisClient) return false;
     try {
-      const result = await redisClient.ping();
+      // Reliability: Use circuit breaker for Redis operations
+      const result = await redisWithCircuitBreaker(redisClient, 'ping', [], false);
       return result === 'PONG';
     } catch (error) {
       return false;

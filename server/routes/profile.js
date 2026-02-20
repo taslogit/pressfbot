@@ -236,11 +236,11 @@ const createProfileRoutes = (pool) => {
             avatar || 'pressf',
             bio || 'No bio yet.',
             title || null, // Title will be calculated from level
-            JSON.stringify(gifts || []),
-            JSON.stringify(achievements || []),
-            JSON.stringify(perks || []),
-            JSON.stringify(contracts || []),
-            JSON.stringify(stats || { beefsWon: 0, leaksDropped: 0, daysAlive: 1 }),
+            safeStringify(gifts || [], { maxSize: 512 * 1024 }),
+            safeStringify(achievements || [], { maxSize: 512 * 1024 }),
+            safeStringify(perks || [], { maxSize: 512 * 1024 }),
+            safeStringify(contracts || [], { maxSize: 512 * 1024 }),
+            safeStringify(stats || { beefsWon: 0, leaksDropped: 0, daysAlive: 1 }, { maxSize: 256 * 1024 }),
             tonAddress || null
           ]
         );
@@ -307,23 +307,23 @@ const createProfileRoutes = (pool) => {
         }
         if (gifts !== undefined && allowedFields.gifts) {
           updateFields.push(`gifts = $${paramIndex++}`);
-          updateValues.push(JSON.stringify(gifts));
+          updateValues.push(safeStringify(gifts, { maxSize: 512 * 1024 }));
         }
         if (achievements !== undefined && allowedFields.achievements) {
           updateFields.push(`achievements = $${paramIndex++}`);
-          updateValues.push(JSON.stringify(achievements));
+          updateValues.push(safeStringify(achievements, { maxSize: 512 * 1024 }));
         }
         if (perks !== undefined && allowedFields.perks) {
           updateFields.push(`perks = $${paramIndex++}`);
-          updateValues.push(JSON.stringify(perks));
+          updateValues.push(safeStringify(perks, { maxSize: 512 * 1024 }));
         }
         if (contracts !== undefined && allowedFields.contracts) {
           updateFields.push(`contracts = $${paramIndex++}`);
-          updateValues.push(JSON.stringify(contracts));
+          updateValues.push(safeStringify(contracts, { maxSize: 512 * 1024 }));
         }
         if (stats !== undefined && allowedFields.stats) {
           updateFields.push(`stats = $${paramIndex++}`);
-          updateValues.push(JSON.stringify(stats));
+          updateValues.push(safeStringify(stats, { maxSize: 256 * 1024 }));
         }
 
         if (updateFields.length > 0) {
@@ -620,10 +620,19 @@ const createProfileRoutes = (pool) => {
         }
       });
     } catch (error) {
-      await client.query('ROLLBACK').catch(() => {});
-      client.release();
+      // Security: Ensure transaction is rolled back before releasing client
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        logger.error('Failed to rollback transaction in check-in', { error: rollbackError?.message });
+      }
       logger.error('Check-in error', error);
       return sendError(res, 500, 'CHECKIN_FAILED', 'Failed to check in');
+    } finally {
+      // Always release client, even if transaction failed
+      if (client) {
+        client.release();
+      }
     }
   });
 

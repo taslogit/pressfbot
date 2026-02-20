@@ -1,14 +1,50 @@
 const express = require('express');
-const router = express.Router();
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { logActivity } = require('./activity');
+const { z, validateQuery, validateParams } = require('../validation');
+const { validateUserId, parseAndValidateUserId } = require('../utils/validation');
 
 const FRIENDSHIP_STATUS = ['pending', 'accepted', 'blocked'];
 
-const createFriendsRoutes = (pool) => {
+// Security: Query parameter validation schemas
+// Note: Query params come as strings, so we need to transform them
+// Using preprocess to handle undefined values and transform strings to numbers
+const friendsListQuerySchema = z.object({
+  limit: z.preprocess(
+    (val) => val === undefined ? undefined : Number(val),
+    z.number().int().min(1).max(100).optional()
+  ),
+  offset: z.preprocess(
+    (val) => val === undefined ? undefined : Number(val),
+    z.number().int().min(0).optional()
+  )
+}).passthrough(); // Allow other query params to pass through
+
+const friendsSearchQuerySchema = z.object({
+  q: z.string().min(1).optional(),
+  limit: z.preprocess(
+    (val) => val === undefined ? undefined : Number(val),
+    z.number().int().min(1).max(50).optional()
+  )
+}).passthrough();
+
+const friendsSuggestionsQuerySchema = z.object({
+  limit: z.preprocess(
+    (val) => val === undefined ? undefined : Number(val),
+    z.number().int().min(1).max(50).optional()
+  )
+}).passthrough();
+
+// Security: URL parameter validation schema for userId
+const userIdParamsSchema = z.object({
+  userId: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().positive())
+});
+
+const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = null) => {
+  const router = express.Router();
   // GET /api/friends — list accepted friends with pagination
-  router.get('/', async (req, res) => {
+  router.get('/', validateQuery(friendsListQuerySchema), async (req, res) => {
     try {
       logger.debug('GET /api/friends - request received', { userId: req.userId, query: req.query });
       if (!pool) {
@@ -19,8 +55,10 @@ const createFriendsRoutes = (pool) => {
         logger.warn('GET /api/friends - user not authenticated');
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
-      const limit = Math.min(parseInt(req.query.limit) || 50, 100);
-      const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+      
+      // Query parameters are already validated by validateQuery middleware
+      const limit = req.query.limit || 50;
+      const offset = req.query.offset || 0;
 
       const result = await pool.query(
         `SELECT f.id, f.friend_id AS user_id, f.accepted_at,
@@ -118,7 +156,7 @@ const createFriendsRoutes = (pool) => {
   });
 
   // POST /api/friends/request/:userId — send friend request
-  router.post('/request/:userId', async (req, res) => {
+  router.post('/request/:userId', validateParams(userIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -127,10 +165,8 @@ const createFriendsRoutes = (pool) => {
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
-      const friendId = parseInt(req.params.userId, 10);
-      if (!Number.isInteger(friendId) || friendId <= 0) {
-        return sendError(res, 400, 'INVALID_USER_ID', 'Invalid user ID');
-      }
+      // Security: userId is already validated by validateParams middleware
+      const friendId = req.params.userId;
       if (friendId === userId) {
         return sendError(res, 400, 'VALIDATION_ERROR', 'Cannot add yourself as friend');
       }
@@ -201,7 +237,7 @@ const createFriendsRoutes = (pool) => {
   });
 
   // POST /api/friends/accept/:userId — accept friend request
-  router.post('/accept/:userId', async (req, res) => {
+  router.post('/accept/:userId', validateParams(userIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -210,10 +246,8 @@ const createFriendsRoutes = (pool) => {
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
-      const friendId = parseInt(req.params.userId, 10);
-      if (!Number.isInteger(friendId) || friendId <= 0) {
-        return sendError(res, 400, 'INVALID_USER_ID', 'Invalid user ID');
-      }
+      // Security: userId is already validated by validateParams middleware
+      const friendId = req.params.userId;
 
       const row = await pool.query(
         `SELECT id FROM friendships
@@ -275,7 +309,7 @@ const createFriendsRoutes = (pool) => {
   });
 
   // POST /api/friends/decline/:userId — decline friend request
-  router.post('/decline/:userId', async (req, res) => {
+  router.post('/decline/:userId', validateParams(userIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -284,10 +318,8 @@ const createFriendsRoutes = (pool) => {
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
-      const friendId = parseInt(req.params.userId, 10);
-      if (!Number.isInteger(friendId) || friendId <= 0) {
-        return sendError(res, 400, 'INVALID_USER_ID', 'Invalid user ID');
-      }
+      // Security: userId is already validated by validateParams middleware
+      const friendId = req.params.userId;
 
       const result = await pool.query(
         `DELETE FROM friendships
@@ -303,7 +335,7 @@ const createFriendsRoutes = (pool) => {
   });
 
   // DELETE /api/friends/:userId — remove friend (or cancel outgoing request)
-  router.delete('/:userId', async (req, res) => {
+  router.delete('/:userId', validateParams(userIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -312,10 +344,8 @@ const createFriendsRoutes = (pool) => {
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
-      const friendId = parseInt(req.params.userId, 10);
-      if (!Number.isInteger(friendId) || friendId <= 0) {
-        return sendError(res, 400, 'INVALID_USER_ID', 'Invalid user ID');
-      }
+      // Security: userId is already validated by validateParams middleware
+      const friendId = req.params.userId;
 
       const result = await pool.query(
         `DELETE FROM friendships
@@ -331,7 +361,7 @@ const createFriendsRoutes = (pool) => {
   });
 
   // GET /api/friends/search?q= — search users by title (for adding friends)
-  router.get('/search', async (req, res) => {
+  router.get('/search', validateQuery(friendsSearchQuerySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -344,7 +374,9 @@ const createFriendsRoutes = (pool) => {
       if (q.length < 2) {
         return res.json({ ok: true, users: [] });
       }
-      const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+      
+      // Query parameters are already validated by validateQuery middleware
+      const limit = req.query.limit || 20;
 
       const result = await pool.query(
         `SELECT p.user_id, p.avatar, p.title, p.level,
@@ -383,7 +415,7 @@ const createFriendsRoutes = (pool) => {
   });
 
   // GET /api/friends/suggestions — suggested friends (mutual friends, mutual duels, mutual squads, referrals)
-  router.get('/suggestions', async (req, res) => {
+  router.get('/suggestions', suggestionsLimiter || ((req, res, next) => next()), validateQuery(friendsSuggestionsQuerySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -392,7 +424,9 @@ const createFriendsRoutes = (pool) => {
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
-      const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+      
+      // Query parameters are already validated by validateQuery middleware
+      const limit = req.query.limit || 20;
 
       // Get suggestions with priority:
       // 1. Mutual friends (friends of friends) - priority 1
@@ -533,7 +567,7 @@ const createFriendsRoutes = (pool) => {
   });
 
   // GET /api/friends/online — get online friends (last_seen_at within last 5 minutes)
-  router.get('/online', async (req, res) => {
+  router.get('/online', onlineLimiter || ((req, res, next) => next()), async (req, res) => {
     try {
       logger.debug('GET /api/friends/online - request received', { userId: req.userId });
       if (!pool) {
@@ -545,47 +579,28 @@ const createFriendsRoutes = (pool) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      // Get all accepted friends (both directions)
-      const friendshipsResult = await pool.query(
-        `SELECT friend_id AS friend_id FROM friendships 
-         WHERE user_id = $1 AND status = 'accepted'
-         UNION
-         SELECT user_id AS friend_id FROM friendships 
-         WHERE friend_id = $1 AND status = 'accepted'`,
-        [userId]
-      );
-
-      const friendIds = friendshipsResult.rows.map(r => Number(r.friend_id)).filter(id => id && id > 0);
-
-      // Security: Validate array size to prevent SQL injection and performance issues
-      const MAX_FRIENDS_FOR_QUERY = 1000;
-      if (friendIds.length > MAX_FRIENDS_FOR_QUERY) {
-        logger.warn('Too many friends for online query, truncating', { 
-          userId, 
-          totalFriends: friendIds.length,
-          maxAllowed: MAX_FRIENDS_FOR_QUERY 
-        });
-        friendIds.splice(MAX_FRIENDS_FOR_QUERY);
-      }
-
-      if (friendIds.length === 0) {
-        return res.json({ ok: true, friends: [] });
-      }
-
-      // Get online friends (last_seen_at within last 5 minutes)
-      // Security: Use parameterized query with array instead of dynamic IN clause
-      // For large lists, PostgreSQL handles arrays efficiently
+      // Performance: Use EXISTS subquery instead of fetching all friend IDs first
+      // This is more efficient for large friend lists as it avoids materializing the full list
       const onlineThreshold = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes ago
       
       const result = await pool.query(
         `SELECT DISTINCT s.telegram_id AS user_id, p.avatar, p.title, p.level, s.last_seen_at
          FROM sessions s
          JOIN profiles p ON p.user_id = s.telegram_id
-         WHERE s.telegram_id = ANY($2::bigint[])
-           AND s.last_seen_at >= $1
+         WHERE s.last_seen_at >= $1
            AND s.expires_at > now()
+           AND (
+             EXISTS (
+               SELECT 1 FROM friendships f1
+               WHERE f1.user_id = $2 AND f1.friend_id = s.telegram_id AND f1.status = 'accepted'
+             )
+             OR EXISTS (
+               SELECT 1 FROM friendships f2
+               WHERE f2.friend_id = $2 AND f2.user_id = s.telegram_id AND f2.status = 'accepted'
+             )
+           )
          ORDER BY s.last_seen_at DESC`,
-        [onlineThreshold, friendIds]
+        [onlineThreshold, userId]
       );
 
       const onlineFriends = result.rows.map((row) => ({
@@ -598,8 +613,7 @@ const createFriendsRoutes = (pool) => {
 
       logger.debug('Online friends result', { 
         userId, 
-        onlineCount: onlineFriends.length,
-        totalFriends: friendIds.length 
+        onlineCount: onlineFriends.length
       });
 
       return res.json({ ok: true, friends: onlineFriends });

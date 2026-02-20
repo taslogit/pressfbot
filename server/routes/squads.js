@@ -4,6 +4,7 @@ const { v4: uuidv4, validate: validateUUID } = require('uuid');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { cache } = require('../utils/cache');
+const { safeStringify } = require('../utils/safeJson');
 const { logActivity } = require('./activity');
 
 // Constants
@@ -121,7 +122,7 @@ const createSquadsRoutes = (pool) => {
       await pool.query(
         `INSERT INTO squads (id, name, creator_id, members, pact_health, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, now(), now())`,
-        [squadId, name.trim(), userId, JSON.stringify([creator]), 100]
+        [squadId, name.trim(), userId, safeStringify([creator], { maxSize: 1024 }), 100]
       );
 
       // Log activity
@@ -280,10 +281,19 @@ const createSquadsRoutes = (pool) => {
 
         return res.json({ ok: true, squad: normalizedSquad });
       } catch (error) {
-        await client.query('ROLLBACK').catch(() => {});
-        client.release();
+        // Security: Ensure transaction is rolled back before releasing client
+        try {
+          await client.query('ROLLBACK');
+        } catch (rollbackError) {
+          logger.error('Failed to rollback transaction in update squad', { error: rollbackError?.message });
+        }
         logger.error('Update squad error:', error);
         return sendError(res, 500, 'SQUAD_UPDATE_FAILED', 'Failed to update squad');
+      } finally {
+        // Always release client, even if transaction failed
+        if (client) {
+          client.release();
+        }
       }
     });
 
@@ -361,12 +371,17 @@ const createSquadsRoutes = (pool) => {
         return sendError(res, 400, 'SQUAD_FULL', `Maximum ${MAX_SQUAD_MEMBERS} members allowed per squad`);
       }
 
-      // Validate members array size (prevent DoS)
-      const membersJson = JSON.stringify(members);
-      if (membersJson.length > 100 * 1024) { // 100KB limit for members array
-        await client.query('ROLLBACK');
-        client.release();
-        return sendError(res, 400, 'MEMBERS_TOO_LARGE', 'Members array exceeds size limit');
+      // Validate members array size (prevent DoS) - safeStringify will throw if too large
+      let membersJson;
+      try {
+        membersJson = safeStringify(members, { maxSize: 256 * 1024 });
+      } catch (error) {
+        if (error.code === 'JSON_SIZE_EXCEEDED') {
+          await client.query('ROLLBACK');
+          client.release();
+          return sendError(res, 400, 'MEMBERS_TOO_LARGE', 'Members array exceeds size limit');
+        }
+        throw error;
       }
 
       // Add new member
@@ -382,7 +397,7 @@ const createSquadsRoutes = (pool) => {
 
       await client.query(
         `UPDATE squads SET members = $1, updated_at = now() WHERE id = $2`,
-        [JSON.stringify(members), squadId]
+        [safeStringify(members, { maxSize: 256 * 1024 }), squadId]
       );
 
       await client.query('COMMIT');
@@ -393,10 +408,19 @@ const createSquadsRoutes = (pool) => {
 
       return res.json({ ok: true, member: newMember });
     } catch (error) {
-      await client.query('ROLLBACK').catch(() => {});
-      client.release();
+      // Security: Ensure transaction is rolled back before releasing client
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        logger.error('Failed to rollback transaction in add member', { error: rollbackError?.message });
+      }
       logger.error('Add member error:', error);
       return sendError(res, 500, 'MEMBER_ADD_FAILED', 'Failed to add member');
+    } finally {
+      // Always release client, even if transaction failed
+      if (client) {
+        client.release();
+      }
     }
   });
 
@@ -468,10 +492,19 @@ const createSquadsRoutes = (pool) => {
 
       return res.json({ ok: true });
     } catch (error) {
-      await client.query('ROLLBACK').catch(() => {});
-      client.release();
+      // Security: Ensure transaction is rolled back before releasing client
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        logger.error('Failed to rollback transaction in remove member', { error: rollbackError?.message });
+      }
       logger.error('Remove member error:', error);
       return sendError(res, 500, 'MEMBER_REMOVE_FAILED', 'Failed to remove member');
+    } finally {
+      // Always release client, even if transaction failed
+      if (client) {
+        client.release();
+      }
     }
   });
 
@@ -561,7 +594,7 @@ const createSquadsRoutes = (pool) => {
 
       await client.query(
         `UPDATE squads SET members = $1, updated_at = now() WHERE id = $2`,
-        [JSON.stringify(members), squadId]
+        [safeStringify(members, { maxSize: 256 * 1024 }), squadId]
       );
 
       await client.query('COMMIT');
@@ -588,10 +621,19 @@ const createSquadsRoutes = (pool) => {
         sharedPayload: squad.shared_payload
       }});
     } catch (error) {
-      await client.query('ROLLBACK').catch(() => {});
-      client.release();
+      // Security: Ensure transaction is rolled back before releasing client
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        logger.error('Failed to rollback transaction in join squad', { error: rollbackError?.message });
+      }
       logger.error('Join squad error:', error);
       return sendError(res, 500, 'SQUAD_JOIN_FAILED', 'Failed to join squad');
+    } finally {
+      // Always release client, even if transaction failed
+      if (client) {
+        client.release();
+      }
     }
   });
 

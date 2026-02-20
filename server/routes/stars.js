@@ -3,7 +3,6 @@
 // Uses Telegram Bot API sendInvoice (Stars as currency)
 
 const express = require('express');
-const router = express.Router();
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { trackBusiness } = require('../middleware/monitoring');
@@ -121,7 +120,7 @@ const handleStarsCatalog = (req, res) => {
 };
 
 const createStarsRoutes = (pool, bot) => {
-
+  const router = express.Router();
   // ─── GET /api/stars/catalog (also served publicly in index.js) ───
   router.get('/catalog', handleStarsCatalog);
 

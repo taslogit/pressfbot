@@ -382,11 +382,19 @@ const createEventsRoutes = (pool) => {
         }
       });
     } catch (error) {
-      await client.query('ROLLBACK').catch(() => {});
+      // Security: Ensure transaction is rolled back before releasing client
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        logger.error('Failed to rollback transaction in claim event reward', { error: rollbackError?.message });
+      }
       logger.error('Claim event reward error:', { error: error?.message || error });
       return sendError(res, 500, 'REWARD_CLAIM_FAILED', 'Failed to claim reward');
     } finally {
-      client.release();
+      // Always release client, even if transaction failed
+      if (client) {
+        client.release();
+      }
     }
   });
 

@@ -242,7 +242,7 @@ const createGiftsRoutes = (pool, giftLimitCheck) => {
           giftConfig.icon,
           giftConfig.rarity,
           actualCost,
-          JSON.stringify(giftConfig.effect),
+          safeStringify(giftConfig.effect, { maxSize: 64 * 1024 }),
           message || null
         ]
       );

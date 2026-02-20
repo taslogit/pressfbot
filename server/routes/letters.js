@@ -12,6 +12,7 @@ const logger = require('../utils/logger');
 const { getXPReward } = require('../utils/xpSystem');
 const { getActiveXpMultiplier } = require('../utils/boosts');
 const { sanitizeInput } = require('../utils/sanitize');
+const { safeStringify } = require('../utils/safeJson');
 const VALID_LETTER_STATUSES = ['draft', 'scheduled', 'sent'];
 const VALID_LETTER_TYPES = ['generic', 'crypto', 'love', 'roast', 'confession'];
 const VALID_LETTER_SORT = ['created_at', 'unlock_date', 'title'];
@@ -285,7 +286,10 @@ const createLettersRoutes = (pool, createLimiter, letterLimitCheck) => {
       }
 
       // Sanitize user input to prevent stored XSS
-      const sanitizedBody = sanitizeInput(req.body);
+      // Preserve encryptedContent and ipfsHash as they are already encrypted/hashed
+      const sanitizedBody = sanitizeInput(req.body, {
+        preserveFields: ['encryptedContent', 'ipfsHash']
+      });
       const {
         id,
         title,
@@ -396,7 +400,7 @@ const createLettersRoutes = (pool, createLimiter, letterLimitCheck) => {
           letterId, userId, title || 'Untitled', content || null,
           encryptedContent || null, ipfsHash || null,
           recipients || [], unlockDateValue, status, type || null,
-          attachments, JSON.stringify(options), isFavorite || false, null
+          attachments, safeStringify(options, { maxSize: 1024 * 1024 }), isFavorite || false, null
         ]
       );
 
@@ -417,7 +421,7 @@ const createLettersRoutes = (pool, createLimiter, letterLimitCheck) => {
           status,
           type || null,
           attachments,
-          JSON.stringify(options)
+          safeStringify(options, { maxSize: 1024 * 1024 })
         ]
       );
 
@@ -726,7 +730,7 @@ const createLettersRoutes = (pool, createLimiter, letterLimitCheck) => {
       }
       if (options !== undefined && allowedFields.options) {
         updateFields.push(`options = $${paramIndex++}`);
-        updateValues.push(JSON.stringify(options));
+        updateValues.push(safeStringify(options, { maxSize: 1024 * 1024 }));
       }
       if (isFavorite !== undefined && allowedFields.is_favorite) {
         updateFields.push(`is_favorite = $${paramIndex++}`);

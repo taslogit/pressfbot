@@ -10,6 +10,10 @@ require('dotenv').config();
 const { sendError } = require('./utils/errors');
 const logger = require('./utils/logger');
 const { initCache, cache } = require('./utils/cache');
+const { queryWithRetry } = require('./utils/dbRetry');
+const { startPoolMonitoring, stopPoolMonitoring, getPoolMetrics } = require('./utils/poolMonitor');
+const { queryWithCircuitBreaker, getAllCircuitBreakerStates } = require('./utils/circuitBreaker');
+const adaptive = require('./utils/adaptiveRateLimit');
 
 // Redis / Bull (job queue)
 const Queue = require('bull');
@@ -63,6 +67,16 @@ const RATE_LIMIT_LETTER_CREATE_MAX = 20; // per 15 minutes
 const RATE_LIMIT_SEARCH_WINDOW_MS = 1 * 60 * 1000; // 1 minute
 const RATE_LIMIT_SEARCH_MAX = 30;
 const RATE_LIMIT_DUEL_CREATE_MAX = 10; // per 15 minutes
+const RATE_LIMIT_FRIENDS_ONLINE_WINDOW_MS = 1 * 60 * 1000; // 1 minute
+const RATE_LIMIT_FRIENDS_ONLINE_MAX = 30; // 30 requests per minute (can be called frequently for UI updates)
+const RATE_LIMIT_FRIENDS_SUGGESTIONS_WINDOW_MS = 1 * 60 * 1000; // 1 minute
+const RATE_LIMIT_FRIENDS_SUGGESTIONS_MAX = 20; // 20 requests per minute
+const RATE_LIMIT_ACTIVITY_FEED_WINDOW_MS = 1 * 60 * 1000; // 1 minute
+const RATE_LIMIT_ACTIVITY_FEED_MAX = 60; // 60 requests per minute (can be called frequently)
+// IP-based limits for critical operations (in addition to session-based)
+const RATE_LIMIT_IP_VERIFY_MAX = 15; // verify per IP per 10 min (stricter than per-session)
+const RATE_LIMIT_IP_LETTER_CREATE_MAX = 10; // letter creates per IP per 15 min
+const RATE_LIMIT_IP_DUEL_CREATE_MAX = 5; // duel creates per IP per 15 min
 
 if (!BOT_TOKEN) {
   logger.error('Missing TELEGRAM_BOT_TOKEN in env');
@@ -372,10 +386,11 @@ app.use(helmet({
       imgSrc: ["'self'", "data:", "https:", "blob:"],
       connectSrc: ["'self'", "https://api.telegram.org", "https://*.telegram.org"],
       fontSrc: ["'self'", "data:"],
-      frameSrc: ["'self'", "https://telegram.org"]
+      frameSrc: ["'self'", "https://telegram.org"],
+      frameAncestors: ["'self'", "https://telegram.org", "https://*.telegram.org"]
     }
   },
-  crossOriginEmbedderPolicy: false, // Required for Telegram Mini App
+  crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
@@ -411,27 +426,49 @@ const globalLimiter = rateLimit({
   keyGenerator: (req) => req.get('x-session-id') || req.ip || 'anonymous'
 });
 app.use(globalLimiter);
+app.use(adaptive.adaptiveTrackingMiddleware);
 
+// Verify: IP-based (no session yet); strict per-IP to prevent abuse
 const verifyLimiter = rateLimit({
   windowMs: RATE_LIMIT_VERIFY_WINDOW_MS,
-  max: RATE_LIMIT_VERIFY_MAX,
+  max: RATE_LIMIT_IP_VERIFY_MAX,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  keyGenerator: (req) => req.ip || req.connection?.remoteAddress || 'unknown'
 });
 app.use('/api/verify', verifyLimiter);
 
-// Security: Rate limiting for critical endpoints
-const letterCreateLimiter = rateLimit({
+// IP-based rate limiters for critical operations (adaptive: stricter when IP misbehaves)
+const ipLetterCreateLimiter = rateLimit({
   windowMs: RATE_LIMIT_WINDOW_MS,
-  max: RATE_LIMIT_LETTER_CREATE_MAX,
+  max: (req, res) => adaptive.getAdaptiveMax(req, RATE_LIMIT_IP_LETTER_CREATE_MAX),
   standardHeaders: true,
   legacyHeaders: false,
-  message: 'Too many letters created, please try again later'
+  message: 'Too many letters created from this network, please try again later',
+  keyGenerator: (req) => req.ip || req.connection?.remoteAddress || 'unknown'
+});
+const ipDuelCreateLimiter = rateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: (req, res) => adaptive.getAdaptiveMax(req, RATE_LIMIT_IP_DUEL_CREATE_MAX),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many duels created from this network, please try again later',
+  keyGenerator: (req) => req.ip || req.connection?.remoteAddress || 'unknown'
+});
+
+// Security: Rate limiting for critical endpoints (adaptive: stricter on 4xx/5xx/429)
+const letterCreateLimiter = rateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: (req, res) => adaptive.getAdaptiveMax(req, RATE_LIMIT_LETTER_CREATE_MAX),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many letters created, please try again later',
+  keyGenerator: (req) => req.get('x-session-id') || req.ip || 'anonymous'
 });
 
 const searchLimiter = rateLimit({
   windowMs: RATE_LIMIT_SEARCH_WINDOW_MS,
-  max: RATE_LIMIT_SEARCH_MAX,
+  max: (req, res) => adaptive.getAdaptiveMax(req, RATE_LIMIT_SEARCH_MAX),
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Too many search requests, please try again later'
@@ -439,10 +476,41 @@ const searchLimiter = rateLimit({
 
 const duelCreateLimiter = rateLimit({
   windowMs: RATE_LIMIT_WINDOW_MS,
-  max: RATE_LIMIT_DUEL_CREATE_MAX,
+  max: (req, res) => adaptive.getAdaptiveMax(req, RATE_LIMIT_DUEL_CREATE_MAX),
   standardHeaders: true,
   legacyHeaders: false,
-  message: 'Too many duels created, please try again later'
+  message: 'Too many duels created, please try again later',
+  keyGenerator: (req) => req.get('x-session-id') || req.ip || 'anonymous'
+});
+
+// Security: Rate limiting for friends/online endpoint (adaptive)
+const friendsOnlineLimiter = rateLimit({
+  windowMs: RATE_LIMIT_FRIENDS_ONLINE_WINDOW_MS,
+  max: (req, res) => adaptive.getAdaptiveMax(req, RATE_LIMIT_FRIENDS_ONLINE_MAX),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many requests to friends online endpoint, please try again later',
+  keyGenerator: (req) => req.get('x-session-id') || req.ip || 'anonymous'
+});
+
+// Security: Rate limiting for friends/suggestions endpoint (adaptive)
+const friendsSuggestionsLimiter = rateLimit({
+  windowMs: RATE_LIMIT_FRIENDS_SUGGESTIONS_WINDOW_MS,
+  max: (req, res) => adaptive.getAdaptiveMax(req, RATE_LIMIT_FRIENDS_SUGGESTIONS_MAX),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many requests to friends suggestions endpoint, please try again later',
+  keyGenerator: (req) => req.get('x-session-id') || req.ip || 'anonymous'
+});
+
+// Security: Rate limiting for activity/feed endpoint (adaptive)
+const activityFeedLimiter = rateLimit({
+  windowMs: RATE_LIMIT_ACTIVITY_FEED_WINDOW_MS,
+  max: (req, res) => adaptive.getAdaptiveMax(req, RATE_LIMIT_ACTIVITY_FEED_MAX),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many requests to activity feed endpoint, please try again later',
+  keyGenerator: (req) => req.get('x-session-id') || req.ip || 'anonymous'
 });
 
 // Rate limiters for general GET and POST requests (key by session when present so one IP can have many users)
@@ -520,9 +588,9 @@ const duelLimitCheck = createLimitCheck(pool, 'duels', 'duels');
 const giftLimitCheck = createLimitCheck(pool, 'gifts', 'gifts', 'sender_id');
 
 // Register API routes with rate limiting
-app.use('/api/letters', authMiddleware, getLimiter, createLettersRoutes(pool, letterCreateLimiter, letterLimitCheck));
+app.use('/api/letters', authMiddleware, getLimiter, ipLetterCreateLimiter, createLettersRoutes(pool, letterCreateLimiter, letterLimitCheck));
 app.use('/api/profile', authMiddleware, getLimiter, createProfileRoutes(pool, bot));
-app.use('/api/duels', authMiddleware, getLimiter, createDuelsRoutes(pool, duelCreateLimiter, duelLimitCheck));
+app.use('/api/duels', authMiddleware, getLimiter, ipDuelCreateLimiter, createDuelsRoutes(pool, duelCreateLimiter, duelLimitCheck));
 app.use('/api/legacy', authMiddleware, getLimiter, createLegacyRoutes(pool));
 app.use('/api/notifications', authMiddleware, getLimiter, createNotificationsRoutes(pool, bot));
 app.use('/api/ton', authMiddleware, getLimiter, createTonRoutes(pool));
@@ -534,8 +602,8 @@ app.get('/api/stars/catalog', getLimiter, handleStarsCatalog);
 app.use('/api/gifts', authMiddleware, getLimiter, createGiftsRoutes(pool, giftLimitCheck));
 app.use('/api/events', authMiddleware, getLimiter, createEventsRoutes(pool));
 app.use('/api/tournaments', authMiddleware, getLimiter, createTournamentsRoutes(pool));
-app.use('/api/activity', authMiddleware, getLimiter, createActivityRoutes(pool));
-app.use('/api/friends', authMiddleware, getLimiter, createFriendsRoutes(pool));
+app.use('/api/activity', authMiddleware, getLimiter, createActivityRoutes(pool, activityFeedLimiter));
+app.use('/api/friends', authMiddleware, getLimiter, createFriendsRoutes(pool, friendsOnlineLimiter, friendsSuggestionsLimiter));
 app.use('/api/challenges', authMiddleware, getLimiter, createChallengesRoutes(pool, bot));
 app.use('/api/squads', authMiddleware, getLimiter, createSquadsRoutes(pool));
 app.use('/api/witnesses', authMiddleware, getLimiter, createWitnessesRoutes(pool));
@@ -710,7 +778,8 @@ app.get('/api/health', async (_req, res) => {
       used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
       total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
       rss: Math.round(process.memoryUsage().rss / 1024 / 1024)
-    }
+    },
+    pool: null
   };
 
   // Check database
@@ -719,14 +788,42 @@ app.get('/api/health', async (_req, res) => {
   } else {
     try {
       const start = Date.now();
-      await pool.query('SELECT 1');
+      // Reliability: Use retry logic for health check (circuit breaker is checked in queryWithCircuitBreaker)
+      await queryWithRetry(pool, 'SELECT 1', [], {
+        maxRetries: 1,
+        context: { endpoint: '/api/health' }
+      });
       const queryTime = Date.now() - start;
       health.db = 'ok';
       health.dbQueryTime = queryTime;
+      
+      // Add pool metrics to health check
+      const poolMetrics = getPoolMetrics(pool);
+      if (poolMetrics) {
+        health.pool = poolMetrics;
+      }
+      
+      // Add circuit breaker states
+      const circuitBreakers = getAllCircuitBreakerStates();
+      health.circuitBreakers = circuitBreakers;
     } catch (e) {
       health.ok = false;
       health.db = 'error';
       health.dbError = e.message;
+    }
+  }
+
+  // Add circuit breaker states (even if DB check failed)
+  if (!health.circuitBreakers) {
+    health.circuitBreakers = getAllCircuitBreakerStates();
+  }
+  
+  // Check circuit breaker states - if any are OPEN, mark health as degraded
+  if (health.circuitBreakers) {
+    const hasOpenCircuit = Object.values(health.circuitBreakers).some(cb => cb.state === 'OPEN');
+    if (hasOpenCircuit && health.ok) {
+      health.ok = false;
+      health.status = 'degraded';
     }
   }
 
@@ -771,6 +868,59 @@ app.get('/api/metrics/prometheus', globalLimiter, (req, res) => {
     logger.error('Prometheus metrics error:', error);
     return res.status(500).send('# Error generating metrics\n');
   }
+});
+
+// Dashboard with key metrics (requests/sec, error rate, DB connections) — 5.5.5.4
+app.get('/api/metrics/dashboard', globalLimiter, (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>PRESS F Metrics</title>
+<style>
+  body { font-family: system-ui,sans-serif; background: #0f0d16; color: #e2e0e6; padding: 1.5rem; max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 1.25rem; margin-bottom: 1rem; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #2a2730; }
+  th { color: #888; font-weight: 600; }
+  .ok { color: #6ee7b7; } .warn { color: #fcd34d; } .err { color: #f87171; }
+  .meta { font-size: 0.875rem; color: #888; margin-top: 1rem; }
+</style></head>
+<body>
+  <h1>Metrics Dashboard</h1>
+  <div id="root">Loading…</div>
+  <p class="meta">Data from /api/metrics and /api/health. Auto-refresh every 30s.</p>
+  <script>
+    function render(metrics, health) {
+      const r = metrics?.metrics?.requests || {};
+      const pool = health?.pool || {};
+      const cb = health?.circuitBreakers || {};
+      document.getElementById('root').innerHTML = '<table><tbody>' +
+        '<tr><th>Throughput</th><td>' + (r.throughputPerSecond ?? '—') + ' req/s</td></tr>' +
+        '<tr><th>Error rate</th><td class="' + (parseFloat(r.errorRate) > 5 ? 'err' : 'ok') + '">' + (r.errorRate ?? '—') + '</td></tr>' +
+        '<tr><th>Avg response time</th><td>' + (r.avgResponseTime ?? '—') + '</td></tr>' +
+        '<tr><th>P95 response time</th><td>' + (r.p95ResponseTime ?? '—') + '</td></tr>' +
+        '<tr><th>DB connections</th><td>' + (pool.active ?? '—') + ' / ' + (pool.max ?? '—') + ' active</td></tr>' +
+        '<tr><th>DB status</th><td class="' + (health?.db === 'ok' ? 'ok' : 'err') + '">' + (health?.db ?? '—') + '</td></tr>' +
+        '<tr><th>Redis</th><td class="' + (health?.redis === 'ok' ? 'ok' : 'warn') + '">' + (health?.redis ?? '—') + '</td></tr>' +
+        '<tr><th>Circuit breakers</th><td>' + (cb.database?.state ?? '—') + ' / ' + (cb.redis?.state ?? '—') + '</td></tr>' +
+        '</tbody></table>';
+    }
+    async function load() {
+      try {
+        const [m, h] = await Promise.all([
+          fetch('/api/metrics').then(r => r.json()),
+          fetch('/api/health').then(r => r.json())
+        ]);
+        render(m?.ok ? m : null, h);
+      } catch (e) {
+        document.getElementById('root').innerHTML = '<p class="err">Failed to load: ' + e.message + '</p>';
+      }
+    }
+    load();
+    setInterval(load, 30000);
+  </script>
+</body></html>
+  `);
 });
 
 // Create all tables (sessions + migrations)
@@ -984,6 +1134,11 @@ app.get('/api/metrics/prometheus', globalLimiter, (req, res) => {
     // Run all migrations
     await createTables(pool);
     logger.info('Database initialized successfully');
+    
+    // Start connection pool monitoring
+    if (pool) {
+      startPoolMonitoring(pool);
+    }
   } catch (e) {
     logger.error('Failed to initialize database', e);
   }
@@ -1082,9 +1237,15 @@ app.post('/api/verify', async (req, res) => {
     if (pool) {
       // Security: Do not store init_data (contains sensitive user data)
       // Only store telegram_id for session management
-      await pool.query(
+      // Reliability: Use retry logic for transient database errors
+      await queryWithRetry(
+        pool,
         'INSERT INTO sessions(id, telegram_id, expires_at, last_seen_at) VALUES($1, $2, $3, now())',
-        [sessionId, tgUserId, expiresAt]
+        [sessionId, tgUserId, expiresAt],
+        {
+          maxRetries: 3,
+          context: { endpoint: '/api/verify', userId: tgUserId }
+        }
       );
 
       // Handle referral code and squad invite from start_param
@@ -1109,9 +1270,15 @@ app.post('/api/verify', async (req, res) => {
         const referralCode = startParam.replace('ref_', '');
         try {
           // Find referrer by referral code
-          const referrerResult = await pool.query(
+          // Reliability: Use retry logic for transient database errors
+          const referrerResult = await queryWithRetry(
+            pool,
             'SELECT user_id FROM profiles WHERE referral_code = $1',
-            [referralCode]
+            [referralCode],
+            {
+              maxRetries: 2,
+              context: { endpoint: '/api/verify', action: 'find_referrer', referralCode }
+            }
           );
 
           if (referrerResult.rowCount > 0 && referrerResult.rows[0].user_id !== tgUserId) {
@@ -1364,10 +1531,7 @@ app.get('/api/session/:id', authMiddleware, async (req, res) => {
       
       await bot.launch();
       logger.info('✅ Bot launched via long polling');
-      
-      // Graceful shutdown
-      process.once('SIGINT', () => bot.stop('SIGINT'));
-      process.once('SIGTERM', () => bot.stop('SIGTERM'));
+      // Graceful shutdown is handled globally at end of file (pool + server + bot)
     }
 
     // Кнопка меню бота: при открытии чата пользователь видит "Открыть приложение" — открывает Web App
@@ -1414,7 +1578,56 @@ app.use(notFoundHandler);
 // Global error handler (must be last middleware)
 app.use(errorHandler);
 
-app.listen(PORT, () => logger.info(`Backend running on port ${PORT}`));
+const server = app.listen(PORT, () => logger.info(`Backend running on port ${PORT}`));
+
+// Graceful shutdown: drain connections, close pool, stop bot
+const SHUTDOWN_TIMEOUT_MS = 30000;
+function gracefulShutdown(signal) {
+  const label = `gracefulShutdown(${signal})`;
+  logger.info(`${label} initiated`);
+  let closed = false;
+  const finish = () => {
+    if (closed) return;
+    closed = true;
+    logger.info(`${label} complete`);
+    process.exit(0);
+  };
+  const timeout = setTimeout(() => {
+    logger.warn(`${label} timeout after ${SHUTDOWN_TIMEOUT_MS}ms, forcing exit`);
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+  if (timeout.unref) timeout.unref();
+
+  const steps = [];
+  stopPoolMonitoring();
+  if (pool) {
+    steps.push(
+      pool.end().then(() => logger.info(`${label}: pool closed`)).catch((e) => logger.error(`${label}: pool end error`, e))
+    );
+  }
+  if (server && server.close) {
+    steps.push(
+      new Promise((resolve) => {
+        server.close((err) => {
+          if (err) logger.error(`${label}: server close error`, err);
+          else logger.info(`${label}: server closed`);
+          resolve();
+        });
+      })
+    );
+  }
+  if (bot && typeof bot.stop === 'function') {
+    try {
+      bot.stop(signal);
+      logger.info(`${label}: bot stopped`);
+    } catch (e) {
+      logger.warn(`${label}: bot stop error`, e);
+    }
+  }
+  Promise.all(steps).then(finish).catch(() => finish());
+}
+process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.once('SIGINT', () => gracefulShutdown('SIGINT'));
 
 function verifyInitData(initData, botToken) {
   try {

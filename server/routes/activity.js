@@ -4,18 +4,31 @@ const { v4: uuidv4 } = require('uuid');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { cache } = require('../utils/cache');
+const { validateParams } = require('../validation');
+const { z } = require('../validation');
+const { safeStringify } = require('../utils/safeJson');
 
-const createActivityRoutes = (pool) => {
+// Security: URL parameter validation schema for userId
+const activityUserIdParamsSchema = z.object({
+  userId: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().positive())
+});
+
+const createActivityRoutes = (pool, feedLimiter = null) => {
   // GET /api/activity/feed - Get activity feed
-  router.get('/feed', async (req, res) => {
+  router.get('/feed', feedLimiter || ((req, res, next) => next()), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
       }
 
       const userId = req.userId;
-      const limit = parseInt(req.query.limit) || 50;
-      const offset = parseInt(req.query.offset) || 0;
+      
+      // Security: Validate query parameters
+      const limitRaw = req.query.limit;
+      const offsetRaw = req.query.offset;
+      const cursor = req.query.cursor; // Optional cursor for cursor-based pagination (ISO date)
+      const limit = limitRaw ? parseInt(limitRaw, 10) : 50;
+      const offset = offsetRaw ? parseInt(offsetRaw, 10) : 0;
       const type = req.query.type; // Optional filter by activity type
       const friendsOnly = req.query.friends === '1' || req.query.friends === 'true';
       const friendsFilter = req.query.friendsFilter; // 'all' | 'close' | 'referrals'
@@ -38,6 +51,15 @@ const createActivityRoutes = (pool) => {
           field: 'offset',
           min: 0
         });
+      }
+
+      // Cursor-based pagination: cursor must be valid ISO date when provided
+      let cursorDate = null;
+      if (cursor) {
+        cursorDate = new Date(cursor);
+        if (isNaN(cursorDate.getTime())) {
+          return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid cursor format (use ISO date)');
+        }
       }
 
       let friendIds = [];
@@ -117,38 +139,47 @@ const createActivityRoutes = (pool) => {
         friendIds.splice(MAX_FRIENDS_FOR_QUERY);
       }
 
-      // Build query
+      // Build query (cursor-based when cursor provided — avoids large OFFSET)
       let query = '';
       let params = [];
+      const useCursor = cursorDate !== null;
 
       if (friendsOnly && friendIds.length > 0) {
-        // Security: Use parameterized query with array instead of dynamic IN clause
         const baseWhere = `af.is_public = true AND af.user_id = ANY($1::bigint[])`;
-        const typeWhere = type ? ` AND af.activity_type = $2` : '';
-        const orderLimit = type
-          ? ` ORDER BY af.created_at DESC LIMIT $3 OFFSET $4`
-          : ` ORDER BY af.created_at DESC LIMIT $2 OFFSET $3`;
+        const typeWhere = type ? ' AND af.activity_type = $2' : '';
+        const cursorWhere = useCursor ? ` AND af.created_at < $${type ? 3 : 2}` : '';
+        const paramCount = 1 + (type ? 1 : 0) + (useCursor ? 1 : 0);
+        const limitOffset = useCursor
+          ? ` LIMIT $${paramCount + 1}`
+          : ` LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
         query = `SELECT af.*, p.avatar, p.title, p.level
                  FROM activity_feed af
                  LEFT JOIN profiles p ON af.user_id = p.user_id
-                 WHERE ${baseWhere}${typeWhere}${orderLimit}`;
-        params = type ? [friendIds, type, limit, offset] : [friendIds, limit, offset];
+                 WHERE ${baseWhere}${typeWhere}${cursorWhere}${limitOffset}`;
+        if (useCursor) {
+          params = type ? [friendIds, type, cursorDate, limit] : [friendIds, cursorDate, limit];
+        } else {
+          params = type ? [friendIds, type, limit, offset] : [friendIds, limit, offset];
+        }
       } else if (type) {
+        const cursorWhere = useCursor ? ' AND af.created_at < $2' : '';
+        const limitOffset = useCursor ? ' LIMIT $3' : ' LIMIT $2 OFFSET $3';
+        const base = useCursor ? [type, cursorDate, limit] : [type, limit, offset];
         query = `SELECT af.*, p.avatar, p.title, p.level
                  FROM activity_feed af
                  LEFT JOIN profiles p ON af.user_id = p.user_id
-                 WHERE af.is_public = true AND af.activity_type = $1
-                 ORDER BY af.created_at DESC
-                 LIMIT $2 OFFSET $3`;
-        params = [type, limit, offset];
+                 WHERE af.is_public = true AND af.activity_type = $1${cursorWhere}
+                 ORDER BY af.created_at DESC ${limitOffset}`;
+        params = base;
       } else {
+        const cursorWhere = useCursor ? ' AND af.created_at < $1' : '';
+        const limitOffset = useCursor ? ' LIMIT $2' : ' LIMIT $1 OFFSET $2';
         query = `SELECT af.*, p.avatar, p.title, p.level
                  FROM activity_feed af
                  LEFT JOIN profiles p ON af.user_id = p.user_id
-                 WHERE af.is_public = true
-                 ORDER BY af.created_at DESC
-                 LIMIT $1 OFFSET $2`;
-        params = [limit, offset];
+                 WHERE af.is_public = true${cursorWhere}
+                 ORDER BY af.created_at DESC ${limitOffset}`;
+        params = useCursor ? [cursorDate, limit] : [limit, offset];
       }
 
       const result = await pool.query(query, params);
@@ -168,7 +199,17 @@ const createActivityRoutes = (pool) => {
         }
       }));
 
-      return res.json({ ok: true, activities, hasMore: result.rows.length === limit });
+      const hasMore = result.rows.length === limit;
+      const nextCursor = useCursor && hasMore && activities.length > 0
+        ? activities[activities.length - 1].createdAt
+        : null;
+
+      return res.json({
+        ok: true,
+        activities,
+        hasMore,
+        ...(nextCursor && { nextCursor })
+      });
     } catch (error) {
       logger.error('Get activity feed error:', { error: error?.message || error });
       return sendError(res, 500, 'ACTIVITY_FETCH_FAILED', 'Failed to fetch activity feed');
@@ -176,32 +217,40 @@ const createActivityRoutes = (pool) => {
   });
 
   // GET /api/activity/user/:userId - Get user's activity feed
-  router.get('/user/:userId', async (req, res) => {
+  router.get('/user/:userId', validateParams(activityUserIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
       }
 
       const currentUserId = req.userId;
-      const targetUserId = parseInt(req.params.userId);
-      const limit = parseInt(req.query.limit) || 50;
-      const offset = parseInt(req.query.offset) || 0;
+      // Security: userId is already validated by validateParams middleware
+      const targetUserId = req.params.userId;
+      
+      // Security: Validate query parameters
+      const limitRaw = req.query.limit;
+      const offsetRaw = req.query.offset;
+      const limit = limitRaw ? parseInt(limitRaw, 10) : 50;
+      const offset = offsetRaw ? parseInt(offsetRaw, 10) : 0;
 
       if (!currentUserId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
-        return sendError(res, 400, 'INVALID_USER_ID', 'Invalid user ID');
-      }
-
       // Validate limit
       if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid limit');
+        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid limit', {
+          field: 'limit',
+          min: 1,
+          max: 100
+        });
       }
 
       if (!Number.isInteger(offset) || offset < 0) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid offset');
+        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid offset', {
+          field: 'offset',
+          min: 0
+        });
       }
 
       // Get user's activities (public only, or own if viewing own profile)
@@ -254,11 +303,13 @@ async function logActivity(pool, userId, activityType, activityData, targetId = 
     return;
   }
 
-  // Security: Validate activity data size to prevent abuse
-  const activityDataStr = JSON.stringify(activityData || {});
-  if (activityDataStr.length > 10000) { // 10KB limit for activity data
-    logger.warn('Activity data too large, truncating', { userId, activityType, size: activityDataStr.length });
-    activityData = { ...activityData, _truncated: true };
+  // Security: Validate activity data size (10KB); replace with minimal payload if over
+  let dataToStore = activityData || {};
+  try {
+    safeStringify(dataToStore, { maxSize: 10 * 1024 });
+  } catch (sizeErr) {
+    logger.warn('Activity data too large, truncating', { userId, activityType });
+    dataToStore = { _truncated: true };
   }
 
   try {
@@ -271,7 +322,7 @@ async function logActivity(pool, userId, activityType, activityData, targetId = 
         activityId,
         userId,
         activityType,
-        JSON.stringify(activityData),
+        safeStringify(dataToStore, { maxSize: 10 * 1024 }),
         targetId,
         targetType,
         isPublic

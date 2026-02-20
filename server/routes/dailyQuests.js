@@ -138,7 +138,14 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
     try {
       const userId = req.userId;
       if (!userId) {
-        client.release();
+        // Release client before early return (no transaction started yet)
+        if (client) {
+          try {
+            client.release();
+          } catch (releaseError) {
+            logger.error('Failed to release client in claim quest (early return)', { error: releaseError?.message });
+          }
+        }
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
@@ -155,7 +162,13 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
 
       if (questResult.rowCount === 0) {
         await client.query('ROLLBACK');
-        client.release();
+        if (client) {
+          try {
+            client.release();
+          } catch (releaseError) {
+            logger.error('Failed to release client in claim quest (not found)', { error: releaseError?.message });
+          }
+        }
         return sendError(res, 404, 'QUEST_NOT_FOUND', 'Quest not found');
       }
 
@@ -163,14 +176,26 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
 
       if (!quest.is_completed) {
         await client.query('ROLLBACK');
-        client.release();
+        if (client) {
+          try {
+            client.release();
+          } catch (releaseError) {
+            logger.error('Failed to release client in claim quest (not completed)', { error: releaseError?.message });
+          }
+        }
         return sendError(res, 400, 'QUEST_NOT_COMPLETED', 'Quest is not completed yet');
       }
 
       // Security: Check if already claimed (prevent duplicate claims)
       if (quest.is_claimed) {
         await client.query('ROLLBACK');
-        client.release();
+        if (client) {
+          try {
+            client.release();
+          } catch (releaseError) {
+            logger.error('Failed to release client in claim quest (already claimed)', { error: releaseError?.message });
+          }
+        }
         return sendError(res, 400, 'QUEST_ALREADY_CLAIMED', 'Quest reward already claimed');
       }
 
@@ -203,7 +228,14 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
 
       // Commit transaction
       await client.query('COMMIT');
-      client.release();
+      // Release client after successful commit
+      if (client) {
+        try {
+          client.release();
+        } catch (releaseError) {
+          logger.error('Failed to release client in claim quest (after commit)', { error: releaseError?.message });
+        }
+      }
 
       logger.info('Quest reward claimed', { questId: id, userId, reward: quest.reward, xp: xpReward });
 
@@ -229,11 +261,20 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
         xp: xpReward
       });
     } catch (error) {
-      await client.query('ROLLBACK').catch(() => {});
-      client.release();
+      // Security: Ensure transaction is rolled back before releasing client
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        logger.error('Failed to rollback transaction in claim quest', { error: rollbackError?.message });
+      }
       const errMsg = error?.message ?? (typeof error === 'object' ? JSON.stringify(error) : String(error));
       logger.error('Claim quest reward error:', { message: errMsg, stack: error?.stack });
       return sendError(res, 500, 'QUEST_CLAIM_FAILED', 'Failed to claim quest reward');
+    } finally {
+      // Always release client, even if transaction failed
+      if (client) {
+        client.release();
+      }
     }
   });
 
@@ -250,7 +291,14 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
       const { questType } = req.body;
 
       if (!userId || !questType) {
-        client.release();
+        // Release client before early return (no transaction started yet)
+        if (client) {
+          try {
+            client.release();
+          } catch (releaseError) {
+            logger.error('Failed to release client in quest progress (early return)', { error: releaseError?.message });
+          }
+        }
         return sendError(res, 400, 'MISSING_PARAMS', 'Missing parameters');
       }
 
@@ -284,7 +332,14 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
 
       // Commit transaction
       await client.query('COMMIT');
-      client.release();
+      // Release client after successful commit
+      if (client) {
+        try {
+          client.release();
+        } catch (releaseError) {
+          logger.error('Failed to release client in quest progress (after commit)', { error: releaseError?.message });
+        }
+      }
 
       // Invalidate cache for this user's daily quests (outside transaction)
       const cacheKey = `daily-quests:${userId}:${today}`;
@@ -292,10 +347,19 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
 
       return res.json({ ok: true });
     } catch (error) {
-      await client.query('ROLLBACK').catch(() => {});
-      client.release();
+      // Security: Ensure transaction is rolled back before releasing client
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        logger.error('Failed to rollback transaction in quest progress', { error: rollbackError?.message });
+      }
       logger.error('Update quest progress error:', { error: error?.message || error });
       return sendError(res, 500, 'QUEST_PROGRESS_FAILED', error?.message || 'Failed to update progress');
+    } finally {
+      // Always release client, even if transaction failed
+      if (client) {
+        client.release();
+      }
     }
   });
 

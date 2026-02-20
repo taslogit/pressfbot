@@ -196,6 +196,7 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck) => {
       }
 
       // Sanitize user input to prevent stored XSS
+      // Note: opponentId and loser are validated separately as numbers
       const sanitizedBody = sanitizeInput(req.body);
       const {
         id,

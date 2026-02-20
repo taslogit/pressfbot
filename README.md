@@ -50,3 +50,5 @@ In one sentence: PRESS F is your digital vault and your arena for public drama, 
 - Проверить доступ: `curl -sI --connect-timeout 5 https://registry-1.docker.io/v2/`
 - Если есть VPN/прокси или зеркало Docker — настроить Docker daemon (mirror) или собирать в сети с доступом к Docker Hub
 - Заранее подтянуть образы при хорошей сети: `docker pull node:18-alpine && docker pull node:20-alpine && docker pull nginx:stable-alpine`
+
+**Доступность из РФ:** npm, Docker Hub, GitHub и Telegram API могут быть ограничены. Варианты обхода (зеркала, прокси, Local Bot API) описаны в [DEPENDENCIES_RU.md](./DEPENDENCIES_RU.md).

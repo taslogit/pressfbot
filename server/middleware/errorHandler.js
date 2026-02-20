@@ -8,15 +8,27 @@ const { sendError } = require('../utils/errors');
  * Should be used as the last middleware in Express app
  */
 const errorHandler = (err, req, res, next) => {
-  // Log error details
-  const errorDetails = {
-    error: err.message || err,
-    stack: err.stack,
+  // Generate request ID for correlation if not present
+  const requestId = req.requestId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  req.requestId = requestId;
+  
+  // Enhanced error context for structured logging
+  const errorContext = {
+    requestId,
     path: req.path,
     method: req.method,
     userId: req.userId || null,
+    sessionId: req.sessionId || null,
     ip: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown',
     userAgent: req.headers['user-agent'],
+    timestamp: new Date().toISOString()
+  };
+  
+  // Log error details with enhanced context
+  const errorDetails = {
+    error: err.message || err,
+    stack: err.stack,
+    ...errorContext,
     body: req.body ? JSON.stringify(req.body).substring(0, 500) : null, // Limit body size in logs
     query: req.query ? JSON.stringify(req.query) : null
   };
@@ -24,10 +36,10 @@ const errorHandler = (err, req, res, next) => {
   // Handle known operational errors (AppError instances)
   if (err instanceof AppError) {
     logger.warn('Operational error', {
-      ...errorDetails,
       statusCode: err.statusCode,
-      code: err.code
-    });
+      code: err.code,
+      message: err.message
+    }, errorContext);
 
     return sendError(
       res,
@@ -40,7 +52,10 @@ const errorHandler = (err, req, res, next) => {
 
   // Handle validation errors (Zod)
   if (err.name === 'ZodError') {
-    logger.warn('Validation error', errorDetails);
+    logger.warn('Validation error', {
+      errors: err.errors,
+      issues: err.issues
+    }, errorContext);
     return sendError(
       res,
       400,
@@ -53,7 +68,10 @@ const errorHandler = (err, req, res, next) => {
   // Handle database errors (PostgreSQL constraint violations)
   if (err.code && err.code.startsWith('23')) {
     if (err.code === '23505') {
-      logger.warn('Unique constraint violation', errorDetails);
+      logger.warn('Unique constraint violation', {
+        code: err.code,
+        detail: err.detail
+      }, errorContext);
       return sendError(
         res,
         409,
@@ -62,7 +80,7 @@ const errorHandler = (err, req, res, next) => {
         process.env.NODE_ENV === 'production' ? null : { field: err.detail }
       );
     }
-    logger.error('Database constraint error', errorDetails);
+    logger.error('Database constraint error', err, errorContext);
     return sendError(
       res,
       400,
@@ -74,7 +92,7 @@ const errorHandler = (err, req, res, next) => {
 
   // Handle connection errors
   if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
-    logger.error('Connection error', errorDetails);
+    logger.error('Connection error', err, errorContext);
     return sendError(
       res,
       503,
@@ -85,7 +103,12 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // Handle unknown errors
-  logger.error('Unhandled error', errorDetails);
+  logger.error('Unhandled error', {
+    message: err.message,
+    stack: err.stack,
+    name: err.name,
+    code: err.code
+  }, errorContext);
 
   // Don't expose error details in production
   const message = process.env.NODE_ENV === 'production'

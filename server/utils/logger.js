@@ -11,44 +11,69 @@ const LOG_LEVELS = {
 const LOG_LEVEL = process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'INFO' : 'DEBUG');
 const CURRENT_LEVEL = LOG_LEVELS[LOG_LEVEL] || LOG_LEVELS.INFO;
 
-const formatMessage = (level, message, data = null) => {
+// Generate request ID for correlation tracking
+let requestIdCounter = 0;
+const generateRequestId = () => {
+  requestIdCounter = (requestIdCounter + 1) % 1000000;
+  return `req_${Date.now()}_${requestIdCounter}`;
+};
+
+const formatMessage = (level, message, data = null, context = null) => {
   const timestamp = new Date().toISOString();
   const logEntry = {
     timestamp,
     level,
     message,
+    ...(context && { context }),
     ...(data && { data })
   };
   return JSON.stringify(logEntry);
 };
 
 const logger = {
-  error: (message, error = null) => {
+  error: (message, error = null, context = null) => {
     if (CURRENT_LEVEL >= LOG_LEVELS.ERROR) {
       const data = error != null ? {
         message: error?.message ?? (typeof error === 'string' ? error : String(error)),
         stack: error?.stack,
-        ...(error?.code && { code: error.code })
+        ...(error?.code && { code: error.code }),
+        ...(error?.name && { name: error.name }),
+        ...(error?.statusCode && { statusCode: error.statusCode })
       } : null;
-      console.error(formatMessage('ERROR', message, data));
+      
+      // Enhanced context for errors
+      const enhancedContext = context ? {
+        ...context,
+        ...(context.userId && { userId: context.userId }),
+        ...(context.path && { path: context.path }),
+        ...(context.method && { method: context.method }),
+        ...(context.ip && { ip: context.ip })
+      } : null;
+      
+      console.error(formatMessage('ERROR', message, data, enhancedContext));
     }
   },
 
-  warn: (message, data = null) => {
+  warn: (message, data = null, context = null) => {
     if (CURRENT_LEVEL >= LOG_LEVELS.WARN) {
-      console.warn(formatMessage('WARN', message, data));
+      const enhancedContext = context ? {
+        ...context,
+        ...(context.userId && { userId: context.userId }),
+        ...(context.path && { path: context.path })
+      } : null;
+      console.warn(formatMessage('WARN', message, data, enhancedContext));
     }
   },
 
-  info: (message, data = null) => {
+  info: (message, data = null, context = null) => {
     if (CURRENT_LEVEL >= LOG_LEVELS.INFO) {
-      console.log(formatMessage('INFO', message, data));
+      console.log(formatMessage('INFO', message, data, context));
     }
   },
 
-  debug: (message, data = null) => {
+  debug: (message, data = null, context = null) => {
     if (CURRENT_LEVEL >= LOG_LEVELS.DEBUG) {
-      console.log(formatMessage('DEBUG', message, data));
+      console.log(formatMessage('DEBUG', message, data, context));
     }
   }
 };

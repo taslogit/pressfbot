@@ -62,9 +62,16 @@ function monitoringMiddleware(req, res, next) {
       }
     }
 
-    // Log slow requests (>2s)
-    if (duration > 2000) {
-      logger.warn('Slow request', { method, path: normalizedPath, duration, statusCode });
+    // Alert on slow requests (>1s) — 5.5.5.2
+    const SLOW_REQUEST_MS = 1000;
+    if (duration > SLOW_REQUEST_MS) {
+      logger.warn('Slow request (>1s)', null, {
+        method,
+        path: normalizedPath,
+        durationMs: duration,
+        statusCode,
+        thresholdMs: SLOW_REQUEST_MS
+      });
     }
   });
 
@@ -101,6 +108,9 @@ function getMetrics() {
     : 0;
 
   const uptimeSeconds = Math.floor((Date.now() - metrics.health.startTime) / 1000);
+  const throughputPerSecond = uptimeSeconds > 0
+    ? (metrics.requests.total / uptimeSeconds).toFixed(2)
+    : '0';
 
   return {
     requests: {
@@ -110,6 +120,7 @@ function getMetrics() {
       avgResponseTime: `${avgResponseTime.toFixed(2)}ms`,
       p95ResponseTime: `${p95.toFixed(2)}ms`,
       p99ResponseTime: `${p99.toFixed(2)}ms`,
+      throughputPerSecond: String(throughputPerSecond),
       byMethod: metrics.requests.byMethod,
       byStatusCode: metrics.requests.byStatusCode,
       topPaths: Object.entries(metrics.requests.byPath)

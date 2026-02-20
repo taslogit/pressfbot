@@ -68,6 +68,35 @@ function validateExperience(value) {
   return validateInteger(value, 0, MAX_INTEGER);
 }
 
+/**
+ * Validate userId (must be a positive integer/BigInt)
+ * @param {any} userId - User ID to validate
+ * @returns {boolean} True if valid userId
+ */
+function validateUserId(userId) {
+  if (userId === null || userId === undefined) {
+    return false;
+  }
+  const numId = typeof userId === 'string' ? parseInt(userId, 10) : Number(userId);
+  return Number.isInteger(numId) && numId > 0 && numId <= MAX_BIGINT;
+}
+
+/**
+ * Validate and parse userId from string or number
+ * @param {any} userId - User ID to validate and parse
+ * @returns {number|null} Parsed userId or null if invalid
+ */
+function parseAndValidateUserId(userId) {
+  if (userId === null || userId === undefined) {
+    return null;
+  }
+  const numId = typeof userId === 'string' ? parseInt(userId, 10) : Number(userId);
+  if (Number.isInteger(numId) && numId > 0 && numId <= MAX_BIGINT) {
+    return numId;
+  }
+  return null;
+}
+
 module.exports = {
   MAX_INTEGER,
   MAX_BIGINT,
@@ -76,5 +105,7 @@ module.exports = {
   validateISO8601,
   validateReputation,
   validateKarma,
-  validateExperience
+  validateExperience,
+  validateUserId,
+  parseAndValidateUserId
 };

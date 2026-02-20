@@ -398,11 +398,19 @@ const createTournamentsRoutes = (pool) => {
 
       return res.json({ ok: true, participantId, seed });
     } catch (error) {
-      await client.query('ROLLBACK').catch(() => {});
+      // Security: Ensure transaction is rolled back before releasing client
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        logger.error('Failed to rollback transaction in tournament registration', { error: rollbackError?.message });
+      }
       logger.error('Tournament registration error:', error);
       return sendError(res, 500, 'REGISTRATION_FAILED', 'Failed to register for tournament');
     } finally {
-      client.release();
+      // Always release client, even if transaction failed
+      if (client) {
+        client.release();
+      }
     }
   });
 

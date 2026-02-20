@@ -281,10 +281,19 @@ const createWitnessesRoutes = (pool) => {
         updatedAt: witness.updated_at?.toISOString()
       }});
     } catch (error) {
-      await client.query('ROLLBACK').catch(() => {});
-      client.release();
+      // Security: Ensure transaction is rolled back before releasing client
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        logger.error('Failed to rollback transaction in update witness', { error: rollbackError?.message });
+      }
       logger.error('Update witness error:', error);
       return sendError(res, 500, 'WITNESS_UPDATE_FAILED', 'Failed to update witness');
+    } finally {
+      // Always release client, even if transaction failed
+      if (client) {
+        client.release();
+      }
     }
   });
 
@@ -351,10 +360,19 @@ const createWitnessesRoutes = (pool) => {
 
       return res.json({ ok: true });
     } catch (error) {
-      await client.query('ROLLBACK').catch(() => {});
-      client.release();
+      // Security: Ensure transaction is rolled back before releasing client
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        logger.error('Failed to rollback transaction in confirm witness', { error: rollbackError?.message });
+      }
       logger.error('Confirm witness error:', error);
       return sendError(res, 500, 'WITNESS_CONFIRM_FAILED', 'Failed to confirm witness');
+    } finally {
+      // Always release client, even if transaction failed
+      if (client) {
+        client.release();
+      }
     }
   });
 
