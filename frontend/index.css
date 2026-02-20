@@ -281,16 +281,38 @@ select:focus-visible {
   }
 }
 
-/* Info icon: два мигания после закрытия панели */
+/* Info icon: два ярких фиолетовых мигания после закрытия панели (визуальная подсказка) */
 @keyframes info-icon-blink-keyframes {
-  0%, 100% { opacity: 1; filter: brightness(1); }
-  15% { opacity: 0.4; filter: brightness(1.4); }
-  30% { opacity: 1; filter: brightness(1); }
-  45% { opacity: 0.4; filter: brightness(1.4); }
-  60%, 100% { opacity: 1; filter: brightness(1); }
+  0% {
+    box-shadow: 0 0 0 0 transparent;
+    background-color: transparent;
+  }
+  18% {
+    box-shadow: 0 0 28px 8px rgba(168, 85, 247, 0.95), 0 0 56px 16px rgba(168, 85, 247, 0.5);
+    background-color: rgba(168, 85, 247, 0.45);
+  }
+  36% {
+    box-shadow: 0 0 0 0 transparent;
+    background-color: transparent;
+  }
+  54% {
+    box-shadow: 0 0 28px 8px rgba(168, 85, 247, 0.95), 0 0 56px 16px rgba(168, 85, 247, 0.5);
+    background-color: rgba(168, 85, 247, 0.45);
+  }
+  72%, 100% {
+    box-shadow: 0 0 0 0 transparent;
+    background-color: transparent;
+  }
 }
 .info-icon-blink {
-  animation: info-icon-blink-keyframes 0.7s ease-in-out;
+  animation: info-icon-blink-keyframes 0.85s ease-in-out;
+  border-radius: 9999px;
+  padding: 2px;
+  margin: -2px;
+}
+.info-icon-blink .info-icon-btn,
+.info-icon-blink button {
+  color: inherit;
 }
 @media (prefers-reduced-motion: reduce) {
   .info-icon-blink { animation: none; }

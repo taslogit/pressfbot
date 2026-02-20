@@ -85,7 +85,7 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
     blinkTimeoutRef.current = setTimeout(() => {
       setIconBlink(false);
       blinkTimeoutRef.current = null;
-    }, 700);
+    }, 900);
   };
 
   useEffect(() => {
@@ -305,7 +305,7 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
               key="info-overlay"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0, transition: { duration: 0.42 } }}
+              exit={{ opacity: 0, transition: { duration: 0.55 } }}
               transition={{ duration: 0.28 }}
               className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
               role="dialog"
@@ -326,9 +326,14 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
                 exit={{
                   x: originX,
                   y: originY,
-                  scale: 0.04,
+                  scale: 0.02,
                   opacity: 0,
-                  transition: { type: 'spring', damping: 30, stiffness: 95, opacity: { duration: 0.38 } }
+                  transition: {
+                    type: 'spring',
+                    damping: 28,
+                    stiffness: 65,
+                    opacity: { duration: 0.5 }
+                  }
                 }}
                 className="relative w-full max-w-sm bg-[#0a0a0c] border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.9)] flex flex-col max-h-[70vh] overflow-hidden origin-center"
                 onClick={(e) => e.stopPropagation()}
