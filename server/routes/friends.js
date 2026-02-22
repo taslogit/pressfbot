@@ -2,7 +2,7 @@ const express = require('express');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { logActivity } = require('./activity');
-const { z, validateQuery, validateParams } = require('../validation');
+const { z, validateQuery, validateParams, validateBody } = require('../validation');
 const { validateUserId, parseAndValidateUserId } = require('../utils/validation');
 
 const FRIENDSHIP_STATUS = ['pending', 'accepted', 'blocked'];
