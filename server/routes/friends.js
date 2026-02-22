@@ -18,7 +18,8 @@ const friendsListQuerySchema = z.object({
   offset: z.preprocess(
     (val) => val === undefined ? undefined : Number(val),
     z.number().int().min(0).optional()
-  )
+  ),
+  group: z.string().uuid().optional() // filter by friend group id
 }).passthrough(); // Allow other query params to pass through
 
 const friendsSearchQuerySchema = z.object({
@@ -59,16 +60,26 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
       // Query parameters are already validated by validateQuery middleware
       const limit = req.query.limit || 50;
       const offset = req.query.offset || 0;
+      const groupId = req.query.group || null;
 
+      if (groupId) {
+        const groupCheck = await pool.query(`SELECT 1 FROM friend_groups WHERE id = $1 AND user_id = $2`, [groupId, userId]);
+        if (groupCheck.rowCount === 0) return sendError(res, 400, 'INVALID_GROUP', 'Group not found or access denied');
+      }
+
+      const groupFilter = groupId
+        ? ` AND EXISTS (SELECT 1 FROM friend_group_members m WHERE m.group_id = $4 AND m.friend_id = f.friend_id)`
+        : '';
+      const params = groupId ? [userId, limit, offset, groupId] : [userId, limit, offset];
       const result = await pool.query(
         `SELECT f.id, f.friend_id AS user_id, f.accepted_at,
                 p.avatar, p.title, p.level, p.experience
          FROM friendships f
          JOIN profiles p ON p.user_id = f.friend_id
-         WHERE f.user_id = $1 AND f.status = 'accepted'
+         WHERE f.user_id = $1 AND f.status = 'accepted'${groupFilter}
          ORDER BY f.accepted_at DESC
          LIMIT $2 OFFSET $3`,
-        [userId, limit, offset]
+        params
       );
 
       const friends = result.rows.map((row) => ({
@@ -81,10 +92,11 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
         acceptedAt: row.accepted_at?.toISOString(),
       }));
 
-      const countResult = await pool.query(
-        `SELECT COUNT(*) AS total FROM friendships WHERE user_id = $1 AND status = 'accepted'`,
-        [userId]
-      );
+      const countSql = groupId
+        ? `SELECT COUNT(*) AS total FROM friendships f WHERE f.user_id = $1 AND f.status = 'accepted' AND EXISTS (SELECT 1 FROM friend_group_members m WHERE m.group_id = $2 AND m.friend_id = f.friend_id)`
+        : `SELECT COUNT(*) AS total FROM friendships WHERE user_id = $1 AND status = 'accepted'`;
+      const countParams = groupId ? [userId, groupId] : [userId];
+      const countResult = await pool.query(countSql, countParams);
       const total = parseInt(countResult.rows[0]?.total || '0', 10);
 
       logger.debug('Friends list result', { 
@@ -563,6 +575,184 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
       const errorMessage = error?.message || (typeof error === 'string' ? error : JSON.stringify(error));
       logger.error('Friends suggestions error:', { error: errorMessage, stack: error?.stack });
       return sendError(res, 500, 'FRIENDS_SUGGESTIONS_FAILED', 'Failed to load suggestions');
+    }
+  });
+
+  // ─── Friend groups (PHASE 5.2) ─────────────────────────────────────────────
+  const groupIdParamsSchema = z.object({
+    id: z.string().uuid('Invalid group ID')
+  });
+  const groupIdAndFriendIdParamsSchema = z.object({
+    id: z.string().uuid('Invalid group ID'),
+    friendId: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().positive())
+  });
+  const createGroupBodySchema = z.object({
+    name: z.string().min(1).max(100).trim(),
+    color: z.string().max(20).optional(),
+    icon: z.string().max(50).optional()
+  });
+  const updateGroupBodySchema = z.object({
+    name: z.string().min(1).max(100).trim().optional(),
+    color: z.string().max(20).optional().nullable(),
+    icon: z.string().max(50).optional().nullable()
+  });
+  const addMemberBodySchema = z.object({
+    friendId: z.number().int().positive()
+  });
+
+  // GET /api/friends/groups — list user's groups with member count
+  router.get('/groups', async (req, res) => {
+    try {
+      if (!pool) return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      const userId = req.userId;
+      if (!userId) return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+
+      const result = await pool.query(
+        `SELECT g.id, g.name, g.color, g.icon, g.created_at,
+                COUNT(m.friend_id) AS member_count
+         FROM friend_groups g
+         LEFT JOIN friend_group_members m ON m.group_id = g.id
+         WHERE g.user_id = $1
+         GROUP BY g.id, g.name, g.color, g.icon, g.created_at
+         ORDER BY g.name`,
+        [userId]
+      );
+      const groups = result.rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        color: row.color || null,
+        icon: row.icon || null,
+        memberCount: parseInt(row.member_count, 10),
+        createdAt: row.created_at?.toISOString()
+      }));
+      return res.json({ ok: true, groups });
+    } catch (error) {
+      logger.error('Friends groups list error:', { error: error?.message });
+      return sendError(res, 500, 'GROUPS_LIST_FAILED', 'Failed to load groups');
+    }
+  });
+
+  // POST /api/friends/groups — create group
+  router.post('/groups', validateBody(createGroupBodySchema), async (req, res) => {
+    try {
+      if (!pool) return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      const userId = req.userId;
+      if (!userId) return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+
+      const { name, color, icon } = req.body;
+      const result = await pool.query(
+        `INSERT INTO friend_groups (user_id, name, color, icon)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, name, color, icon, created_at`,
+        [userId, name, color || null, icon || null]
+      );
+      const row = result.rows[0];
+      return res.status(201).json({
+        ok: true,
+        group: {
+          id: row.id,
+          name: row.name,
+          color: row.color || null,
+          icon: row.icon || null,
+          memberCount: 0,
+          createdAt: row.created_at?.toISOString()
+        }
+      });
+    } catch (error) {
+      logger.error('Friends group create error:', { error: error?.message });
+      return sendError(res, 500, 'GROUP_CREATE_FAILED', 'Failed to create group');
+    }
+  });
+
+  // PUT /api/friends/groups/:id — update group
+  router.put('/groups/:id', validateParams(groupIdParamsSchema), validateBody(updateGroupBodySchema), async (req, res) => {
+    try {
+      if (!pool) return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      const userId = req.userId;
+      if (!userId) return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+
+      const { id } = req.params;
+      const { name, color, icon } = req.body;
+      const updates = [];
+      const values = [];
+      let idx = 1;
+      if (name !== undefined) { updates.push(`name = $${idx++}`); values.push(name); }
+      if (color !== undefined) { updates.push(`color = $${idx++}`); values.push(color); }
+      if (icon !== undefined) { updates.push(`icon = $${idx++}`); values.push(icon); }
+      if (updates.length === 0) return sendError(res, 400, 'VALIDATION_ERROR', 'No fields to update');
+
+      values.push(id, userId);
+      const result = await pool.query(
+        `UPDATE friend_groups SET ${updates.join(', ')} WHERE id = $${idx} AND user_id = $${idx + 1}
+         RETURNING id, name, color, icon, created_at`,
+        values
+      );
+      if (result.rowCount === 0) return sendError(res, 404, 'GROUP_NOT_FOUND', 'Group not found');
+      const row = result.rows[0];
+      const countResult = await pool.query(`SELECT COUNT(*) AS c FROM friend_group_members WHERE group_id = $1`, [id]);
+      const memberCount = parseInt(countResult.rows[0]?.c || '0', 10);
+      return res.json({
+        ok: true,
+        group: {
+          id: row.id,
+          name: row.name,
+          color: row.color || null,
+          icon: row.icon || null,
+          memberCount,
+          createdAt: row.created_at?.toISOString()
+        }
+      });
+    } catch (error) {
+      logger.error('Friends group update error:', { error: error?.message });
+      return sendError(res, 500, 'GROUP_UPDATE_FAILED', 'Failed to update group');
+    }
+  });
+
+  // POST /api/friends/groups/:id/members — add friend to group
+  router.post('/groups/:id/members', validateParams(groupIdParamsSchema), validateBody(addMemberBodySchema), async (req, res) => {
+    try {
+      if (!pool) return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      const userId = req.userId;
+      if (!userId) return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+
+      const { id } = req.params;
+      const { friendId } = req.body;
+      const ownerCheck = await pool.query(`SELECT 1 FROM friend_groups WHERE id = $1 AND user_id = $2`, [id, userId]);
+      if (ownerCheck.rowCount === 0) return sendError(res, 404, 'GROUP_NOT_FOUND', 'Group not found');
+      const friendCheck = await pool.query(
+        `SELECT 1 FROM friendships WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)) AND status = 'accepted'`,
+        [userId, friendId]
+      );
+      if (friendCheck.rowCount === 0) return sendError(res, 400, 'NOT_FRIEND', 'User is not your friend');
+      await pool.query(
+        `INSERT INTO friend_group_members (group_id, friend_id) VALUES ($1, $2) ON CONFLICT (group_id, friend_id) DO NOTHING`,
+        [id, friendId]
+      );
+      return res.status(201).json({ ok: true, added: true });
+    } catch (error) {
+      logger.error('Friends group add member error:', { error: error?.message });
+      return sendError(res, 500, 'GROUP_ADD_MEMBER_FAILED', 'Failed to add member');
+    }
+  });
+
+  // DELETE /api/friends/groups/:id/members/:friendId — remove friend from group
+  router.delete('/groups/:id/members/:friendId', validateParams(groupIdAndFriendIdParamsSchema), async (req, res) => {
+    try {
+      if (!pool) return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      const userId = req.userId;
+      if (!userId) return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+
+      const { id, friendId } = req.params;
+      const result = await pool.query(
+        `DELETE FROM friend_group_members m
+         USING friend_groups g
+         WHERE m.group_id = g.id AND g.user_id = $1 AND m.group_id = $2 AND m.friend_id = $3`,
+        [userId, id, friendId]
+      );
+      return res.json({ ok: true, removed: result.rowCount > 0 });
+    } catch (error) {
+      logger.error('Friends group remove member error:', { error: error?.message });
+      return sendError(res, 500, 'GROUP_REMOVE_MEMBER_FAILED', 'Failed to remove member');
     }
   });
 

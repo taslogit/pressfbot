@@ -547,15 +547,35 @@ export const squadsAPI = {
   },
 };
 
+// Friend group type
+export type FriendGroup = {
+  id: string;
+  name: string;
+  color: string | null;
+  icon: string | null;
+  memberCount: number;
+  createdAt: string;
+};
+
 // Friends API
 export const friendsAPI = {
-  getAll: async (params?: { limit?: number; offset?: number; status?: 'accepted' | 'pending' }) => {
+  getAll: async (params?: { limit?: number; offset?: number; status?: 'accepted' | 'pending'; group?: string }) => {
     const queryParams = new URLSearchParams();
     if (params?.limit) queryParams.set('limit', String(params.limit));
     if (params?.offset) queryParams.set('offset', String(params.offset));
     if (params?.status) queryParams.set('status', params.status);
-    return apiRequest<{ friends: any[]; hasMore: boolean }>(`/api/friends?${queryParams.toString()}`);
+    if (params?.group) queryParams.set('group', params.group);
+    return apiRequest<{ friends: any[]; total?: number; hasMore?: boolean }>(`/api/friends?${queryParams.toString()}`);
   },
+  getGroups: async () => apiRequest<{ groups: FriendGroup[] }>('/api/friends/groups'),
+  createGroup: async (data: { name: string; color?: string; icon?: string }) =>
+    apiRequest<{ group: FriendGroup }>('/api/friends/groups', { method: 'POST', body: JSON.stringify(data) }),
+  updateGroup: async (id: string, data: { name?: string; color?: string | null; icon?: string | null }) =>
+    apiRequest<{ group: FriendGroup }>(`/api/friends/groups/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  addMemberToGroup: async (groupId: string, friendId: number) =>
+    apiRequest(`/api/friends/groups/${groupId}/members`, { method: 'POST', body: JSON.stringify({ friendId }) }),
+  removeMemberFromGroup: async (groupId: string, friendId: number) =>
+    apiRequest(`/api/friends/groups/${groupId}/members/${friendId}`, { method: 'DELETE' }),
   getPending: async () => {
     return apiRequest<{ incoming: any[]; outgoing: any[] }>('/api/friends/pending');
   },

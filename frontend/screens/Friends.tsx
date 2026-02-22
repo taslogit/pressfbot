@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, UserPlus, Search, X, Check, XCircle, User, Loader2 } from 'lucide-react';
-import { friendsAPI } from '../utils/api';
+import { Users, UserPlus, Search, X, Check, XCircle, User, Loader2, FolderPlus } from 'lucide-react';
+import { friendsAPI, type FriendGroup } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
 import { analytics } from '../utils/analytics';
@@ -40,7 +40,7 @@ type SearchUser = {
   reason?: 'mutual_friend' | 'mutual_duel' | 'mutual_squad' | 'referral';
 };
 
-type Tab = 'friends' | 'pending' | 'search' | 'suggestions';
+type Tab = 'friends' | 'pending' | 'search' | 'suggestions' | 'groups';
 
 const Friends: React.FC = () => {
   const { t } = useTranslation();
@@ -51,13 +51,18 @@ const Friends: React.FC = () => {
   const [pending, setPending] = useState<{ incoming: PendingItem[]; outgoing: PendingItem[] }>({ incoming: [], outgoing: [] });
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [suggestions, setSuggestions] = useState<SearchUser[]>([]);
+  const [groups, setGroups] = useState<FriendGroup[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [onlineFriends, setOnlineFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [groupsLoading, setGroupsLoading] = useState(false);
   const [onlineLoading, setOnlineLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
+  const [newGroupName, setNewGroupName] = useState('');
+  const [creatingGroup, setCreatingGroup] = useState(false);
   const lastPendingLoadRef = useRef<number>(0);
   const pendingLoadInFlightRef = useRef(false);
   const PENDING_THROTTLE_MS = 1000;
@@ -66,6 +71,7 @@ const Friends: React.FC = () => {
     loadFriends();
     loadPending();
     loadOnlineFriends();
+    loadGroups();
     // Refresh online friends every 30 seconds
     const interval = setInterval(() => {
       loadOnlineFriends();
@@ -79,13 +85,63 @@ const Friends: React.FC = () => {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    if (activeTab === 'groups') {
+      loadGroups();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    loadFriends();
+  }, [selectedGroupId]);
+
+  const loadGroups = async () => {
+    try {
+      setGroupsLoading(true);
+      const result = await friendsAPI.getGroups();
+      if (result.ok && result.data) {
+        setGroups(result.data.groups || []);
+      } else {
+        setGroups([]);
+      }
+    } catch {
+      setGroups([]);
+    } finally {
+      setGroupsLoading(false);
+    }
+  };
+
+  const handleCreateGroup = async () => {
+    const name = newGroupName.trim();
+    if (!name) {
+      toast.error(t('friends_group_name_required') || 'Введите название группы');
+      return;
+    }
+    setCreatingGroup(true);
+    try {
+      const result = await friendsAPI.createGroup({ name });
+      if (result.ok && result.data?.group) {
+        setGroups((prev) => [result.data!.group!, ...prev]);
+        setNewGroupName('');
+        toast.success(t('friends_group_created') || 'Группа создана');
+        playSound('success');
+      } else {
+        toast.error(result.error || t('friends_load_failed') || 'Ошибка');
+      }
+    } catch {
+      toast.error(t('friends_load_failed') || 'Ошибка');
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
   const loadFriends = async () => {
     try {
       setLoading(true);
       if (import.meta.env.DEV) {
         console.log('[Friends] Loading friends...');
       }
-      const result = await friendsAPI.getAll({ status: 'accepted', limit: 100 });
+      const result = await friendsAPI.getAll({ status: 'accepted', limit: 100, group: selectedGroupId || undefined });
       if (import.meta.env.DEV) {
         console.log('[Friends] Friends API response:', result);
       }
@@ -412,7 +468,35 @@ const Friends: React.FC = () => {
         >
           {t('suggestions') || 'Рекомендации'}
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('groups')}
+          className={`flex-1 px-3 py-2 rounded-md text-xs font-bold transition-colors ${
+            activeTab === 'groups'
+              ? 'bg-purple-500/40 text-purple-300'
+              : 'text-muted hover:text-primary'
+          }`}
+        >
+          {t('friends_groups') || 'Группы'} {groups.length > 0 && `(${groups.length})`}
+        </button>
       </div>
+
+      {/* Filter by group (friends tab) */}
+      {activeTab === 'friends' && groups.length > 0 && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted">{t('friends_filter_group') || 'Группа:'}</span>
+          <select
+            value={selectedGroupId || ''}
+            onChange={(e) => setSelectedGroupId(e.target.value || null)}
+            className="text-xs bg-input border border-border rounded-lg px-2 py-1.5 text-primary"
+          >
+            <option value="">{t('friends_filter_all') || 'Все друзья'}</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>{g.name} ({g.memberCount})</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Content */}
       {activeTab === 'friends' && (
@@ -780,6 +864,65 @@ const Friends: React.FC = () => {
                   </motion.div>
                 );
               })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'groups' && (
+        <div className="space-y-4">
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              value={newGroupName}
+              onChange={(e) => setNewGroupName(e.target.value)}
+              placeholder={t('friends_group_name_placeholder') || 'Название группы'}
+              className="flex-1 px-3 py-2 bg-input border border-border rounded-xl text-primary placeholder:text-muted text-sm"
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateGroup()}
+            />
+            <button
+              type="button"
+              onClick={handleCreateGroup}
+              disabled={creatingGroup || !newGroupName.trim()}
+              className="p-2 rounded-xl border border-purple-500/30 text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 transition-colors disabled:opacity-50"
+              title={t('friends_group_create') || 'Создать группу'}
+            >
+              {creatingGroup ? <Loader2 size={18} className="animate-spin" /> : <FolderPlus size={18} />}
+            </button>
+          </div>
+          {groupsLoading ? (
+            <LoadingState terminal message={t('loading')} className="py-8 min-h-0" />
+          ) : groups.length === 0 ? (
+            <div className="text-center py-10 text-muted text-sm">
+              {t('friends_no_groups') || 'Нет групп. Создайте группу и добавляйте в неё друзей для быстрого доступа.'}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {groups.map((g) => (
+                <motion.div
+                  key={g.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex items-center justify-between gap-3 p-3 rounded-xl bg-card/40 border border-border/50"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-primary truncate">{g.name}</div>
+                    <div className="text-xs text-muted">
+                      {g.memberCount} {t('friends_members') || 'участников'}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedGroupId(g.id);
+                      setActiveTab('friends');
+                    }}
+                    className="px-3 py-1.5 rounded-lg border border-border text-muted hover:text-primary text-xs font-bold"
+                  >
+                    {t('friends_show_group') || 'Показать'}
+                  </button>
+                </motion.div>
+              ))}
             </div>
           )}
         </div>
