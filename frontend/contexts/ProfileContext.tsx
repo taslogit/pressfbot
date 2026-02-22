@@ -50,17 +50,31 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSyncRef = useRef<number>(0);
   const isMountedRef = useRef(true);
+  const loadInFlightRef = useRef(false);
+  const lastLoadTimeRef = useRef<number>(0);
+  const hasProfileRef = useRef(false);
 
   // Sync interval: 5 minutes
   const SYNC_INTERVAL_MS = 5 * 60 * 1000;
   // Max age for cached data: 5 minutes
   const MAX_CACHE_AGE_MS = 5 * 60 * 1000;
+  // Cooldown: avoid bursting profile API (reduces 429)
+  const PROFILE_COOLDOWN_MS = 4000;
 
   // Load profile from API (single source of truth)
   const loadProfile = useCallback(async (): Promise<void> => {
+    if (loadInFlightRef.current) return;
+    if (lastLoadTimeRef.current && Date.now() - lastLoadTimeRef.current < PROFILE_COOLDOWN_MS && hasProfileRef.current) {
+      return;
+    }
+    loadInFlightRef.current = true;
     try {
       const result = await profileAPI.get();
       if (!result.ok || !result.data) {
+        if (result.code === '429') {
+          if (isMountedRef.current) setError('Too many requests. Please wait a moment.');
+          return;
+        }
         const msg = typeof result.error === 'string' ? result.error : (result.error as any)?.message || 'Failed to load profile';
         throw new Error(msg);
       }
@@ -121,6 +135,8 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setSettings(settingsData);
         setError(null);
         lastSyncRef.current = version; // Use API version timestamp
+        lastLoadTimeRef.current = Date.now();
+        hasProfileRef.current = true;
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -129,6 +145,8 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setError(errorMessage);
         // Don't set fallback data - show error state instead
       }
+    } finally {
+      loadInFlightRef.current = false;
     }
   }, []);
 

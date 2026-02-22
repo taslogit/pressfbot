@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, UserPlus, Search, X, Check, XCircle, User, Loader2 } from 'lucide-react';
 import { friendsAPI } from '../utils/api';
@@ -58,6 +58,9 @@ const Friends: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
+  const lastPendingLoadRef = useRef<number>(0);
+  const pendingLoadInFlightRef = useRef(false);
+  const PENDING_THROTTLE_MS = 1000;
 
   useEffect(() => {
     loadFriends();
@@ -109,6 +112,11 @@ const Friends: React.FC = () => {
   };
 
   const loadPending = async () => {
+    const now = Date.now();
+    if (pendingLoadInFlightRef.current) return;
+    if (now - lastPendingLoadRef.current < PENDING_THROTTLE_MS) return;
+    pendingLoadInFlightRef.current = true;
+    lastPendingLoadRef.current = now;
     try {
       if (import.meta.env.DEV) {
         console.log('[Friends] Loading pending requests...');
@@ -127,6 +135,8 @@ const Friends: React.FC = () => {
       }
     } catch (error) {
       console.error('[Friends] Failed to load pending:', error);
+    } finally {
+      pendingLoadInFlightRef.current = false;
     }
   };
 
