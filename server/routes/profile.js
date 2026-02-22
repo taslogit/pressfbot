@@ -419,6 +419,7 @@ const createProfileRoutes = (pool, bot = null) => {
 
           if (lastCheckInStr === today) {
             await client.query('ROLLBACK');
+            logger.debug('Check-in rejected: already checked in today', { userId, today });
             return sendError(res, 400, 'ALREADY_CHECKED_IN', 'You have already checked in today');
           }
         }

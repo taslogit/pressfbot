@@ -1,35 +1,58 @@
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useDeadManSwitch } from '../hooks/useDeadManSwitch';
-import { HeartPulse, AlertTriangle, Power } from 'lucide-react';
+import { useProfile } from '../contexts/ProfileContext';
+import { useToast } from '../contexts/ToastContext';
+import { AlertTriangle, Power } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
 import { playSound } from '../utils/sound';
+import { profileAPI } from '../utils/api';
 
 const Resurrection = () => {
   const navigate = useNavigate();
   const { imAlive } = useDeadManSwitch();
+  const { refreshProfile } = useProfile();
+  const toast = useToast();
   const { t } = useTranslation();
   const [isRebooting, setIsRebooting] = useState(false);
 
   const handleResurrect = () => {
     playSound('charge');
     setIsRebooting(true);
-    
-    // Simulate system reboot
+
+    (async () => {
+      try {
+        const res = await profileAPI.checkIn();
+        if (!res.ok && res.code !== 'ALREADY_CHECKED_IN') {
+          toast.error(t('api_error_network') || 'Check-in failed. Retry from home.');
+        }
+      } catch {
+        toast.error(t('api_error_network') || 'Network error. Retry from home.');
+      }
+      try {
+        await refreshProfile();
+      } catch {
+        // Continue anyway so user is not stuck
+      }
+      imAlive();
+    })();
+
     setTimeout(() => {
-        imAlive();
+      try {
         playSound('success');
         confetti({
-            particleCount: 150,
-            spread: 120,
-            origin: { y: 0.6 },
-            colors: ['#ffffff', '#B4FF00', '#ff0000']
+          particleCount: 150,
+          spread: 120,
+          origin: { y: 0.6 },
+          colors: ['#ffffff', '#B4FF00', '#ff0000'],
         });
-        navigate('/');
+      } catch {
+        // Ignore confetti/sound errors
+      }
+      navigate('/');
     }, 3000);
   };
 

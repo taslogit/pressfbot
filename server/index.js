@@ -231,6 +231,12 @@ app.use('/api/static/avatars', (req, res, next) => {
     }
   }
 }));
+// Fallback: if avatar file not found (e.g. avatar135.svg missing), serve default to avoid 404s
+app.use('/api/static/avatars', (req, res, next) => {
+  if (res.headersSent) return next();
+  const fallbackPath = path.join(staticPath, 'avatars', 'pressf.svg');
+  res.sendFile(fallbackPath, { maxAge: '1y' }, (err) => { if (err) next(err); });
+});
 app.use('/api/static', express.static(staticPath, {
   maxAge: '1y', // Cache for 1 year
   etag: true,
