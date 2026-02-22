@@ -25,6 +25,7 @@ const Store = lazy(() => import('./screens/Store'));
 const Wiki = lazy(() => import('./screens/Wiki'));
 const Referral = lazy(() => import('./screens/Referral'));
 const Friends = lazy(() => import('./screens/Friends'));
+const AnalyticsDashboard = lazy(() => import('./screens/AnalyticsDashboard'));
 import { tg, initTelegramApp, isTgVersionWithoutOptionalUI, isTelegramWebApp } from './utils/telegram';
 import { useTelegramSession } from './hooks/useTelegramSession';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -32,6 +33,7 @@ import LoadingState from './components/LoadingState';
 import SplashScreen from './components/SplashScreen';
 import { analytics } from './utils/analytics';
 import { storage } from './utils/storage';
+import { unlockAudio } from './utils/sound';
 import { useTranslation } from './contexts/LanguageContext';
 
 // Waits for session init (verify) before rendering children so first API calls have X-Session-Id
@@ -185,6 +187,7 @@ const AnimatedLayoutRoutes = () => {
           <Route path="/settings" element={<Settings />} />
           <Route path="/share" element={<SharePost />} />
           <Route path="/notifications" element={<Notifications />} />
+          <Route path="/analytics" element={<AnalyticsDashboard />} />
         </Routes>
       </motion.div>
     </AnimatePresence>
@@ -213,6 +216,24 @@ const App = () => {
     analytics.trackPageView(window.location.pathname + window.location.hash);
   }
   
+  // Unlock AudioContext on first user gesture (required by browsers; splash also calls unlockAudio)
+  useEffect(() => {
+    let done = false;
+    const unlock = () => {
+      if (done) return;
+      done = true;
+      unlockAudio();
+      document.removeEventListener('click', unlock);
+      document.removeEventListener('touchstart', unlock);
+    };
+    document.addEventListener('click', unlock, { once: true, passive: true });
+    document.addEventListener('touchstart', unlock, { once: true, passive: true });
+    return () => {
+      document.removeEventListener('click', unlock);
+      document.removeEventListener('touchstart', unlock);
+    };
+  }, []);
+
   return (
     <LanguageProvider>
       <ErrorBoundary>

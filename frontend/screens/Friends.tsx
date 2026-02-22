@@ -4,6 +4,7 @@ import { Users, UserPlus, Search, X, Check, XCircle, User, Loader2 } from 'lucid
 import { friendsAPI } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
+import { analytics } from '../utils/analytics';
 import { playSound } from '../utils/sound';
 import { tg } from '../utils/telegram';
 import LoadingState from '../components/LoadingState';
@@ -157,6 +158,7 @@ const Friends: React.FC = () => {
     try {
       const result = await friendsAPI.sendRequest(userId);
       if (result.ok) {
+        analytics.track('friend_request_sent', { friendId: userId });
         toast.success(t('friend_request_sent') || 'Friend request sent!');
         await loadPending();
         // Update search result
@@ -185,6 +187,7 @@ const Friends: React.FC = () => {
     try {
       const result = await friendsAPI.accept(userId);
       if (result.ok) {
+        analytics.track('friend_request_accepted', { friendId: userId });
         toast.success(t('friend_request_accepted') || 'Friend request accepted!');
         await loadFriends();
         await loadPending();
@@ -210,6 +213,7 @@ const Friends: React.FC = () => {
     try {
       const result = await friendsAPI.decline(userId);
       if (result.ok) {
+        analytics.track('friend_request_declined', { friendId: userId });
         toast.success(t('friend_request_declined') || 'Request declined');
         await loadPending();
       } else {

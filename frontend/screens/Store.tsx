@@ -14,6 +14,7 @@ import { storage } from '../utils/storage';
 import { tg } from '../utils/telegram';
 import { useBreadcrumb } from '../contexts/BreadcrumbContext';
 import { useToast } from '../contexts/ToastContext';
+import { analytics } from '../utils/analytics';
 
 type TabId = 'stars' | 'xp' | 'ton' | 'my';
 
@@ -1091,6 +1092,7 @@ const Store = () => {
                     } else if (itemType === 'xp') {
                       const res = await storeAPI.buyItem(selectedItem.id);
                       if (res.ok && res.data) {
+                        analytics.track('store_purchase', { itemId: selectedItem.id, source: 'xp', remainingXp: res.data.remainingXp });
                         const isAvatarOrFrame = selectedItem.id?.startsWith('avatar_');
                         const msg = isAvatarOrFrame ? t('store_buy_success_equip') : t('store_buy_success');
                         toast.success(msg);

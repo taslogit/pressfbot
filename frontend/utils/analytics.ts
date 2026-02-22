@@ -120,6 +120,34 @@ class Analytics {
   trackError(error: string, context?: string) {
     this.track('error', { error, context });
   }
+
+  trackStorePurchase(itemId: string, source: 'xp' | 'stars', extra?: Record<string, unknown>) {
+    this.track('store_purchase', { itemId, source, ...extra });
+  }
+
+  trackSquadCreated(squadId: string, squadName?: string) {
+    this.track('squad_created', { squadId, squadName });
+  }
+
+  trackSquadJoined(squadId: string) {
+    this.track('squad_joined', { squadId });
+  }
+
+  trackFriendRequestSent(friendId: number) {
+    this.track('friend_request_sent', { friendId });
+  }
+
+  trackFriendRequestAccepted(friendId: number) {
+    this.track('friend_request_accepted', { friendId });
+  }
+
+  trackFriendRequestDeclined(friendId: number) {
+    this.track('friend_request_declined', { friendId });
+  }
+
+  trackLetterViewed(letterId: string, status?: string) {
+    this.track('letter_viewed', { letterId, status });
+  }
 }
 
 export const analytics = new Analytics();

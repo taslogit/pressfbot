@@ -155,14 +155,15 @@ const Profile = () => {
   const levelProgress = getLevelProgress(currentXP);
   const levelTitle = getTitleForLevel(currentLevel);
 
-  // Achievements can be object (store/backend) or array (legacy)
+  // Achievements can be object (store/backend) or array (legacy); guard when profile is null (e.g. 401)
   const hasAchievement = (key: string) => {
-    const a = profile.achievements;
+    const a = profile?.achievements;
+    if (a == null) return false;
     if (Array.isArray(a)) return a.includes(key);
-    return !!(a && typeof a === 'object' && (a as Record<string, unknown>)[key]);
+    return !!(typeof a === 'object' && (a as Record<string, unknown>)[key]);
   };
   const hasTitleCustom = hasAchievement('title_custom');
-  const displayTitle = (hasTitleCustom && profile.title && String(profile.title).trim()) ? String(profile.title).trim() : levelTitle;
+  const displayTitle = (hasTitleCustom && profile?.title && String(profile.title).trim()) ? String(profile.title).trim() : levelTitle;
   const maxBioLen = hasAchievement('bio_extended') ? 500 : 150;
   const profileThemeNeon = hasAchievement('profile_theme_neon');
   const profileThemeGold = hasAchievement('profile_theme_gold');
@@ -186,7 +187,7 @@ const Profile = () => {
   }, [currentLevel, previousLevel]);
 
   // Find server avatar if profile.avatar matches a server avatar ID
-  const serverAvatar = availableAvatars.find(av => av.id === profile.avatar);
+  const serverAvatar = profile ? availableAvatars.find(av => av.id === profile.avatar) : undefined;
 
 
   const markAllNotificationsRead = async () => {
@@ -382,6 +383,10 @@ const Profile = () => {
     setMainAvatarError(false);
   }, [displayAvatar?.id]);
 
+  // Guard: profile can be null after 401 or before first load
+  if (!profile) {
+    return <LoadingState terminal className="min-h-screen" />;
+  }
 
   return (
     <div className="pt-4 pb-24 relative min-h-screen">

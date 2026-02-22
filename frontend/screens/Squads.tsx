@@ -10,8 +10,10 @@ import { playSound } from '../utils/sound';
 import { Squad, SquadMember, LeaderboardEntry } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 import { getAvatarComponent } from '../components/Avatars';
-import { squadsAPI, dailyQuestsAPI } from '../utils/api';
+import { squadsAPI, dailyQuestsAPI, profileAPI } from '../utils/api';
 import { useToast } from '../contexts/ToastContext';
+import { ImagePlus } from 'lucide-react';
+import { analytics } from '../utils/analytics';
 
 type Tab = 'pact' | 'leaderboard';
 
@@ -33,6 +35,12 @@ const Squads = () => {
     const [payloadInput, setPayloadInput] = useState('');
     const [isPactLocked, setIsPactLocked] = useState(true);
     const [isSavingPayload, setIsSavingPayload] = useState(false);
+
+    // Banner (squad_banner store item)
+    const [profile, setProfile] = useState<{ achievements?: Record<string, boolean> } | null>(null);
+    const [bannerUrlInput, setBannerUrlInput] = useState('');
+    const [isSavingBanner, setIsSavingBanner] = useState(false);
+    const [showBannerForm, setShowBannerForm] = useState(false);
     
     // Invite
     const inviteLink = `https://t.me/LastMemeBot?start=squad_${squad?.id || 'new'}`;
@@ -41,6 +49,9 @@ const Squads = () => {
         isMountedRef.current = true;
         loadSquad();
         loadLeaderboard();
+        profileAPI.get({ signal: getSignal() }).then((r) => {
+            if (isMountedRef.current && r?.data?.profile) setProfile(r.data.profile);
+        }).catch(() => {});
         
         // Check for pending squad join from invite link
         let pendingSquadId: string | null = null;
@@ -101,6 +112,7 @@ const Squads = () => {
             const result = await squadsAPI.join(squadId, { signal: getSignal() });
             if (!isMountedRef.current) return;
             if (result.ok && result.data?.squad) {
+                analytics.track('squad_joined', { squadId: result.data.squad.id });
                 setSquad(result.data.squad);
                 playSound('success');
                 toast.success(t('squad_joined') || 'Joined squad successfully!');
@@ -121,6 +133,7 @@ const Squads = () => {
             const result = await squadsAPI.create(squadName, { signal: getSignal() });
             if (!isMountedRef.current) return;
             if (result.ok && result.data?.squad) {
+                analytics.track('squad_created', { squadId: result.data.squad.id, squadName: result.data.squad.name });
                 playSound('success');
                 setSquad(result.data.squad);
                 setSquadName('');
@@ -158,6 +171,35 @@ const Squads = () => {
             toast.error('Failed to save payload');
         } finally {
             if (isMountedRef.current) setIsSavingPayload(false);
+        }
+    };
+
+    const userId = tg.initDataUnsafe?.user?.id;
+    const isCreator = squad && userId != null && String(squad.creatorId) === String(userId);
+    const hasSquadBanner = profile?.achievements?.squad_banner === true;
+
+    const handleBannerSave = async (overrideUrl?: string | null) => {
+        if (!squad || isSavingBanner) return;
+        setIsSavingBanner(true);
+        try {
+            const url = overrideUrl !== undefined ? (overrideUrl || null) : (bannerUrlInput.trim() || null);
+            const result = await squadsAPI.update(squad.id, { bannerUrl: url }, { signal: getSignal() });
+            if (!isMountedRef.current) return;
+            if (result.ok && result.data?.squad) {
+                setSquad(result.data.squad);
+                setBannerUrlInput('');
+                setShowBannerForm(false);
+                playSound('success');
+                toast.success(url != null && url !== '' ? (t('squad_banner_saved') || 'Banner saved') : (t('squad_banner_cleared') || 'Banner cleared'));
+            } else {
+                toast.error(result.error || 'Failed to save banner');
+            }
+        } catch (error: any) {
+            if (!isMountedRef.current || error?.name === 'AbortError') return;
+            console.error('Failed to save banner:', error);
+            toast.error('Failed to save banner');
+        } finally {
+            if (isMountedRef.current) setIsSavingBanner(false);
         }
     };
 
@@ -284,11 +326,46 @@ const Squads = () => {
                             <div className="space-y-4">
                                 {/* Squad Tactical Header */}
                                 <div className="bg-[#0f111a] border border-blue-500/30 rounded-2xl p-0 overflow-hidden relative shadow-lg">
+                                    {squad.bannerUrl && (
+                                        <div className="w-full aspect-[3/1] max-h-32 bg-black/40 relative overflow-hidden">
+                                            <img src={squad.bannerUrl} alt="" className="w-full h-full object-cover" />
+                                        </div>
+                                    )}
                                     <div className="absolute top-0 right-0 p-4 opacity-50">
                                         <Activity size={48} className="text-blue-500 opacity-20" />
                                     </div>
                                     
                                     <div className="p-5 relative z-10">
+                                        {isCreator && hasSquadBanner && (
+                                            <div className="mb-4">
+                                                {!showBannerForm ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setShowBannerForm(true); setBannerUrlInput(squad.bannerUrl || ''); playSound('click'); }}
+                                                        className="flex items-center gap-2 text-xs font-bold text-blue-400 hover:text-blue-300 uppercase tracking-wider"
+                                                    >
+                                                        <ImagePlus size={14} /> {squad.bannerUrl ? (t('squad_banner_change') || 'Change banner') : (t('squad_banner_set') || 'Set banner')}
+                                                    </button>
+                                                ) : (
+                                                    <div className="space-y-2 p-3 bg-black/30 rounded-xl border border-blue-500/20">
+                                                        <input
+                                                            type="url"
+                                                            value={bannerUrlInput}
+                                                            onChange={(e) => setBannerUrlInput(e.target.value)}
+                                                            placeholder="https://..."
+                                                            className="w-full bg-black/40 border border-blue-500/50 rounded-lg px-3 py-2 text-sm text-white placeholder:text-muted outline-none focus:border-blue-400"
+                                                        />
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => setShowBannerForm(false)} className="flex-1 py-2 text-xs font-bold text-muted rounded-lg hover:bg-white/5">{t('cancel') || 'Cancel'}</button>
+                                                            <button onClick={handleBannerSave} disabled={isSavingBanner} className="flex-1 py-2 bg-blue-500 text-white text-xs font-bold rounded-lg disabled:opacity-50">{isSavingBanner ? '...' : (t('save') || 'Save')}</button>
+                                                            {squad.bannerUrl && (
+                                                                <button onClick={() => handleBannerSave(null)} disabled={isSavingBanner} className="py-2 text-xs font-bold text-red-400 rounded-lg hover:bg-red-500/10">{t('squad_banner_clear') || 'Clear'}</button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                         <div className="flex justify-between items-start mb-1">
                                             <span className="text-xs text-blue-400 font-mono uppercase tracking-widest border border-blue-500/30 px-1.5 py-0.5 rounded">
                                                 UNIT: {squad.id.slice(0,6).toUpperCase()}
@@ -449,7 +526,13 @@ const Squads = () => {
 
                          {/* Global List */}
                          {leaderboard.map((entry) => (
-                             <div key={entry.id} className="bg-card/40 border border-border rounded-xl p-3 flex items-center justify-between hover:border-white/20 transition-colors">
+                             <div key={entry.id} className="bg-card/40 border border-border rounded-xl overflow-hidden hover:border-white/20 transition-colors">
+                                 {entry.bannerUrl && (
+                                     <div className="w-full h-12 bg-black/40 relative">
+                                         <img src={entry.bannerUrl} alt="" className="w-full h-full object-cover" />
+                                     </div>
+                                 )}
+                                 <div className="p-3 flex items-center justify-between">
                                  <div className="flex items-center gap-3">
                                      <div className={`w-8 h-8 flex items-center justify-center font-black rounded-lg ${
                                          entry.rank === 1 ? 'bg-accent-gold text-black shadow-lg shadow-yellow-500/20' :
@@ -475,6 +558,7 @@ const Squads = () => {
                                  <div className="text-right">
                                      <span className="font-mono font-bold text-accent-cyan">{entry.score}</span>
                                      <span className="text-xs block text-muted uppercase">SCORE</span>
+                                 </div>
                                  </div>
                              </div>
                          ))}

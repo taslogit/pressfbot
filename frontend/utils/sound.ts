@@ -2,12 +2,32 @@ import { storage } from './storage';
 import { haptic } from './haptic';
 
 // Simple synth so we don't need external assets
-const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
+const AudioContextClass = typeof window !== 'undefined' ? (window.AudioContext || (window as any).webkitAudioContext) : null;
 let ctx: AudioContext | null = null;
+let unlocked = false;
+
+/** Call on first user gesture (e.g. splash tap or first click) so AudioContext can start. */
+export function unlockAudio() {
+  if (unlocked) return;
+  unlocked = true;
+  if (!ctx && AudioContextClass) {
+    try {
+      ctx = new AudioContextClass();
+    } catch (_) {}
+  }
+  if (ctx?.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
+}
 
 const getCtx = () => {
+  if (!unlocked) return null;
   if (!ctx && AudioContextClass) {
-    ctx = new AudioContextClass();
+    try {
+      ctx = new AudioContextClass();
+    } catch (_) {
+      return null;
+    }
   }
   return ctx;
 };

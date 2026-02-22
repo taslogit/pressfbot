@@ -8,6 +8,7 @@ import {
   ANGEL_CHOIR_DURATION_MS,
   unlockSplashAudio,
 } from '../utils/splashSound';
+import { unlockAudio } from '../utils/sound';
 import { storage } from '../utils/storage';
 
 const LOADING_MS = 600; /* быстрый экран загрузки перед скан-линией */
@@ -65,6 +66,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     audioUnlockedRef.current = true;
     setSoundHintVisible(false);
     unlockSplashAudio();
+    unlockAudio();
   };
 
   const finish = () => {

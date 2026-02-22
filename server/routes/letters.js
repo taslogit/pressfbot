@@ -34,7 +34,8 @@ const letterSchema = z.object({
   type: z.enum(['generic', 'crypto', 'love', 'roast', 'confession']).optional(),
   options: z.object({
     burnOnRead: z.boolean().optional(),
-    blurPreview: z.boolean().optional()
+    blurPreview: z.boolean().optional(),
+    template: z.enum(['basic_neon', 'basic_retro']).optional()
   }).optional(),
   encryptedContent: z.string().max(MAX_CONTENT_SIZE).optional(),
   ipfsHash: z.string().optional(),

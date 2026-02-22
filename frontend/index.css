@@ -799,3 +799,18 @@ select:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .avatar-frame-vip::before { animation: none; }
 }
+
+/* Letter templates (store: letter_template_basic_neon / letter_template_basic_retro) */
+.letter-content-neon {
+  box-shadow: 0 0 24px rgba(0, 224, 255, 0.15);
+}
+.letter-font-neon {
+  text-shadow: 0 0 8px rgba(0, 224, 255, 0.4);
+}
+.letter-content-retro {
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.12);
+}
+.letter-font-retro {
+  text-shadow: 0 0 6px rgba(251, 191, 36, 0.35);
+  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
+}

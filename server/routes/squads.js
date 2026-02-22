@@ -50,9 +50,11 @@ const createSquadsRoutes = (pool) => {
       const normalizedSquad = {
         id: squad.id,
         name: squad.name,
+        creatorId: squad.creator_id,
         members: squad.members || [],
         pactHealth: squad.pact_health || 100,
         sharedPayload: squad.shared_payload,
+        bannerUrl: squad.banner_url || null,
         createdAt: squad.created_at?.toISOString(),
         updatedAt: squad.updated_at?.toISOString()
       };
@@ -138,9 +140,11 @@ const createSquadsRoutes = (pool) => {
       const newSquad = {
         id: squadId,
         name: name.trim(),
+        creatorId: userId,
         members: [creator],
         pactHealth: 100,
-        sharedPayload: null
+        sharedPayload: null,
+        bannerUrl: null
       };
 
       return res.json({ ok: true, squad: newSquad });
@@ -162,7 +166,7 @@ const createSquadsRoutes = (pool) => {
     }
 
     const squadId = req.params.id;
-    const { name, sharedPayload, pactHealth } = req.body;
+    const { name, sharedPayload, pactHealth, bannerUrl } = req.body;
 
     // Validate squadId format
     if (!squadId || !squadId.startsWith('squad_')) {
@@ -242,6 +246,43 @@ const createSquadsRoutes = (pool) => {
         updateValues.push(pactHealth);
       }
 
+      if (bannerUrl !== undefined) {
+        // Only squad creator with squad_banner purchase can set banner
+        const profileRow = await client.query(
+          `SELECT p.achievements FROM profiles p WHERE p.user_id = $1`,
+          [userId]
+        );
+        const achievements = profileRow.rows[0]?.achievements || {};
+        const hasSquadBanner = achievements.squad_banner === true;
+        const storeRow = await client.query(
+          `SELECT 1 FROM store_purchases WHERE user_id = $1 AND item_id = 'squad_banner' LIMIT 1`,
+          [userId]
+        );
+        const hasBannerPurchase = storeRow.rowCount > 0;
+        if (!hasSquadBanner && !hasBannerPurchase) {
+          await client.query('ROLLBACK');
+          client.release();
+          return sendError(res, 403, 'SQUAD_BANNER_REQUIRED', 'Purchase squad_banner in store to set a custom banner');
+        }
+        if (bannerUrl !== null && bannerUrl !== '') {
+          if (typeof bannerUrl !== 'string' || bannerUrl.length > 500) {
+            await client.query('ROLLBACK');
+            client.release();
+            return sendError(res, 400, 'VALIDATION_ERROR', 'bannerUrl must be a string up to 500 characters');
+          }
+          // Basic URL format check
+          try {
+            new URL(bannerUrl);
+          } catch {
+            await client.query('ROLLBACK');
+            client.release();
+            return sendError(res, 400, 'VALIDATION_ERROR', 'bannerUrl must be a valid URL');
+          }
+        }
+        updateFields.push(`banner_url = $${paramIndex++}`);
+        updateValues.push(bannerUrl === '' ? null : bannerUrl);
+      }
+
       if (updateFields.length === 0) {
         await client.query('ROLLBACK');
         client.release();
@@ -272,9 +313,11 @@ const createSquadsRoutes = (pool) => {
         const normalizedSquad = {
           id: updatedSquad.id,
           name: updatedSquad.name,
+          creatorId: updatedSquad.creator_id,
           members: updatedSquad.members || [],
           pactHealth: updatedSquad.pact_health || 100,
           sharedPayload: updatedSquad.shared_payload,
+          bannerUrl: updatedSquad.banner_url || null,
           createdAt: updatedSquad.created_at?.toISOString(),
           updatedAt: updatedSquad.updated_at?.toISOString()
         };
@@ -616,9 +659,11 @@ const createSquadsRoutes = (pool) => {
       return res.json({ ok: true, squad: {
         id: squad.id,
         name: squad.name,
+        creatorId: squad.creator_id,
         members,
         pactHealth: squad.pact_health || 100,
-        sharedPayload: squad.shared_payload
+        sharedPayload: squad.shared_payload,
+        bannerUrl: squad.banner_url || null
       }});
     } catch (error) {
       // Security: Ensure transaction is rolled back before releasing client
@@ -667,6 +712,7 @@ const createSquadsRoutes = (pool) => {
         name: row.name,
         score: row.pact_health,
         avatar: row.avatar || 'pressf',
+        bannerUrl: row.banner_url || null,
         status: 'alive', // Status calculated based on member activity (simplified)
         trend: 'same' // Trend calculated based on member count changes (simplified)
       }));

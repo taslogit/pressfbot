@@ -329,6 +329,16 @@ async function processStarsPayment(pool, bot, { userId, payload, telegramPayment
     trackBusiness('stars_purchases', 1);
     trackBusiness('stars_revenue', item.stars);
 
+    // Analytics: store_purchase (Stars)
+    try {
+      await pool.query(
+        `INSERT INTO analytics_events (user_id, event, properties) VALUES ($1, 'store_purchase', $2)`,
+        [userId, JSON.stringify({ itemId, source: 'stars', stars: item.stars })]
+      );
+    } catch (e) {
+      logger.debug('Analytics store_purchase (stars) failed', { error: e?.message });
+    }
+
     // Apply item effect
     if (item.type === 'subscription') {
       const expiresAt = new Date();

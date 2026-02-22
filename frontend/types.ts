@@ -12,6 +12,8 @@ export interface Letter {
   options?: {
     burnOnRead?: boolean;
     blurPreview?: boolean;
+    /** Store item letter_template_basic_neon | letter_template_basic_retro */
+    template?: 'basic_neon' | 'basic_retro';
   };
   isFavorite?: boolean;
 }
@@ -291,9 +293,11 @@ export interface SquadMember {
 export interface Squad {
   id: string;
   name: string;
+  creatorId?: number;
   members: SquadMember[];
   pactHealth: number; // 0-100
   sharedPayload?: string;
+  bannerUrl?: string | null;
 }
 
 export interface LeaderboardEntry {
@@ -302,6 +306,7 @@ export interface LeaderboardEntry {
   name: string;
   score: number; // Days Alive or Reputation
   avatar: string;
+  bannerUrl?: string | null;
   status: 'alive' | 'dead' | 'afk';
   trend: 'up' | 'down' | 'same';
 }

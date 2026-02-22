@@ -343,6 +343,20 @@ export const profileAPI = {
   },
 };
 
+// Analytics (PM dashboard)
+export const analyticsAPI = {
+  getDashboard: async (since: '24h' | '7d' = '24h', options?: RequestInit) => {
+    return apiRequest<{
+      ok: boolean;
+      period: string;
+      periodHours: number;
+      totalEvents: number;
+      uniqueUsers: number;
+      eventsByType: Record<string, number>;
+    }>(`/api/analytics/dashboard?since=${since}`, options);
+  },
+};
+
 export const searchAPI = {
   search: async (q: string, limit = 10, options?: RequestInit) => {
     return apiRequest<{ letters: any[]; duels: any[]; legacy: any[] }>(
@@ -502,7 +516,7 @@ export const squadsAPI = {
       body: JSON.stringify({ name }),
     });
   },
-  update: async (id: string, updates: { name?: string; sharedPayload?: string; pactHealth?: number }, options?: RequestInit) => {
+  update: async (id: string, updates: { name?: string; sharedPayload?: string; pactHealth?: number; bannerUrl?: string | null }, options?: RequestInit) => {
     return apiRequest<{ squad: any }>(`/api/squads/${id}`, {
       ...options,
       method: 'PUT',

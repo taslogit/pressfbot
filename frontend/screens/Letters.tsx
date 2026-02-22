@@ -17,6 +17,7 @@ import { useToast } from '../contexts/ToastContext';
 import { isEncrypted, decryptPayload } from '../utils/security';
 import PaywallModal from '../components/PaywallModal';
 import LoadingState from '../components/LoadingState';
+import { analytics } from '../utils/analytics';
 
 type Tab = 'all' | 'draft' | 'scheduled' | 'sent';
 
@@ -410,6 +411,15 @@ const Letters = () => {
     navigate(`/share?${params.toString()}`);
   }, [selectedLetter, t]);
 
+  const letterViewedTrackedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!selectedLetter || selectedLetter.status === 'draft' || !isSelectedUnlocked) return;
+    if (!letterViewedTrackedRef.current.has(selectedLetter.id)) {
+      letterViewedTrackedRef.current.add(selectedLetter.id);
+      analytics.track('letter_viewed', { letterId: selectedLetter.id, status: selectedLetter.status });
+    }
+  }, [selectedLetter, isSelectedUnlocked]);
+
   useEffect(() => {
     if (!selectedLetter || selectedLetter.status === 'draft' || !isSelectedUnlocked) return;
     const key = 'lastmeme_letter_unlock_seen';
@@ -626,10 +636,10 @@ const Letters = () => {
                   </div>
                 )}
 
-                {/* Content */}
-                <div className="bg-black/40 p-4 rounded-xl border border-accent-lime/20 mb-6 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-accent-lime/50" />
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed opacity-90 font-mono text-green-100/80">
+                {/* Content (template: basic_neon | basic_retro from store) */}
+                <div className={`letter-content-box bg-black/40 p-4 rounded-xl border mb-6 relative overflow-hidden ${selectedLetter.options?.template === 'basic_neon' ? 'letter-content-neon border-accent-cyan/40' : selectedLetter.options?.template === 'basic_retro' ? 'letter-content-retro border-amber-500/40' : 'border-accent-lime/20'}`}>
+                  <div className={`absolute top-0 left-0 w-full h-1 ${selectedLetter.options?.template === 'basic_neon' ? 'bg-accent-cyan/80' : selectedLetter.options?.template === 'basic_retro' ? 'bg-amber-500/80' : 'bg-accent-lime/50'}`} />
+                  <p className={`whitespace-pre-wrap text-sm leading-relaxed font-mono ${selectedLetter.options?.template === 'basic_neon' ? 'text-accent-cyan/95 opacity-95 letter-font-neon' : selectedLetter.options?.template === 'basic_retro' ? 'text-amber-200/95 opacity-95 letter-font-retro' : 'opacity-90 text-green-100/80'}`}>
                     <DecryptedLetterContent content={selectedLetter.content} letterId={selectedLetter.id} />
                   </p>
                 </div>

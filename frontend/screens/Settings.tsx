@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings as SettingsIcon, Bell, Globe2, Wallet, Sparkles, BookOpen, ChevronRight, Newspaper } from 'lucide-react';
+import { Settings as SettingsIcon, Bell, Globe2, Wallet, Sparkles, BookOpen, ChevronRight, Newspaper, BarChart3 } from 'lucide-react';
 import { TonConnectButton, useTonAddress, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { storage } from '../utils/storage';
 import { tonAPI, starsAPI, storeAPI, profileAPI } from '../utils/api';
@@ -14,6 +15,7 @@ import LoadingState from '../components/LoadingState';
 
 const Settings = () => {
   const { t, language, setLanguage } = useTranslation();
+  const navigate = useNavigate();
   const toast = useToast();
   const { settings: settingsFromContext, refreshSettings } = useProfile();
   const [settings, setSettings] = useState(settingsFromContext || storage.getSettings());
@@ -621,8 +623,19 @@ const Settings = () => {
             </AnimatePresence>
 
             <button
+              onClick={() => navigate('/analytics')}
+              className="w-full flex items-center justify-between mt-4 py-3 px-3 rounded-lg border border-border/60 bg-black/40 hover:border-accent-cyan/50 hover:bg-accent-cyan/5 transition-colors text-left"
+            >
+              <div className="flex items-center gap-2 text-xs text-muted uppercase tracking-widest">
+                <BarChart3 size={14} className="text-accent-cyan" />
+                {t('analytics_dashboard_title') || 'Analytics'}
+              </div>
+              <ChevronRight size={14} className="text-muted" />
+            </button>
+
+            <button
               onClick={() => setWikiOpen((v) => !v)}
-              className="w-full flex items-center justify-between mt-4"
+              className="w-full flex items-center justify-between mt-2"
             >
               <div className="flex items-center gap-2 text-xs text-muted uppercase tracking-widest">
                 <BookOpen size={14} className="text-accent-cyan" />

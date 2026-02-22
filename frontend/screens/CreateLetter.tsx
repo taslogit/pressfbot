@@ -11,7 +11,7 @@ import InfoSection from '../components/InfoSection';
 import { Letter } from '../types';
 import { encryptPayload, splitKey } from '../utils/security';
 import { uploadToIPFS } from '../services/cloud';
-import { lettersAPI } from '../utils/api';
+import { lettersAPI, profileAPI } from '../utils/api';
 import XPNotification from '../components/XPNotification';
 import { calculateLevel } from '../utils/levelSystem';
 import { analytics } from '../utils/analytics';
@@ -40,6 +40,9 @@ const CreateLetter = () => {
   const [unlockDate, setUnlockDate] = useState('');
   const [leakType, setLeakType] = useState<Preset | undefined>(undefined);
   const [burnOnRead, setBurnOnRead] = useState(false);
+  const [letterTemplate, setLetterTemplate] = useState<'basic_neon' | 'basic_retro' | ''>('');
+  const [hasTemplateNeon, setHasTemplateNeon] = useState(false);
+  const [hasTemplateRetro, setHasTemplateRetro] = useState(false);
   
   // Animation States
   const [isSending, setIsSending] = useState(false);
@@ -64,7 +67,19 @@ const CreateLetter = () => {
       setHasDraft(true);
       if (draft.type) setLeakType(draft.type as Preset);
       if (draft.options?.burnOnRead) setBurnOnRead(draft.options.burnOnRead);
+      if (draft.options?.template) setLetterTemplate(draft.options.template);
     }
+  }, []);
+
+  // Letter template ownership (store items)
+  useEffect(() => {
+    profileAPI.get({ signal: getSignal() }).then((r) => {
+      const a = r?.data?.profile?.achievements;
+      if (!a) return;
+      const has = (key: string) => Array.isArray(a) ? a.includes(key) : !!(a && (a as Record<string, unknown>)[key]);
+      setHasTemplateNeon(has('letter_template_basic_neon'));
+      setHasTemplateRetro(has('letter_template_basic_retro'));
+    }).catch(() => {});
   }, []);
 
   // Auto-Save Effect (includes attachment metadata — files can't be serialized, user re-adds on restore)
@@ -76,7 +91,7 @@ const CreateLetter = () => {
         recipients: recipients.split(',').map(r => r.trim()).filter(r => r),
         unlockDate,
         type: leakType,
-        options: { burnOnRead }
+        options: { burnOnRead, template: letterTemplate || undefined }
       };
       if (attachments.length > 0) {
         draftData.attachmentsMeta = attachments.map(a => ({ id: a.id, type: a.type }));
@@ -84,7 +99,7 @@ const CreateLetter = () => {
       const timeoutId = setTimeout(() => storage.saveDraft(draftData), 500);
       return () => clearTimeout(timeoutId);
     }
-  }, [title, content, recipients, unlockDate, leakType, burnOnRead, isSending, encryptionStep, attachments]);
+  }, [title, content, recipients, unlockDate, leakType, burnOnRead, letterTemplate, isSending, encryptionStep, attachments]);
 
   const handleRestoreDraft = () => {
     const draft = storage.getDraft() as Partial<Letter> & { attachmentsMeta?: { id: string; type: string }[] };
@@ -95,6 +110,7 @@ const CreateLetter = () => {
       if (draft.unlockDate) setUnlockDate(draft.unlockDate);
       if (draft.type) setLeakType(draft.type as Preset);
       if (draft.options?.burnOnRead) setBurnOnRead(draft.options.burnOnRead);
+      if (draft.options?.template) setLetterTemplate(draft.options.template);
       if (draft.attachmentsMeta?.length) {
         setAttachments(draft.attachmentsMeta.map(a => ({
           id: a.id,
@@ -243,7 +259,7 @@ const CreateLetter = () => {
       status: 'scheduled',
       attachments: attachmentUrls,
       type: leakType,
-      options: { burnOnRead }
+      options: { burnOnRead, template: letterTemplate || undefined }
     };
 
     // Use async API to get XP reward
@@ -541,6 +557,43 @@ const CreateLetter = () => {
             ))}
          </div>
       </div>
+
+      {/* Letter template (store: letter_template_basic_neon / letter_template_basic_retro) */}
+      {(hasTemplateNeon || hasTemplateRetro) && (
+        <div className="mb-4">
+          <label className="label-terminal text-xs text-muted font-bold tracking-wider ml-1 block mb-2">{t('letter_template_label') || 'Letter style'}</label>
+          <div className="flex gap-2 flex-wrap">
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setLetterTemplate('')}
+              className={`px-3 py-2 rounded-lg border text-xs font-bold uppercase transition-all ${!letterTemplate ? 'bg-card border-accent-cyan/50 text-accent-cyan' : 'bg-card/50 border-border text-muted hover:border-white/30'}`}
+            >
+              {t('letter_template_default') || 'Default'}
+            </motion.button>
+            {hasTemplateNeon && (
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setLetterTemplate('basic_neon')}
+                className={`px-3 py-2 rounded-lg border text-xs font-bold uppercase transition-all ${letterTemplate === 'basic_neon' ? 'bg-accent-cyan/20 border-accent-cyan text-accent-cyan shadow-[0_0_12px_rgba(0,224,255,0.3)]' : 'bg-card/50 border-border text-muted hover:border-accent-cyan/30'}`}
+              >
+                {t('letter_template_neon') || 'Neon'}
+              </motion.button>
+            )}
+            {hasTemplateRetro && (
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setLetterTemplate('basic_retro')}
+                className={`px-3 py-2 rounded-lg border text-xs font-bold uppercase transition-all ${letterTemplate === 'basic_retro' ? 'bg-amber-500/20 border-amber-400 text-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.2)]' : 'bg-card/50 border-border text-muted hover:border-amber-400/30'}`}
+              >
+                {t('letter_template_retro') || 'Retro'}
+              </motion.button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-4">
         {/* Title Input */}
