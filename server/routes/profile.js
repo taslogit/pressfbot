@@ -40,7 +40,7 @@ const settingsUpdateSchema = z.object({
   duelTauntMessage: z.string().max(500).nullable().optional()
 });
 
-const createProfileRoutes = (pool) => {
+const createProfileRoutes = (pool, bot = null) => {
   // GET /api/profile - Get user profile (with caching)
   router.get('/', async (req, res) => {
     try {

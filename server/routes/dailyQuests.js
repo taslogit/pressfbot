@@ -332,14 +332,6 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
 
       // Commit transaction
       await client.query('COMMIT');
-      // Release client after successful commit
-      if (client) {
-        try {
-          client.release();
-        } catch (releaseError) {
-          logger.error('Failed to release client in quest progress (after commit)', { error: releaseError?.message });
-        }
-      }
 
       // Invalidate cache for this user's daily quests (outside transaction)
       const cacheKey = `daily-quests:${userId}:${today}`;
