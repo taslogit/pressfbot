@@ -433,13 +433,17 @@ const Profile = () => {
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
               className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
               onClick={() => setShowShareModal(false)}
             >
                 <motion.div 
-                   initial={{ scale: 0.8, y: 20 }}
-                   animate={{ scale: 1, y: 0 }}
+                   initial={{ scale: 0.94, opacity: 0 }}
+                   animate={{ scale: 1, opacity: 1 }}
+                   exit={{ scale: 0.96, opacity: 0 }}
+                   transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
                    className="bg-card border border-accent-cyan rounded-2xl p-6 max-w-sm w-full relative overflow-hidden"
+                   style={{ willChange: 'transform' }}
                    onClick={(e) => e.stopPropagation()}
                 >
                     <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-accent-lime via-accent-cyan to-accent-pink" />
@@ -491,13 +495,17 @@ const Profile = () => {
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
             onClick={() => setShowAvatarSelector(false)}
           >
             <motion.div 
-              initial={{ scale: 0.8, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
+              initial={{ scale: 0.94, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
               className="bg-card border border-purple-500/50 rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto relative"
+              style={{ willChange: 'transform' }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-accent-cyan to-accent-pink" />
@@ -602,14 +610,17 @@ const Profile = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
             onClick={() => setShowFrameSelector(false)}
           >
             <motion.div
-              initial={{ scale: 0.8, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.8, y: 20 }}
+              initial={{ scale: 0.94, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
               className="bg-card border border-purple-500/50 rounded-2xl p-6 max-w-sm w-full"
+              style={{ willChange: 'transform' }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-center mb-4">
