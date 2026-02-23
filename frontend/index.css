@@ -281,34 +281,20 @@ select:focus-visible {
   }
 }
 
-/* Info icon: два ярких фиолетовых мигания после закрытия панели (визуальная подсказка) */
+/* Info icon: два быстрых мигания после закрытия панели, не блокируют клики по странице */
 @keyframes info-icon-blink-keyframes {
-  0% {
-    box-shadow: 0 0 0 0 transparent;
-    background-color: transparent;
-  }
-  18% {
-    box-shadow: 0 0 28px 8px rgba(168, 85, 247, 0.95), 0 0 56px 16px rgba(168, 85, 247, 0.5);
-    background-color: rgba(168, 85, 247, 0.45);
-  }
-  36% {
-    box-shadow: 0 0 0 0 transparent;
-    background-color: transparent;
-  }
-  54% {
-    box-shadow: 0 0 28px 8px rgba(168, 85, 247, 0.95), 0 0 56px 16px rgba(168, 85, 247, 0.5);
-    background-color: rgba(168, 85, 247, 0.45);
-  }
-  72%, 100% {
-    box-shadow: 0 0 0 0 transparent;
-    background-color: transparent;
-  }
+  0% { box-shadow: 0 0 0 0 transparent; background-color: transparent; }
+  15% { box-shadow: 0 0 28px 8px rgba(168, 85, 247, 0.95), 0 0 56px 16px rgba(168, 85, 247, 0.5); background-color: rgba(168, 85, 247, 0.45); }
+  30% { box-shadow: 0 0 0 0 transparent; background-color: transparent; }
+  45% { box-shadow: 0 0 28px 8px rgba(168, 85, 247, 0.95), 0 0 56px 16px rgba(168, 85, 247, 0.5); background-color: rgba(168, 85, 247, 0.45); }
+  60%, 100% { box-shadow: 0 0 0 0 transparent; background-color: transparent; }
 }
 .info-icon-blink {
-  animation: info-icon-blink-keyframes 0.85s ease-in-out;
+  animation: info-icon-blink-keyframes 0.5s ease-in-out;
   border-radius: 9999px;
   padding: 2px;
   margin: -2px;
+  pointer-events: auto; /* мигает только иконка, не перехватывает клики мимо */
 }
 .info-icon-blink .info-icon-btn,
 .info-icon-blink button {

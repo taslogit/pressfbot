@@ -18,6 +18,7 @@ type TriggerRect = { left: number; top: number; width: number; height: number } 
 
 const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false, trigger }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [triggerRect, setTriggerRect] = useState<TriggerRect>(null);
   const [iconBlink, setIconBlink] = useState(false);
   const { t } = useTranslation();
@@ -75,17 +76,18 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
     }
   }, [autoOpen, id]);
 
-  const PANEL_COLLAPSE_MS = 520;
+  const PANEL_COLLAPSE_MS = 380;
 
   const handleClose = () => {
-    setIsOpen(false);
+    setIsClosing(true);
     if (blinkTimeoutRef.current) clearTimeout(blinkTimeoutRef.current);
+    setTimeout(() => setIsOpen(false), 0);
     blinkTimeoutRef.current = setTimeout(() => {
       setIconBlink(true);
       blinkTimeoutRef.current = setTimeout(() => {
         setIconBlink(false);
         blinkTimeoutRef.current = null;
-      }, 900);
+      }, 550);
     }, PANEL_COLLAPSE_MS);
   };
 
@@ -103,14 +105,15 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
     if (id) {
       storage.dismissInfo(id);
     }
-    setIsOpen(false);
+    setIsClosing(true);
+    setTimeout(() => setIsOpen(false), 0);
     if (blinkTimeoutRef.current) clearTimeout(blinkTimeoutRef.current);
     blinkTimeoutRef.current = setTimeout(() => {
       setIconBlink(true);
       blinkTimeoutRef.current = setTimeout(() => {
         setIconBlink(false);
         blinkTimeoutRef.current = null;
-      }, 900);
+      }, 550);
     }, PANEL_COLLAPSE_MS);
   };
 
@@ -312,15 +315,16 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
       )}
 
       {createPortal(
-        <AnimatePresence>
+        <AnimatePresence onExitComplete={() => setIsClosing(false)}>
           {isOpen && (
             <motion.div
               key="info-overlay"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0, transition: { duration: 0.55 } }}
+              exit={{ opacity: 0, transition: { duration: 0.4 } }}
               transition={{ duration: 0.28 }}
               className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+              style={{ pointerEvents: isClosing ? 'none' : undefined }}
               role="dialog"
               aria-modal="true"
               aria-labelledby={`infosection-title-${id ?? 'modal'}`}

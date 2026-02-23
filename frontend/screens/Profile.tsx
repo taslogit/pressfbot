@@ -206,10 +206,6 @@ const Profile = () => {
     setPreviousLevel(currentLevel);
   }, [currentLevel, previousLevel]);
 
-  // Find server avatar if profile.avatar matches a server avatar ID
-  const serverAvatar = profile ? availableAvatars.find(av => av.id === profile.avatar) : undefined;
-
-
   const markAllNotificationsRead = async () => {
     await notificationsAPI.markRead();
     setNotificationEvents((prev) => prev.map((e) => ({ ...e, is_read: true })));
@@ -390,16 +386,16 @@ const Profile = () => {
     setProfile(updated);
   };
 
-  // Get current avatar: use profile.avatar even when avatars list not yet loaded (persists after re-open)
-  const currentAvatar = serverAvatar
-    || (profile?.avatar ? { id: profile.avatar, name: profile.avatar, url: `/api/static/avatars/${profile.avatar}.svg` } : null)
-    || availableAvatars.find(av => av.id === DEFAULT_AVATAR_ID)
-    || null;
-  const displayAvatar = currentAvatar || {
-    id: DEFAULT_AVATAR_ID,
-    url: `/api/static/avatars/${DEFAULT_AVATAR_ID}.svg`,
-    name: 'PressF'
-  };
+  // Источник истины — profile.avatar с сервера; список аватаров только для имени/url, чтобы на профиле сразу был выбранный аватар
+  const displayAvatar = (() => {
+    const id = profile?.avatar || DEFAULT_AVATAR_ID;
+    const fromList = availableAvatars.find(av => av.id === id);
+    return fromList || {
+      id,
+      name: id,
+      url: `/api/static/avatars/${id}.svg`
+    };
+  })();
 
   // Reset main avatar error when selection changes so we retry loading
   useEffect(() => {

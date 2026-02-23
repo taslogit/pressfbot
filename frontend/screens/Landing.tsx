@@ -504,8 +504,11 @@ const Landing = () => {
              {t('welcome_back')} <span className="text-primary">{tg.initDataUnsafe?.user?.first_name || 'USER'}</span>
            </p>
         </div>
-        <div className="flex items-center justify-center bg-card/50 border border-green-500/30 px-2 py-1 rounded-md backdrop-blur-md">
-          <Signal size={16} className="text-green-500 animate-pulse motion-reduce:animate-none" />
+        <div className="flex items-center gap-2">
+          <InfoSection title={t('how_it_works')} description={t('landing_help')} id="landing_help" autoOpen />
+          <div className="flex items-center justify-center bg-card/50 border border-green-500/30 px-2 py-1 rounded-md backdrop-blur-md">
+            <Signal size={16} className="text-green-500 animate-pulse motion-reduce:animate-none" />
+          </div>
         </div>
       </motion.header>
 
@@ -626,13 +629,6 @@ const Landing = () => {
              <Activity size={16} className="text-accent-lime" />
              {t('system_status')}
            </h2>
-           
-           <InfoSection 
-              title={t('how_it_works')} 
-              description={t('landing_help')} 
-              id="landing_help" 
-              autoOpen
-            />
         </div>
 
         {/* Central Interaction Area */}
