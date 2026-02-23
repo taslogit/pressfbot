@@ -94,6 +94,26 @@ const Profile = () => {
     }
   }, [profileFromContext]);
 
+  // При входе на экран — обновить профиль с сервера (репутация, аватар и т.д. актуальны)
+  useEffect(() => {
+    refreshProfile();
+  }, []);
+
+  // Предзагрузка списка аватаров при монтировании, чтобы выбранный аватар и селектор работали без задержки
+  useEffect(() => {
+    if (!profile) return;
+    let isMounted = true;
+    Promise.all([avatarsAPI.getAll(), storeAPI.getMyItems()]).then(([avatarsRes, myItemsRes]) => {
+      if (!isMounted) return;
+      if (avatarsRes?.ok && avatarsRes.data?.avatars) setAvailableAvatars(avatarsRes.data.avatars);
+      if (myItemsRes?.ok && myItemsRes.data) {
+        setOwnedAvatarIds(new Set(myItemsRes.data.ownedAvatarIds || [DEFAULT_AVATAR_ID]));
+        setOwnedFrameIds(new Set(myItemsRes.data.ownedFrameIds || ['default']));
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, [profile?.user_id]);
+
   useEffect(() => {
     if (settingsFromContext) {
       setSettings({
@@ -370,8 +390,11 @@ const Profile = () => {
     setProfile(updated);
   };
 
-  // Get current avatar (server avatar or default pressf)
-  const currentAvatar = serverAvatar || availableAvatars.find(av => av.id === DEFAULT_AVATAR_ID) || null;
+  // Get current avatar: use profile.avatar even when avatars list not yet loaded (persists after re-open)
+  const currentAvatar = serverAvatar
+    || (profile?.avatar ? { id: profile.avatar, name: profile.avatar, url: `/api/static/avatars/${profile.avatar}.svg` } : null)
+    || availableAvatars.find(av => av.id === DEFAULT_AVATAR_ID)
+    || null;
   const displayAvatar = currentAvatar || {
     id: DEFAULT_AVATAR_ID,
     url: `/api/static/avatars/${DEFAULT_AVATAR_ID}.svg`,
@@ -950,9 +973,10 @@ const Profile = () => {
                  <div className="h-4 bg-black/50 rounded-full overflow-hidden relative">
                     <div className="absolute inset-0 bg-gradient-to-r from-red-600 via-yellow-400 to-accent-lime opacity-30"></div>
                     <motion.div 
+                      key={`karma-${profile.karma}`}
                       initial={{ width: 0 }}
-                      animate={{ width: `${profile.karma}%` }}
-                      transition={{ duration: 1, delay: 0.5 }}
+                      animate={{ width: `${Math.min(100, Math.max(0, profile.karma))}%` }}
+                      transition={{ duration: 0.6, delay: 0.2 }}
                       className="absolute top-0 bottom-0 left-0 bg-white w-1 shadow-[0_0_10px_white] z-10"
                     />
                  </div>
