@@ -43,13 +43,14 @@ const XPNotification: React.FC<XPNotificationProps> = ({ xp, level, levelUp = fa
           initial={{ opacity: 0, y: -50, scale: 0.8 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -30, scale: 0.9 }}
+          transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="fixed top-20 left-1/2 -translate-x-1/2 z-[200] pointer-events-none"
         >
           <motion.div
-            initial={{ scale: 0 }}
+            initial={{ scale: 0.9 }}
             animate={{ scale: 1 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-            className={`relative px-6 py-4 rounded-2xl border-2 shadow-2xl backdrop-blur-md ${
+            transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className={`relative px-6 py-4 rounded-2xl border-2 shadow-2xl ${
               levelUp
                 ? 'bg-gradient-to-r from-purple-600/90 to-accent-cyan/90 border-purple-400 shadow-[0_0_30px_rgba(168,85,247,0.8)]'
                 : 'bg-gradient-to-r from-accent-cyan/90 to-purple-600/90 border-accent-cyan shadow-[0_0_20px_rgba(0,224,255,0.6)]'

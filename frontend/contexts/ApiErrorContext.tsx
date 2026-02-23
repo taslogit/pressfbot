@@ -62,10 +62,11 @@ function ApiErrorBanner({
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.2 }}
         className="fixed top-0 left-0 right-0 z-[300] px-4 pt-safe pb-2"
       >
         <div
-          className="max-w-md mx-auto rounded-xl border border-red-500/50 bg-red-950/95 backdrop-blur-md shadow-lg flex items-center gap-3 p-3"
+          className="max-w-md mx-auto rounded-xl border border-red-500/50 bg-red-950/95 shadow-lg flex items-center gap-3 p-3"
           role="alert"
           aria-live="assertive"
         >

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, Star, Zap, Lock, Gift, Sparkles, Wallet, X, Package, Box, ChevronDown, ChevronRight, Square, Banknote, FileText, Award, ScrollText, User } from 'lucide-react';
@@ -485,6 +485,41 @@ const Store = () => {
   }, [tab, starsCatalog?.length]);
 
   const ownedItemIds = new Set(myItems.map((i) => i.item_id));
+
+  const modalItemTitle = useMemo(() => {
+    if (!selectedItem || !itemType) return '';
+    if (itemType === 'xp') {
+      const tk = t(`store_item_${selectedItem.id}` as any);
+      return tk !== `store_item_${selectedItem.id}` ? tk : selectedItem.name;
+    }
+    const tk = t(`store_stars_${selectedItem.id}` as any);
+    return tk !== `store_stars_${selectedItem.id}` ? tk : selectedItem.title;
+  }, [selectedItem, itemType, t]);
+
+  const modalItemDesc = useMemo(() => {
+    if (!selectedItem || !itemType) return '';
+    if (itemType === 'xp') {
+      const tk = t(`store_item_${selectedItem.id}_desc` as any);
+      return tk !== `store_item_${selectedItem.id}_desc` ? tk : selectedItem.description;
+    }
+    const tk = t(`store_stars_${selectedItem.id}_desc` as any);
+    return tk !== `store_stars_${selectedItem.id}_desc` ? tk : selectedItem.description;
+  }, [selectedItem, itemType, t]);
+
+  const modalPriceInfo = useMemo(() => {
+    if (!selectedItem || itemType !== 'xp') return null;
+    const owned = myItems.some((i) => i.item_id === selectedItem.id);
+    const isFlash = flashSale?.itemId === selectedItem.id && !owned;
+    const isFirst = firstPurchaseEligible && !owned && !isFlash;
+    const disc = isFlash ? 0.5 : (isFirst ? 0.8 : 1);
+    const base = selectedItem.cost_rep || selectedItem.cost_xp || 0;
+    const pct = Math.max(0, 1 - achievementDiscountPercent / 100);
+    const cost = Math.floor(base * disc * pct);
+    const suffix = selectedItem.cost_rep ? ' REP' : ' XP';
+    const isXp = !selectedItem.cost_rep;
+    const insufficient = isXp && userXP < cost && !owned;
+    return { cost, isFlash, isFirst, suffix, insufficient, owned };
+  }, [selectedItem, itemType, flashSale, firstPurchaseEligible, myItems, achievementDiscountPercent, userXP]);
 
   const getItemLabel = (itemId: string, fallback: string) => {
     if (itemId?.startsWith('avatar_')) {
@@ -1005,6 +1040,7 @@ const Store = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
             onClick={closeItemModal}
             role="dialog"
@@ -1012,15 +1048,17 @@ const Store = () => {
             aria-labelledby="store-item-modal-title"
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.94, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+              style={{ willChange: 'transform' }}
               onClick={(e) => e.stopPropagation()}
               className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full"
             >
               <div className="flex justify-between items-start mb-4">
                 <h3 id="store-item-modal-title" className="font-heading text-lg font-bold text-primary">
-                  {itemType === 'xp' ? (() => { const tk = t(`store_item_${selectedItem.id}` as any); return tk !== `store_item_${selectedItem.id}` ? tk : selectedItem.name; })() : (() => { const tk = t(`store_stars_${selectedItem.id}` as any); return tk !== `store_stars_${selectedItem.id}` ? tk : selectedItem.title; })()}
+                  {modalItemTitle}
                 </h3>
                 <button onClick={closeItemModal} className="p-1 text-muted hover:text-primary">
                   <X size={24} />
@@ -1032,52 +1070,31 @@ const Store = () => {
                 </div>
               )}
               <p className="text-sm text-muted mb-4">
-                {itemType === 'xp' ? (() => { const tk = t(`store_item_${selectedItem.id}_desc` as any); return tk !== `store_item_${selectedItem.id}_desc` ? tk : selectedItem.description; })() : (() => { const tk = t(`store_stars_${selectedItem.id}_desc` as any); return tk !== `store_stars_${selectedItem.id}_desc` ? tk : selectedItem.description; })()}
+                {modalItemDesc}
               </p>
               <div className="flex items-center justify-between">
                 {itemType === 'stars' && (
                   <span className="text-accent-lime font-bold">{selectedItem.stars} ⭐</span>
                 )}
-                {itemType === 'xp' && (
+                {itemType === 'xp' && modalPriceInfo && (
                   <>
                     <span className="text-accent-pink font-bold">
-                      {(() => {
-                        const isFlash = flashSale?.itemId === selectedItem.id && !ownedItemIds.has(selectedItem.id);
-                        const isFirst = firstPurchaseEligible && !ownedItemIds.has(selectedItem.id) && !isFlash;
-                        const disc = isFlash ? 0.5 : (isFirst ? 0.8 : 1);
-                        const base = selectedItem.cost_rep || selectedItem.cost_xp || 0;
-                        const pct = Math.max(0, 1 - achievementDiscountPercent / 100);
-                        const cost = Math.floor(base * disc * pct);
-                        const suffix = selectedItem.cost_rep ? ' REP' : ' XP';
-                        return (
-                          <>
-                            {cost}{suffix}
-                            {(isFlash || isFirst) && (
-                              <span className="text-xs ml-1 text-accent-lime">
-                                ({isFlash ? '−50%' : '−20%'})
-                              </span>
-                            )}
-                          </>
-                        );
-                      })()}
+                      {modalPriceInfo.cost}{modalPriceInfo.suffix}
+                      {(modalPriceInfo.isFlash || modalPriceInfo.isFirst) && (
+                        <span className="text-xs ml-1 text-accent-lime">
+                          ({modalPriceInfo.isFlash ? '−50%' : '−20%'})
+                        </span>
+                      )}
                     </span>
-                    {ownedItemIds.has(selectedItem.id) && (
+                    {modalPriceInfo.owned && (
                       <span className="text-accent-lime text-xs">{t('store_owned')}</span>
                     )}
-                    {(() => {
-                      const isFlash = flashSale?.itemId === selectedItem.id && !ownedItemIds.has(selectedItem.id);
-                      const isFirst = firstPurchaseEligible && !ownedItemIds.has(selectedItem.id) && !isFlash;
-                      const disc = isFlash ? 0.5 : (isFirst ? 0.8 : 1);
-                      const base = selectedItem.cost_rep || selectedItem.cost_xp || 0;
-                      const pct = Math.max(0, 1 - achievementDiscountPercent / 100);
-                      const cost = Math.floor(base * disc * pct);
-                      const isXp = !selectedItem.cost_rep;
-                      const insufficient = isXp && userXP < cost && !ownedItemIds.has(selectedItem.id);
-                      return insufficient ? <span className="text-red-400 text-xs">{t('store_insufficient_xp')}</span> : null;
-                    })()}
+                    {modalPriceInfo.insufficient && (
+                      <span className="text-red-400 text-xs">{t('store_insufficient_xp')}</span>
+                    )}
                   </>
                 )}
-                {!(itemType === 'xp' && ownedItemIds.has(selectedItem.id)) && (
+                {!(itemType === 'xp' && modalPriceInfo?.owned) && (
                 <button
                   onClick={async () => {
                     playSound('click');

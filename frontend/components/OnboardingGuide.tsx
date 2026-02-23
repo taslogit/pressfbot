@@ -98,7 +98,7 @@ const OnboardingGuide: React.FC<Props> = ({ isVisible, onClose }) => {
   return (
     <div className="fixed inset-0 z-[10000] bg-[#050505] flex flex-col">
       {/* Top Bar with Progress */}
-      <div className="h-16 flex items-center justify-center px-6 relative z-10 border-b border-white/5 bg-black/50 backdrop-blur-md">
+      <div className="h-16 flex items-center justify-center px-6 relative z-10 border-b border-white/5 bg-black/60">
          {/* Progress Dots */}
          <div className="flex gap-1">
              {steps.map((_, i) => (
@@ -131,10 +131,10 @@ const OnboardingGuide: React.FC<Props> = ({ isVisible, onClose }) => {
          <AnimatePresence mode="wait">
            <motion.div 
              key={step}
-             initial={{ opacity: 0, y: 20, scale: 0.95 }}
+             initial={{ opacity: 0, y: 16, scale: 0.96 }}
              animate={{ opacity: 1, y: 0, scale: 1 }}
-             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-             transition={{ type: "spring", stiffness: 300, damping: 25 }}
+             exit={{ opacity: 0, y: -16, scale: 0.96 }}
+             transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
              className="w-full max-w-sm flex flex-col items-center"
            >
               {/* Icon Container */}
@@ -153,7 +153,7 @@ const OnboardingGuide: React.FC<Props> = ({ isVisible, onClose }) => {
                 {t(currentStep.title as any)}
               </h2>
               
-              <div className="bg-white/5 border border-white/10 p-5 rounded-xl backdrop-blur-sm relative overflow-hidden">
+              <div className="bg-white/5 border border-white/10 p-5 rounded-xl bg-black/20 relative overflow-hidden">
                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${currentStep.color.split(' ')[1].replace('text-', 'bg-')}`} />
                  <p className="text-sm font-mono text-gray-300 leading-relaxed">
                    {t(currentStep.desc as any)}
@@ -164,7 +164,7 @@ const OnboardingGuide: React.FC<Props> = ({ isVisible, onClose }) => {
       </div>
 
       {/* Footer Actions - Increased Bottom Padding (pb-24) */}
-      <div className="p-6 border-t border-white/5 bg-black/50 backdrop-blur-xl pb-24">
+      <div className="p-6 border-t border-white/5 bg-black/60 pb-24">
          <div className="flex justify-between items-center max-w-sm mx-auto w-full gap-4">
             <button 
               onClick={handleSkip}
