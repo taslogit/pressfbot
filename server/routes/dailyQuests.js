@@ -138,14 +138,6 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
     try {
       const userId = req.userId;
       if (!userId) {
-        // Release client before early return (no transaction started yet)
-        if (client) {
-          try {
-            client.release();
-          } catch (releaseError) {
-            logger.error('Failed to release client in claim quest (early return)', { error: releaseError?.message });
-          }
-        }
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
@@ -262,14 +254,6 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
       const { questType } = req.body;
 
       if (!userId || !questType) {
-        // Release client before early return (no transaction started yet)
-        if (client) {
-          try {
-            client.release();
-          } catch (releaseError) {
-            logger.error('Failed to release client in quest progress (early return)', { error: releaseError?.message });
-          }
-        }
         return sendError(res, 400, 'MISSING_PARAMS', 'Missing parameters');
       }
 
