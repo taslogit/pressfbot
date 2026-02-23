@@ -226,11 +226,7 @@ const Landing = () => {
       });
     }, 2200);
 
-    // Auto-show guide if not seen
-    if (!storage.getHasSeenGuide()) {
-      setTimeout(() => setShowGuide(true), 500);
-    }
-
+    // Онбординг показывается только один раз после заставки (через OPEN_TUTORIAL_KEY в useEffect выше), не при каждом переходе на главную
     const interval = setInterval(() => {
         if (isMounted) {
           setCurrentLog(prev => (prev + 1) % logs.length);
