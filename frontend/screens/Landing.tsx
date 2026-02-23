@@ -97,14 +97,16 @@ const Landing = () => {
   });
   const homeValueRef = useRef<HTMLDivElement>(null);
   const homeValueSeenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // После заставки: открыть онбоардинг (туториал) и блок «Туториал»
+  // Онбординг только один раз после первого входа (после заставки). При переходах с других вкладок не показывать.
+  const ONBOARDING_AUTO_SHOWN_KEY = 'pressf_onboarding_auto_shown';
   useEffect(() => {
     try {
-      if (sessionStorage.getItem(OPEN_TUTORIAL_KEY) === '1') {
-        sessionStorage.removeItem(OPEN_TUTORIAL_KEY);
-        setHomeValueCollapsed(false);
-        setShowGuide(true); // автоматически открыть онбоардинг
-      }
+      if (sessionStorage.getItem(ONBOARDING_AUTO_SHOWN_KEY) === '1') return;
+      if (sessionStorage.getItem(OPEN_TUTORIAL_KEY) !== '1') return;
+      sessionStorage.setItem(ONBOARDING_AUTO_SHOWN_KEY, '1');
+      sessionStorage.removeItem(OPEN_TUTORIAL_KEY);
+      setHomeValueCollapsed(false);
+      setShowGuide(true);
     } catch {}
   }, []);
   useEffect(() => {

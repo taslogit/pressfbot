@@ -245,7 +245,11 @@ const App = () => {
               {!splashDone && (
                 <SplashScreen
                   onFinish={() => {
-                    try { sessionStorage.setItem('pressf_open_tutorial', '1'); } catch {}
+                    try {
+                      if (sessionStorage.getItem('pressf_onboarding_auto_shown') !== '1') {
+                        sessionStorage.setItem('pressf_open_tutorial', '1');
+                      }
+                    } catch {}
                     requestAnimationFrame(() => {
                       requestAnimationFrame(() => setSplashDone(true));
                     });

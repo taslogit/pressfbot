@@ -289,13 +289,6 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
     return lines.map((line, i) => parseLine(line, i, animateLines));
   }, [isOpen, lines, t]);
 
-  const originX = typeof window !== 'undefined' && triggerRect
-    ? triggerRect.left + triggerRect.width / 2 - window.innerWidth / 2
-    : 0;
-  const originY = typeof window !== 'undefined' && triggerRect
-    ? triggerRect.top + triggerRect.height / 2 - window.innerHeight / 2
-    : 0;
-
   return (
     <>
       {trigger ? (
@@ -321,9 +314,9 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
               key="info-overlay"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0, transition: { duration: 0.4 } }}
-              transition={{ duration: 0.28 }}
-              className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+              exit={{ opacity: 0, transition: { duration: 0.25 } }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 p-4"
               style={{ pointerEvents: isClosing ? 'none' : undefined }}
               role="dialog"
               aria-modal="true"
@@ -332,26 +325,18 @@ const InfoSection: React.FC<Props> = ({ title, description, id, autoOpen = false
             >
               <motion.div
                 key="info-panel"
-                initial={{ x: originX, y: originY, scale: 0.04, opacity: 0 }}
+                initial={{ scale: 0.92, opacity: 0 }}
                 animate={{
-                  x: 0,
-                  y: 0,
                   scale: 1,
                   opacity: 1,
-                  transition: { type: 'spring', damping: 28, stiffness: 200, opacity: { duration: 0.22 } }
+                  transition: { duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }
                 }}
                 exit={{
-                  x: originX,
-                  y: originY,
-                  scale: 0.02,
+                  scale: 0.96,
                   opacity: 0,
-                  transition: {
-                    type: 'spring',
-                    damping: 28,
-                    stiffness: 65,
-                    opacity: { duration: 0.5 }
-                  }
+                  transition: { duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }
                 }}
+                style={{ willChange: 'transform' }}
                 className="relative w-full max-w-sm bg-[#0a0a0c] border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.9)] flex flex-col max-h-[70vh] overflow-hidden origin-center"
                 onClick={(e) => e.stopPropagation()}
               >
