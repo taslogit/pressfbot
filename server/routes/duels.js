@@ -2,16 +2,13 @@
 const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
-const { z, validateBody } = require('../validation');
+const { z, validateBody, validateParams, validateQuery } = require('../validation');
 const { normalizeDuel } = require('../services/duelsService');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { getXPReward } = require('../utils/xpSystem');
 const { getActiveXpMultiplier } = require('../utils/boosts');
 const { sanitizeInput } = require('../utils/sanitize');
-const VALID_DUEL_STATUSES = ['pending', 'active', 'completed', 'shame'];
-const VALID_DUEL_SORT = ['created_at', 'deadline', 'title', 'status'];
-
 // Security: Content size limits
 const MAX_TITLE_SIZE = 500; // characters
 const MAX_STAKE_SIZE = 255; // characters
@@ -33,6 +30,22 @@ const duelSchema = z.object({
   witnessCount: z.number().int().nonnegative().max(MAX_WITNESS_COUNT).optional(),
   loser: z.union([z.string(), z.number()]).optional(),
   isFavorite: z.boolean().optional()
+});
+
+const duelIdParamsSchema = z.object({
+  id: z.string().uuid('Invalid duel ID')
+});
+
+const duelsListQuerySchema = z.object({
+  limit: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(1).max(100).optional()).default(50),
+  offset: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(0).optional()).default(0),
+  status: z.enum(['pending', 'active', 'completed', 'shame']).optional(),
+  isPublic: z.enum(['true', 'false']).optional(),
+  isFavorite: z.enum(['true', 'false']).optional(),
+  friends: z.enum(['true', 'false']).optional(),
+  q: z.string().max(200).optional(),
+  sortBy: z.enum(['created_at', 'deadline', 'title', 'status']).optional().default('created_at'),
+  order: z.enum(['asc', 'desc']).optional().default('desc')
 });
 
 // 6.1.3: Load friend_groups name + member count for team duels
@@ -61,7 +74,7 @@ async function loadTeamInfo(pool, groupIds) {
 
 const createDuelsRoutes = (pool, createLimiter, duelLimitCheck, bot = null) => {
   // GET /api/duels - Get all duels for user
-  router.get('/', async (req, res) => {
+  router.get('/', validateQuery(duelsListQuerySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -72,92 +85,19 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck, bot = null) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      const limitRaw = req.query.limit;
-      const offsetRaw = req.query.offset;
+      const limit = req.query.limit ?? 50;
+      const offset = req.query.offset ?? 0;
       const status = req.query.status;
       const isPublicRaw = req.query.isPublic;
       const isFavoriteRaw = req.query.isFavorite;
       const friendsRaw = req.query.friends;
       const query = req.query.q;
-      const sortBy = req.query.sortBy || 'created_at';
-      const orderRaw = req.query.order || 'desc';
-      const order = String(orderRaw).toLowerCase();
+      const sortBy = req.query.sortBy ?? 'created_at';
+      const order = req.query.order ?? 'desc';
 
-      const limit = limitRaw ? Number(limitRaw) : 50;
-      if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid limit', {
-          field: 'limit',
-          min: 1,
-          max: 100
-        });
-      }
-
-      const offset = offsetRaw ? Number(offsetRaw) : 0;
-      if (!Number.isInteger(offset) || offset < 0) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid offset', {
-          field: 'offset',
-          min: 0
-        });
-      }
-
-      if (status && !VALID_DUEL_STATUSES.includes(status)) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid status', {
-          field: 'status',
-          allowed: VALID_DUEL_STATUSES
-        });
-      }
-
-      let isPublic;
-      if (isPublicRaw !== undefined) {
-        if (isPublicRaw === 'true') {
-          isPublic = true;
-        } else if (isPublicRaw === 'false') {
-          isPublic = false;
-        } else {
-          return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid isPublic', {
-            field: 'isPublic',
-            allowed: ['true', 'false']
-          });
-        }
-      }
-
-      let isFavorite;
-      if (isFavoriteRaw !== undefined) {
-        if (isFavoriteRaw === 'true') {
-          isFavorite = true;
-        } else if (isFavoriteRaw === 'false') {
-          isFavorite = false;
-        } else {
-          return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid isFavorite', {
-            field: 'isFavorite',
-            allowed: ['true', 'false']
-          });
-        }
-      }
-
-      let friendsOnly = false;
-      if (friendsRaw === 'true') {
-        friendsOnly = true;
-      } else if (friendsRaw !== undefined && friendsRaw !== 'false') {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid friends', {
-          field: 'friends',
-          allowed: ['true', 'false']
-        });
-      }
-
-      if (!VALID_DUEL_SORT.includes(sortBy)) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid sortBy', {
-          field: 'sortBy',
-          allowed: VALID_DUEL_SORT
-        });
-      }
-
-      if (order !== 'asc' && order !== 'desc') {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid order', {
-          field: 'order',
-          allowed: ['asc', 'desc']
-        });
-      }
+      const isPublic = isPublicRaw === 'true' ? true : isPublicRaw === 'false' ? false : undefined;
+      const isFavorite = isFavoriteRaw === 'true' ? true : isFavoriteRaw === 'false' ? false : undefined;
+      const friendsOnly = friendsRaw === 'true';
 
       const conditions = ['(challenger_id = $1 OR opponent_id = $1)'];
       const values = [userId];
@@ -498,8 +438,35 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck, bot = null) => {
     }
   });
 
+  // GET /api/duels/hype - Get top public duels by views (must be before /:id)
+  router.get('/hype', async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+
+      const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+      const status = req.query.status || 'active';
+
+      const result = await pool.query(
+        `SELECT * FROM duels 
+         WHERE is_public = true AND status = $1 AND status != 'shame'
+         ORDER BY views_count DESC, created_at DESC
+         LIMIT $2`,
+        [status, limit]
+      );
+
+      const duels = result.rows.map(row => normalizeDuel(row));
+
+      return res.json({ ok: true, duels });
+    } catch (error) {
+      logger.error('Get hype duels error:', { error: error?.message || error, userId: req.userId });
+      return sendError(res, 500, 'HYPE_FETCH_FAILED', 'Failed to fetch hype duels');
+    }
+  });
+
   // GET /api/duels/:id - Get single duel
-  router.get('/:id', async (req, res) => {
+  router.get('/:id', validateParams(duelIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -583,7 +550,7 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck, bot = null) => {
   });
 
   // PUT /api/duels/:id - Update duel
-  router.put('/:id', validateBody(duelSchema), async (req, res) => {
+  router.put('/:id', validateParams(duelIdParamsSchema), validateBody(duelSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -759,7 +726,7 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck, bot = null) => {
   });
 
   // DELETE /api/duels/:id - Delete duel
-  router.delete('/:id', async (req, res) => {
+  router.delete('/:id', validateParams(duelIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -785,7 +752,7 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck, bot = null) => {
   });
 
   // POST /api/duels/:id/view - Increment view count (for public duels)
-  router.post('/:id/view', async (req, res) => {
+  router.post('/:id/view', validateParams(duelIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -848,33 +815,6 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck, bot = null) => {
     } catch (error) {
       logger.error('View duel error:', { error: error?.message || error, userId: req.userId, duelId: req.params.id });
       return sendError(res, 500, 'DUEL_VIEW_FAILED', 'Failed to record view');
-    }
-  });
-
-  // GET /api/duels/hype - Get top public duels by views
-  router.get('/hype', async (req, res) => {
-    try {
-      if (!pool) {
-        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
-      }
-
-      const limit = Math.min(parseInt(req.query.limit) || 20, 50);
-      const status = req.query.status || 'active';
-
-      const result = await pool.query(
-        `SELECT * FROM duels 
-         WHERE is_public = true AND status = $1 AND status != 'shame'
-         ORDER BY views_count DESC, created_at DESC
-         LIMIT $2`,
-        [status, limit]
-      );
-
-      const duels = result.rows.map(row => normalizeDuel(row));
-
-      return res.json({ ok: true, duels });
-    } catch (error) {
-      logger.error('Get hype duels error:', { error: error?.message || error, userId: req.userId });
-      return sendError(res, 500, 'HYPE_FETCH_FAILED', 'Failed to fetch hype duels');
     }
   });
 

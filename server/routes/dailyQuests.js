@@ -6,6 +6,8 @@ const logger = require('../utils/logger');
 const { getXPReward } = require('../utils/xpSystem');
 const { getActiveXpMultiplier } = require('../utils/boosts');
 const { cache } = require('../utils/cache');
+const { validateBody, validateParams } = require('../validation');
+const { z } = require('zod');
 
 // Quest types and their configurations
 const QUEST_TYPES = [
@@ -17,6 +19,15 @@ const QUEST_TYPES = [
   { type: 'update_profile', title: 'Обнови профиль', description: 'Измени свой профиль', target: 1, reward: 5 },
   { type: 'create_squad', title: 'Создай сквад', description: 'Собери команду', target: 1, reward: 15 }
 ];
+
+const QUEST_TYPE_IDS = QUEST_TYPES.map((q) => q.type);
+const progressBodySchema = z.object({
+  questType: z.enum(QUEST_TYPE_IDS)
+});
+
+const questIdParamsSchema = z.object({
+  id: z.string().uuid('Invalid quest ID')
+});
 
 // Fisher-Yates shuffle algorithm for uniform distribution
 function shuffleArray(array) {
@@ -129,7 +140,7 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
   });
 
   // POST /api/daily-quests/:id/claim - Claim quest reward
-  router.post('/:id/claim', async (req, res) => {
+  router.post('/:id/claim', validateParams(questIdParamsSchema), async (req, res) => {
     const client = await pool?.connect();
     if (!client) {
       return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -243,7 +254,7 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
 
   // POST /api/daily-quests/progress - Update quest progress (called by other endpoints)
   // This is an internal endpoint, should be called when user performs actions
-  router.post('/progress', async (req, res) => {
+  router.post('/progress', validateBody(progressBodySchema), async (req, res) => {
     const client = await pool?.connect();
     if (!client) {
       return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -253,8 +264,8 @@ const createDailyQuestsRoutes = (pool, bot = null) => {
       const userId = req.userId;
       const { questType } = req.body;
 
-      if (!userId || !questType) {
-        return sendError(res, 400, 'MISSING_PARAMS', 'Missing parameters');
+      if (!userId) {
+        return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
       const today = new Date().toISOString().split('T')[0];

@@ -5,7 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
-const { z, validateBody } = require('../validation');
+const { z, validateBody, validateParams } = require('../validation');
 const { normalizeLetter } = require('../services/lettersService');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
@@ -40,6 +40,10 @@ const letterSchema = z.object({
   encryptedContent: z.string().max(MAX_CONTENT_SIZE).optional(),
   ipfsHash: z.string().optional(),
   isFavorite: z.boolean().optional()
+});
+
+const letterIdParamsSchema = z.object({
+  id: z.string().uuid('Invalid letter ID')
 });
 
 // Multer config for attachment uploads
@@ -477,7 +481,7 @@ const createLettersRoutes = (pool, createLimiter, letterLimitCheck) => {
   });
 
   // GET /api/letters/:id - Get single letter
-  router.get('/:id', async (req, res) => {
+  router.get('/:id', validateParams(letterIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -505,7 +509,7 @@ const createLettersRoutes = (pool, createLimiter, letterLimitCheck) => {
   });
 
   // GET /api/letters/:id/history - Get letter versions
-  router.get('/:id/history', async (req, res) => {
+  router.get('/:id/history', validateParams(letterIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -546,7 +550,7 @@ const createLettersRoutes = (pool, createLimiter, letterLimitCheck) => {
   });
 
   // POST /api/letters/:id/restore - Restore a letter version
-  router.post('/:id/restore', async (req, res) => {
+  router.post('/:id/restore', validateParams(letterIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -604,7 +608,7 @@ const createLettersRoutes = (pool, createLimiter, letterLimitCheck) => {
   });
 
   // PUT /api/letters/:id - Update letter
-  router.put('/:id', validateBody(letterSchema), async (req, res) => {
+  router.put('/:id', validateParams(letterIdParamsSchema), validateBody(letterSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -788,7 +792,7 @@ const createLettersRoutes = (pool, createLimiter, letterLimitCheck) => {
   });
 
   // DELETE /api/letters/:id - Delete letter
-  router.delete('/:id', async (req, res) => {
+  router.delete('/:id', validateParams(letterIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');

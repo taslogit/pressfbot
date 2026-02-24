@@ -3,9 +3,19 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
-const { validateBody } = require('../validation');
+const { validateBody, validateParams, validateQuery } = require('../validation');
 const { z } = require('zod');
 const { safeStringify } = require('../utils/safeJson');
+
+const giftIdParamsSchema = z.object({
+  id: z.string().uuid('Invalid gift ID')
+});
+
+const giftsListQuerySchema = z.object({
+  limit: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(1).max(100).optional()).default(50),
+  offset: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(0).optional()).default(0),
+  type: z.enum(['received', 'sent']).optional()
+});
 
 // Gift types and their configurations
 const GIFT_TYPES = {
@@ -50,7 +60,7 @@ const sendGiftBodySchema = z.object({
 
 const createGiftsRoutes = (pool, giftLimitCheck) => {
   // GET /api/gifts - Get user's gifts (sent and received) with pagination
-  router.get('/', async (req, res) => {
+  router.get('/', validateQuery(giftsListQuerySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -61,10 +71,9 @@ const createGiftsRoutes = (pool, giftLimitCheck) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      // Pagination parameters
-      const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Max 100
-      const offset = Math.max(parseInt(req.query.offset) || 0, 0);
-      const type = req.query.type; // 'received' | 'sent' | undefined (both)
+      const limit = req.query.limit ?? 50;
+      const offset = req.query.offset ?? 0;
+      const type = req.query.type;
 
       let receivedResult, sentResult;
       let received = [], sent = [];
@@ -286,7 +295,7 @@ const createGiftsRoutes = (pool, giftLimitCheck) => {
   });
 
   // POST /api/gifts/:id/claim - Claim a gift
-  router.post('/:id/claim', async (req, res) => {
+  router.post('/:id/claim', validateParams(giftIdParamsSchema), async (req, res) => {
     const client = await pool?.connect();
     if (!client) {
       return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -298,12 +307,6 @@ const createGiftsRoutes = (pool, giftLimitCheck) => {
 
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
-      }
-
-      // Security: Validate UUID format using uuid library
-      const { validate: validateUUID } = require('uuid');
-      if (!validateUUID(giftId)) {
-        return sendError(res, 400, 'INVALID_GIFT_ID', 'Invalid gift ID format');
       }
 
       // Start transaction

@@ -2,6 +2,17 @@ const express = require('express');
 const router = express.Router();
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
+const { validateBody, validateQuery } = require('../validation');
+const { z } = require('zod');
+
+const notificationsListQuerySchema = z.object({
+  limit: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(1).max(100).optional()).default(50),
+  offset: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(0).optional()).default(0)
+});
+
+const markReadBodySchema = z.object({
+  ids: z.array(z.string().uuid()).max(100).optional()
+});
 
 // Push notifications via Telegram Bot API
 const sendTelegramNotification = async (bot, userId, message, options = {}) => {
@@ -29,7 +40,7 @@ const sendTelegramNotification = async (bot, userId, message, options = {}) => {
 
 const createNotificationsRoutes = (pool, bot = null) => {
   // GET /api/notifications - List recent notifications
-  router.get('/', async (req, res) => {
+  router.get('/', validateQuery(notificationsListQuerySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -40,13 +51,8 @@ const createNotificationsRoutes = (pool, bot = null) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      // Pagination support
-      const limit = Math.min(parseInt(req.query.limit) || 50, 100);
-      const offset = Math.max(parseInt(req.query.offset) || 0, 0);
-      
-      if (!Number.isInteger(limit) || limit < 1 || !Number.isInteger(offset) || offset < 0) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid pagination parameters');
-      }
+      const limit = req.query.limit ?? 50;
+      const offset = req.query.offset ?? 0;
 
       const result = await pool.query(
         `SELECT id, event_type, title, message, is_read, created_at
@@ -73,7 +79,7 @@ const createNotificationsRoutes = (pool, bot = null) => {
   });
 
   // POST /api/notifications/mark-read - Mark notifications as read
-  router.post('/mark-read', async (req, res) => {
+  router.post('/mark-read', validateBody(markReadBodySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -84,7 +90,7 @@ const createNotificationsRoutes = (pool, bot = null) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      const ids = Array.isArray(req.body?.ids) ? req.body.ids : null;
+      const ids = req.body.ids && req.body.ids.length > 0 ? req.body.ids : null;
       if (ids && ids.length > 0) {
         await pool.query(
           `UPDATE notification_events

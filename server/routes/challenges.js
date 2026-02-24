@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { cache } = require('../utils/cache');
-const { validateBody, validateParams } = require('../validation');
+const { validateBody, validateParams, validateQuery } = require('../validation');
 const { z } = require('zod');
 
 const createChallengeBodySchema = z.object({
@@ -23,6 +23,12 @@ const createGroupChallengeBodySchema = z.object({
 
 const challengeIdParamsSchema = z.object({
   id: z.string().uuid('Invalid challenge ID')
+});
+
+const challengesListQuerySchema = z.object({
+  status: z.enum(['pending', 'active', 'completed', 'expired']).optional(),
+  limit: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(1).max(100).optional()).default(50),
+  offset: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(0).optional()).default(0)
 });
 
 const createChallengesRoutes = (pool, bot, createLimiter = null) => {
@@ -262,7 +268,7 @@ const createChallengesRoutes = (pool, bot, createLimiter = null) => {
   });
 
   // GET /api/challenges - Get user's challenges (active and completed)
-  router.get('/', async (req, res) => {
+  router.get('/', validateQuery(challengesListQuerySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -273,9 +279,9 @@ const createChallengesRoutes = (pool, bot, createLimiter = null) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      const status = req.query.status; // 'pending', 'active', 'completed', 'expired'
-      const limit = parseInt(req.query.limit) || 50;
-      const offset = parseInt(req.query.offset) || 0;
+      const status = req.query.status;
+      const limit = req.query.limit ?? 50;
+      const offset = req.query.offset ?? 0;
 
       let query = `
         SELECT 
