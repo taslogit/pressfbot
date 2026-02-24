@@ -92,6 +92,12 @@ const pool = DATABASE_URL ? new Pool({
   statement_timeout: 10000, // Query timeout (10 seconds)
 }) : null;
 
+// 5.5.2.8: EXPLAIN ANALYZE for slow queries in production
+if (pool) {
+  const { wrapPoolForSlowQueryExplain } = require('./utils/slowQueryExplain');
+  wrapPoolForSlowQueryExplain(pool);
+}
+
 // Import migrations
 const { createTables } = require('./migrations');
 

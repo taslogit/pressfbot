@@ -86,7 +86,8 @@ const Profile = () => {
   const [friendHistoryLoading, setFriendHistoryLoading] = useState(false);
   const [friendStats, setFriendStats] = useState<Record<string, number>>({});
   const [friendDuelStats, setFriendDuelStats] = useState<{ wins: number; losses: number } | null>(null);
-  
+  const [achievementsList, setAchievementsList] = useState<Array<{ id: string; name: string; name_key?: string | null; description: string; description_key?: string | null; icon: string; xp_reward: number; earned: boolean; earned_at: string | null; progress?: { current: number; target: number } }>>([]);
+
   // Calculate level from experience (needed before state initialization)
   const currentXP = profile?.experience || 0;
   const currentLevel = profile ? calculateLevel(currentXP) : 1;
@@ -145,6 +146,22 @@ const Profile = () => {
       if (res.ok && res.data?.friendDuelStats) setFriendDuelStats(res.data.friendDuelStats);
     }).catch(() => {});
   }, [viewFriendId]);
+
+  // 6.2.3 / 6.2.4 / 6.2.5: Загрузка достижений на вкладке «Ачивки» + уведомления о новых
+  useEffect(() => {
+    if (viewFriendId != null || activeTab !== 'trophies') return;
+    profileAPI.getAchievements({ signal: getSignal() }).then((res) => {
+      if (!res.ok || !res.data) return;
+      setAchievementsList(res.data.achievements || []);
+      const newOnes = res.data.newAchievements || [];
+      if (newOnes.length > 0) {
+        refreshProfile();
+        newOnes.forEach((a: { name: string; icon: string; xp_reward: number }) => {
+          toast.success(`${a.icon} ${a.name} +${a.xp_reward} XP`);
+        });
+      }
+    }).catch(() => {});
+  }, [activeTab, viewFriendId, refreshProfile, toast, getSignal]);
 
   // Предзагрузка списка аватаров при монтировании, чтобы выбранный аватар и селектор работали без задержки
   useEffect(() => {
@@ -1268,6 +1285,10 @@ const Profile = () => {
                      { key: 'week_survivor', done: (profile.stats?.daysAlive ?? 0) >= 7, labelKey: 'badge_7_days' },
                      { key: 'exclusive_badge_veteran', done: hasAchievement('exclusive_badge_veteran'), labelKey: 'badge_veteran' },
                      { key: 'exclusive_badge_legend', done: hasAchievement('exclusive_badge_legend'), labelKey: 'badge_legend' },
+                     { key: 'social_butterfly', done: hasAchievement('social_butterfly'), labelKey: 'ach_social_butterfly' },
+                     { key: 'gift_magnate', done: hasAchievement('gift_magnate'), labelKey: 'ach_gift_magnate' },
+                     { key: 'duel_master', done: hasAchievement('duel_master'), labelKey: 'ach_duel_master' },
+                     { key: 'inseparable', done: hasAchievement('inseparable'), labelKey: 'ach_inseparable' },
                    ].map(({ key, done, labelKey }) => (
                      <div
                        key={key}
@@ -1281,6 +1302,55 @@ const Profile = () => {
                    ))}
                  </div>
                </div>
+
+               {/* 6.2.3 / 6.2.5: Социальные достижения с прогресс-барами — только свой профиль */}
+               {!viewFriendIdParam && (() => {
+                 const SOCIAL_IDS = ['social_butterfly', 'gift_magnate', 'duel_master', 'inseparable'];
+                 const social = achievementsList.filter((a) => SOCIAL_IDS.includes(a.id));
+                 if (social.length === 0) return null;
+                 return (
+                   <div>
+                     <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 ml-1 flex items-center gap-2">
+                       <Users size={14} className="text-accent-cyan" />
+                       {t('social_achievements_section') || 'Социальные достижения'}
+                     </h3>
+                     <div className="space-y-3">
+                       {social.map((a) => {
+                         const prog = a.progress;
+                         const pct = prog && prog.target > 0 ? Math.min(100, Math.round((prog.current / prog.target) * 100)) : 0;
+                         const done = a.earned;
+                         return (
+                           <div
+                             key={a.id}
+                             className={`rounded-xl border p-3 ${done ? 'bg-accent-gold/10 border-accent-gold/50' : 'bg-card/50 border-border'}`}
+                           >
+                             <div className="flex items-center gap-2 mb-1.5">
+                               <span className="text-lg">{a.icon}</span>
+                               <span className={`text-sm font-bold ${done ? 'text-accent-gold' : 'text-primary'}`}>
+                                 {a.name_key ? t(a.name_key as any) : a.name}
+                               </span>
+                               {done && <span className="text-xs text-accent-gold">✓</span>}
+                             </div>
+                             {prog && prog.target > 0 && !done && (
+                               <div className="mt-1.5">
+                                 <div className="h-2 bg-black/40 rounded-full overflow-hidden">
+                                   <div
+                                     className="h-full bg-accent-cyan rounded-full transition-all duration-300"
+                                     style={{ width: `${pct}%` }}
+                                   />
+                                 </div>
+                                 <span className="text-xs text-muted mt-1 block">
+                                   {prog.current} / {prog.target}
+                                 </span>
+                               </div>
+                             )}
+                           </div>
+                         );
+                       })}
+                     </div>
+                   </div>
+                 );
+               })()}
 
                {/* Received Gifts */}
                <div>

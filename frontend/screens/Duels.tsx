@@ -82,7 +82,9 @@ const Duels = () => {
   const [showWitnessInvite, setShowWitnessInvite] = useState(false);
   const [showWitnessQR, setShowWitnessQR] = useState(false);
   const [createFriends, setCreateFriends] = useState<Array<{ userId: number; title: string; avatar?: string }>>([]);
+  const [createGroups, setCreateGroups] = useState<Array<{ id: string; name: string; memberCount: number }>>([]);
   const [selectedOpponentId, setSelectedOpponentId] = useState<number | null>(null);
+  const [selectedChallengerTeamId, setSelectedChallengerTeamId] = useState<string | null>(null);
 
   const buildQueryParams = () => ({
     status: activeTab === 'shame' ? 'shame' : undefined,
@@ -125,6 +127,15 @@ const Duels = () => {
           userId: f.userId ?? f.user_id,
           title: f.title || `User ${f.userId ?? f.user_id}`,
           avatar: f.avatar
+        })));
+      }
+    }).catch(() => {});
+    friendsAPI.getGroups().then((res) => {
+      if (res.ok && res.data?.groups) {
+        setCreateGroups(res.data.groups.map((g: any) => ({
+          id: g.id,
+          name: g.name,
+          memberCount: g.memberCount ?? 0
         })));
       }
     }).catch(() => {});
@@ -179,7 +190,11 @@ const Duels = () => {
                 isFavorite: d.isFavorite || false,
                 isFriend: d.isFriend || false,
                 challengerId: d.challengerId,
-                opponentId: d.opponentId
+                opponentId: d.opponentId,
+                challengerTeamId: d.challengerTeamId,
+                opponentTeamId: d.opponentTeamId,
+                challengerTeam: d.challengerTeam,
+                opponentTeam: d.opponentTeam
               }));
             }
             return storage.getDuels();
@@ -295,10 +310,11 @@ const Duels = () => {
       status: existing?.status || 'active',
       deadline: existing?.deadline || new Date(Date.now() + 86400000 * 3).toISOString(), // 3 days default
       isPublic,
-      isTeam,
+      isTeam: isTeam || !!selectedChallengerTeamId,
       witnessCount: existing?.witnessCount || 0,
       loser: existing?.loser,
-      ...(selectedOpponentId ? { opponentId: selectedOpponentId } : {})
+      ...(selectedOpponentId ? { opponentId: selectedOpponentId } : {}),
+      ...(selectedChallengerTeamId ? { challengerTeamId: selectedChallengerTeamId } : {})
     };
 
     setTimeout(async () => {
@@ -348,6 +364,7 @@ const Duels = () => {
       setIsTeam(false);
       setShowWitnessInvite(false);
       setSelectedOpponentId(null);
+      setSelectedChallengerTeamId(null);
       setCreateFriends([]);
     }, 1500);
   };
@@ -361,6 +378,7 @@ const Duels = () => {
     setStake(duel.stake);
     setIsPublic(!!duel.isPublic);
     setIsTeam(!!duel.isTeam);
+    setSelectedChallengerTeamId(duel.challengerTeamId || null);
   };
   const handleDelete = async (id: string) => {
     const ok = await confirmCritical({
@@ -410,6 +428,7 @@ const Duels = () => {
           setStake('');
           setEditingDuelId(null);
           setSelectedOpponentId(null);
+          setSelectedChallengerTeamId(null);
           setCreateFriends([]);
         }
       });
@@ -417,6 +436,7 @@ const Duels = () => {
       setIsCreating(false);
       setEditingDuelId(null);
       setSelectedOpponentId(null);
+      setSelectedChallengerTeamId(null);
       setCreateFriends([]);
     }
   };
@@ -712,6 +732,23 @@ const Duels = () => {
                       ))}
                     </div>
                   </div>
+
+                  {/* 6.1.3 My team (optional) */}
+                  {createGroups.length > 0 && (
+                    <div>
+                      <label className="text-xs text-muted uppercase font-bold tracking-wider mb-1 block">{t('duel_my_team') || 'Моя команда'}</label>
+                      <select
+                        value={selectedChallengerTeamId || ''}
+                        onChange={(e) => setSelectedChallengerTeamId(e.target.value ? e.target.value : null)}
+                        className="w-full bg-input border border-border rounded-lg p-3 text-sm text-primary outline-none focus:border-orange-500"
+                      >
+                        <option value="">{t('duel_no_team') || 'Без команды'}</option>
+                        {createGroups.map((g) => (
+                          <option key={g.id} value={g.id}>{g.name} ({g.memberCount})</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   
                   {/* Toggles */}
                   <div className="flex gap-4">
@@ -848,11 +885,23 @@ const Duels = () => {
                     )}
               </h4>
               
-              <div className="flex items-center gap-2 text-xs text-muted mb-3 relative z-10">
-                 <span className="font-mono text-primary">@{tg.initDataUnsafe?.user?.username || 'me'}</span>
+              <div className="flex items-center gap-2 text-xs text-muted mb-3 relative z-10 flex-wrap">
+                 <span className="font-mono text-primary">
+                   {duel.challengerTeam ? (
+                     <span className="flex items-center gap-1"><Users size={10} /> {duel.challengerTeam.name}{duel.challengerTeam.memberCount > 0 && ` (${duel.challengerTeam.memberCount})`}</span>
+                   ) : (
+                     `@${tg.initDataUnsafe?.user?.username || 'me'}`
+                   )}
+                 </span>
                  <span className="text-xs font-bold text-orange-500">{t('vs')}</span>
-                 <span className={`font-mono ${activeTab === 'shame' ? 'text-red-500 line-through' : 'text-primary'}`}>{duel.opponent}</span>
-                 {duel.isFriend && (
+                 <span className={`font-mono ${activeTab === 'shame' ? 'text-red-500 line-through' : 'text-primary'}`}>
+                   {duel.opponentTeam ? (
+                     <span className="flex items-center gap-1"><Users size={10} /> {duel.opponentTeam.name}{duel.opponentTeam.memberCount > 0 && ` (${duel.opponentTeam.memberCount})`}</span>
+                   ) : (
+                     duel.opponent
+                   )}
+                 </span>
+                 {duel.isFriend && !duel.opponentTeam && (
                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/50">{t('duels_badge_friend') || 'Друг'}</span>
                  )}
               </div>

@@ -101,6 +101,55 @@ const ACHIEVEMENTS = {
     xp_reward: 300,
     condition: (stats) => stats.gifts_sent >= 10
   },
+  // 6.2.1: Social achievements (6.2.2: REP rewards)
+  social_butterfly: {
+    id: 'social_butterfly',
+    name: 'Social Butterfly',
+    name_key: 'ach_social_butterfly',
+    description: 'Have 10 accepted friends',
+    description_key: 'ach_social_butterfly_desc',
+    icon: '🦋',
+    xp_reward: 200,
+    rep_reward: 25,
+    condition: (stats) => (stats.friends_count || 0) >= 10,
+    progress: (stats) => ({ current: stats.friends_count || 0, target: 10 })
+  },
+  gift_magnate: {
+    id: 'gift_magnate',
+    name: 'Gift Magnate',
+    name_key: 'ach_gift_magnate',
+    description: 'Send 50 gifts',
+    description_key: 'ach_gift_magnate_desc',
+    icon: '🎀',
+    xp_reward: 500,
+    rep_reward: 50,
+    condition: (stats) => (stats.gifts_sent || 0) >= 50,
+    progress: (stats) => ({ current: stats.gifts_sent || 0, target: 50 })
+  },
+  duel_master: {
+    id: 'duel_master',
+    name: 'Duel Master',
+    name_key: 'ach_duel_master',
+    description: 'Win 20 duels',
+    description_key: 'ach_duel_master_desc',
+    icon: '⚔️',
+    xp_reward: 750,
+    rep_reward: 75,
+    condition: (stats) => (stats.duel_wins || 0) >= 20,
+    progress: (stats) => ({ current: stats.duel_wins || 0, target: 20 })
+  },
+  inseparable: {
+    id: 'inseparable',
+    name: 'Inseparable',
+    name_key: 'ach_inseparable',
+    description: '30+ days of friendship with at least one friend',
+    description_key: 'ach_inseparable_desc',
+    icon: '💫',
+    xp_reward: 300,
+    rep_reward: 25,
+    condition: (stats) => stats.friends_30_days === true,
+    progress: (stats) => ({ current: stats.friends_30_days ? 1 : 0, target: 1 })
+  },
   recruiter: {
     id: 'recruiter',
     name: 'Recruiter',
@@ -174,15 +223,23 @@ async function checkAchievements(pool, userId) {
     const profile = profileResult.rows[0];
     const currentAchievements = profile.achievements || {};
 
-    // Get user stats
-    const [lettersResult, duelsResult, duelsWonResult, streakResult, giftsResult, referralsResult, storeResult] = await Promise.all([
+    // Get user stats (duels: participant = challenger or opponent; wins = completed and user is not loser)
+    const [lettersResult, duelsResult, duelsWonResult, streakResult, giftsResult, referralsResult, storeResult, friendsResult, friends30Result] = await Promise.all([
       pool.query('SELECT COUNT(*) as count FROM letters WHERE user_id = $1', [userId]),
-      pool.query('SELECT COUNT(*) as count FROM duels WHERE user_id = $1', [userId]),
-      pool.query("SELECT COUNT(*) as count FROM duels WHERE user_id = $1 AND status = 'completed' AND loser IS NOT NULL AND loser != $1", [userId]),
+      pool.query('SELECT COUNT(*) as count FROM duels WHERE challenger_id = $1 OR opponent_id = $1', [userId]),
+      pool.query(
+        `SELECT COUNT(*) as count FROM duels WHERE (challenger_id = $1 OR opponent_id = $1) AND status = 'completed' AND loser_id IS NOT NULL AND loser_id != $1`,
+        [userId]
+      ),
       pool.query('SELECT longest_streak FROM user_settings WHERE user_id = $1', [userId]),
       pool.query('SELECT COUNT(*) as count FROM gifts WHERE sender_id = $1', [userId]),
       pool.query('SELECT COUNT(*) as count FROM referral_events WHERE referrer_id = $1', [userId]),
-      pool.query('SELECT COUNT(*) as count FROM store_purchases WHERE user_id = $1', [userId])
+      pool.query('SELECT COUNT(*) as count FROM store_purchases WHERE user_id = $1', [userId]),
+      pool.query('SELECT COUNT(*) as count FROM friendships WHERE user_id = $1 AND status = $2', [userId, 'accepted']),
+      pool.query(
+        `SELECT 1 FROM friendships WHERE user_id = $1 AND status = $2 AND accepted_at IS NOT NULL AND accepted_at <= NOW() - INTERVAL '30 days' LIMIT 1`,
+        [userId, 'accepted']
+      )
     ]);
 
     const stats = {
@@ -193,6 +250,8 @@ async function checkAchievements(pool, userId) {
       gifts_sent: parseInt(giftsResult.rows[0]?.count || '0', 10),
       referrals: parseInt(referralsResult.rows[0]?.count || '0', 10),
       store_purchases: parseInt(storeResult.rows[0]?.count || '0', 10),
+      friends_count: parseInt(friendsResult.rows[0]?.count || '0', 10),
+      friends_30_days: (friends30Result.rows && friends30Result.rows.length > 0),
       level: profile.level || 1,
       is_premium: profile.is_premium || false
     };
@@ -214,25 +273,28 @@ async function checkAchievements(pool, userId) {
       }
     }
 
-    // Award achievements
+    // Award achievements (6.2.2: XP + REP)
     if (newAchievements.length > 0) {
-      const totalXp = newAchievements.reduce((sum, a) => sum + a.xp_reward, 0);
+      const totalXp = newAchievements.reduce((sum, a) => sum + (a.xp_reward || 0), 0);
+      const totalRep = newAchievements.reduce((sum, a) => sum + (a.rep_reward || 0), 0);
 
       await pool.query(
         `UPDATE profiles SET 
            achievements = $2,
            experience = experience + $3,
-           total_xp_earned = total_xp_earned + $3,
+           total_xp_earned = COALESCE(total_xp_earned, 0) + $3,
            spendable_xp = COALESCE(spendable_xp, 0) + $3,
+           reputation = COALESCE(reputation, 0) + $4,
            updated_at = now()
          WHERE user_id = $1`,
-        [userId, JSON.stringify(currentAchievements), totalXp]
+        [userId, JSON.stringify(currentAchievements), totalXp, totalRep]
       );
 
       logger.info('Achievements awarded', {
         userId,
         achievements: newAchievements.map(a => a.id),
-        totalXp
+        totalXp,
+        totalRep
       });
 
       // Log friend activity for each new achievement
@@ -266,30 +328,76 @@ async function checkAchievements(pool, userId) {
 }
 
 /**
- * Get all achievements with user's progress
+ * Get user stats for achievement progress (shared with checkAchievements logic)
+ */
+async function getStatsForUser(pool, userId) {
+  const [profileResult, lettersResult, duelsResult, duelsWonResult, streakResult, giftsResult, referralsResult, storeResult, friendsResult, friends30Result] = await Promise.all([
+    pool.query('SELECT level, is_premium FROM profiles WHERE user_id = $1', [userId]),
+    pool.query('SELECT COUNT(*) as count FROM letters WHERE user_id = $1', [userId]),
+    pool.query('SELECT COUNT(*) as count FROM duels WHERE challenger_id = $1 OR opponent_id = $1', [userId]),
+    pool.query(
+      `SELECT COUNT(*) as count FROM duels WHERE (challenger_id = $1 OR opponent_id = $1) AND status = 'completed' AND loser_id IS NOT NULL AND loser_id != $1`,
+      [userId]
+    ),
+    pool.query('SELECT longest_streak FROM user_settings WHERE user_id = $1', [userId]),
+    pool.query('SELECT COUNT(*) as count FROM gifts WHERE sender_id = $1', [userId]),
+    pool.query('SELECT COUNT(*) as count FROM referral_events WHERE referrer_id = $1', [userId]),
+    pool.query('SELECT COUNT(*) as count FROM store_purchases WHERE user_id = $1', [userId]),
+    pool.query('SELECT COUNT(*) as count FROM friendships WHERE user_id = $1 AND status = $2', [userId, 'accepted']),
+    pool.query(
+      `SELECT 1 FROM friendships WHERE user_id = $1 AND status = $2 AND accepted_at IS NOT NULL AND accepted_at <= NOW() - INTERVAL '30 days' LIMIT 1`,
+      [userId, 'accepted']
+    )
+  ]);
+  const profile = profileResult.rows[0] || {};
+  return {
+    letters: parseInt(lettersResult.rows[0]?.count || '0', 10),
+    duels: parseInt(duelsResult.rows[0]?.count || '0', 10),
+    duel_wins: parseInt(duelsWonResult.rows[0]?.count || '0', 10),
+    longest_streak: streakResult.rows[0]?.longest_streak || 0,
+    gifts_sent: parseInt(giftsResult.rows[0]?.count || '0', 10),
+    referrals: parseInt(referralsResult.rows[0]?.count || '0', 10),
+    store_purchases: parseInt(storeResult.rows[0]?.count || '0', 10),
+    friends_count: parseInt(friendsResult.rows[0]?.count || '0', 10),
+    friends_30_days: !!(friends30Result.rows && friends30Result.rows.length > 0),
+    level: profile.level || 1,
+    is_premium: profile.is_premium || false
+  };
+}
+
+/**
+ * Get all achievements with user's progress (6.2.5: progress bars)
  */
 async function getUserAchievements(pool, userId) {
   try {
-    const profileResult = await pool.query(
-      'SELECT achievements FROM profiles WHERE user_id = $1',
-      [userId]
-    );
+    const [profileResult, stats] = await Promise.all([
+      pool.query('SELECT achievements FROM profiles WHERE user_id = $1', [userId]),
+      getStatsForUser(pool, userId)
+    ]);
 
     const earned = profileResult.rows[0]?.achievements || {};
 
-    return Object.entries(ACHIEVEMENTS).map(([key, achievement]) => ({
-      id: key,
-      name: achievement.name,
-      description: achievement.description,
-      icon: achievement.icon,
-      xp_reward: achievement.xp_reward,
-      earned: !!earned[key],
-      earned_at: earned[key]?.earned_at || null
-    }));
+    return Object.entries(ACHIEVEMENTS).map(([key, achievement]) => {
+      const item = {
+        id: key,
+        name: achievement.name,
+        name_key: achievement.name_key || null,
+        description: achievement.description,
+        description_key: achievement.description_key || null,
+        icon: achievement.icon,
+        xp_reward: achievement.xp_reward,
+        earned: !!earned[key],
+        earned_at: earned[key]?.earned_at || null
+      };
+      if (typeof achievement.progress === 'function') {
+        item.progress = achievement.progress(stats);
+      }
+      return item;
+    });
   } catch (error) {
     logger.error('Get achievements error:', { error: error?.message, userId });
     return [];
   }
 }
 
-module.exports = { checkAchievements, getUserAchievements, ACHIEVEMENTS };
+module.exports = { checkAchievements, getUserAchievements, getStatsForUser, ACHIEVEMENTS };

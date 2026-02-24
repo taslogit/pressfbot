@@ -323,6 +323,23 @@ export const profileAPI = {
       options
     );
   },
+  getAchievements: async (options?: RequestInit) => {
+    return apiRequest<{
+      achievements: Array<{
+        id: string;
+        name: string;
+        name_key?: string | null;
+        description: string;
+        description_key?: string | null;
+        icon: string;
+        xp_reward: number;
+        earned: boolean;
+        earned_at: string | null;
+        progress?: { current: number; target: number };
+      }>;
+      newAchievements: Array<{ id: string; name: string; description: string; icon: string; xp_reward: number }>;
+    }>('/api/profile/achievements', options);
+  },
   claimDailyLoginLoot: async () => {
     return apiRequest<{ claimed: boolean; xp: number }>('/api/profile/daily-login-loot', { method: 'POST' });
   },
@@ -493,6 +510,17 @@ export const challengesAPI = {
       body: JSON.stringify(data),
     });
   },
+  createGroup: async (data: {
+    opponentIds: number[];
+    stakeType?: 'pride' | 'xp' | 'rep';
+    stakeAmount?: number;
+    expiresInDays?: number;
+  }) => {
+    return apiRequest<{ groupId: string; challenges: any[] }>('/api/challenges/create-group', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
   list: async (status?: 'pending' | 'active' | 'completed' | 'expired', limit = 50, offset = 0) => {
     const params: Record<string, string> = { limit: limit.toString(), offset: offset.toString() };
     if (status) params.status = status;
@@ -558,6 +586,8 @@ export type FriendGroup = {
   icon: string | null;
   memberCount: number;
   createdAt: string;
+  /** 6.1.4: Telegram group chat invite link */
+  telegramInviteLink?: string | null;
 };
 
 // Friends API
@@ -573,7 +603,7 @@ export const friendsAPI = {
   getGroups: async () => apiRequest<{ groups: FriendGroup[] }>('/api/friends/groups'),
   createGroup: async (data: { name: string; color?: string; icon?: string }) =>
     apiRequest<{ group: FriendGroup }>('/api/friends/groups', { method: 'POST', body: JSON.stringify(data) }),
-  updateGroup: async (id: string, data: { name?: string; color?: string | null; icon?: string | null }) =>
+  updateGroup: async (id: string, data: { name?: string; color?: string | null; icon?: string | null; telegramInviteLink?: string | null }) =>
     apiRequest<{ group: FriendGroup }>(`/api/friends/groups/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   addMemberToGroup: async (groupId: string, friendId: number) =>
     apiRequest(`/api/friends/groups/${groupId}/members`, { method: 'POST', body: JSON.stringify({ friendId }) }),
@@ -606,7 +636,7 @@ export const friendsAPI = {
     return apiRequest<{ users: any[] }>(`/api/friends/search?q=${encodeURIComponent(query)}&limit=${limit}`);
   },
   getSuggestions: async (limit = 10) => {
-    return apiRequest<{ suggestions: any[] }>(`/api/friends/suggestions?limit=${limit}`);
+    return apiRequest<{ suggestions: any[]; abVariant?: 'A' | 'B' }>(`/api/friends/suggestions?limit=${limit}`);
   },
   getOnline: async () => {
     return apiRequest<{ friends: any[] }>('/api/friends/online');

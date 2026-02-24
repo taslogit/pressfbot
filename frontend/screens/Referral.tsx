@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Flame, X, User } from 'lucide-react';
+import { Flame, X, User, Users } from 'lucide-react';
 import ReferralSection from '../components/ReferralSection';
 import { useTranslation } from '../contexts/LanguageContext';
 import InfoSection from '../components/InfoSection';
@@ -12,6 +12,7 @@ import { tg } from '../utils/telegram';
 
 type ChallengeItem = {
   id: string;
+  groupId?: string;
   challenger: { id: number; title?: string; currentStreak?: number };
   opponent: { id?: number; title?: string; name?: string; currentStreak?: number };
   status: string;
@@ -25,9 +26,12 @@ const Referral: React.FC = () => {
   const [challengesLoading, setChallengesLoading] = useState(true);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createGroupMode, setCreateGroupMode] = useState(false);
+  const [selectedForGroup, setSelectedForGroup] = useState<Set<number>>(new Set());
   const [referrals, setReferrals] = useState<{ userId: number; title?: string | null }[]>([]);
   const [referralsLoading, setReferralsLoading] = useState(false);
   const [createSendingId, setCreateSendingId] = useState<number | null>(null);
+  const [groupSending, setGroupSending] = useState(false);
   const currentUserId = tg.initDataUnsafe?.user?.id ?? null;
 
   const loadChallenges = () => {
@@ -49,8 +53,10 @@ const Referral: React.FC = () => {
 
   const activeCount = challenges.filter((c) => c.status === 'active').length;
 
-  const handleCreateChallenge = () => {
+  const handleCreateChallenge = (groupMode = false) => {
     playSound('click');
+    setCreateGroupMode(groupMode);
+    setSelectedForGroup(new Set());
     setShowCreateModal(true);
     setReferralsLoading(true);
     profileAPI.getReferral().then((res) => {
@@ -82,6 +88,41 @@ const Referral: React.FC = () => {
     }
   };
 
+  const toggleGroupSelect = (userId: number) => {
+    setSelectedForGroup((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  };
+
+  const handleSendGroupChallenge = async () => {
+    if (selectedForGroup.size === 0) return;
+    playSound('click');
+    setGroupSending(true);
+    try {
+      const res = await challengesAPI.createGroup({
+        opponentIds: Array.from(selectedForGroup),
+        stakeType: 'pride',
+        expiresInDays: 30
+      });
+      if (res?.ok) {
+        showToast(t('challenges_group_sent') || 'Групповой челлендж отправлен!', 'success');
+        setShowCreateModal(false);
+        setCreateGroupMode(false);
+        setSelectedForGroup(new Set());
+        loadChallenges();
+      } else {
+        showToast(res?.error || t('challenges_send_failed') || 'Не удалось отправить', 'error');
+      }
+    } catch {
+      showToast(t('challenges_send_failed') || 'Не удалось отправить', 'error');
+    } finally {
+      setGroupSending(false);
+    }
+  };
+
   const handleAccept = async (challengeId: string) => {
     playSound('click');
     setAcceptingId(challengeId);
@@ -108,6 +149,22 @@ const Referral: React.FC = () => {
     if (c.opponent?.name) return c.opponent.name;
     return t('challenges_opponent_unknown') || '?';
   };
+
+  // Group challenges by groupId for display (6.1.2)
+  const { groupChallenges, singleChallenges } = React.useMemo(() => {
+    const byGroup = new Map<string, ChallengeItem[]>();
+    const single: ChallengeItem[] = [];
+    for (const c of challenges) {
+      if (c.groupId) {
+        const list = byGroup.get(c.groupId) || [];
+        list.push(c);
+        byGroup.set(c.groupId, list);
+      } else {
+        single.push(c);
+      }
+    }
+    return { groupChallenges: Array.from(byGroup.entries()), singleChallenges: single };
+  }, [challenges]);
 
   return (
     <motion.div
@@ -146,22 +203,75 @@ const Referral: React.FC = () => {
         <p className="text-xs text-muted mb-3">
           {t('challenges_section_desc') || 'Вызови друга: кто дольше продержит серию дней без пропуска.'}
         </p>
-        <button
-          type="button"
-          onClick={handleCreateChallenge}
-          className="w-full py-2 rounded-lg border border-orange-500/40 text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 font-bold text-xs uppercase tracking-widest transition-colors"
-        >
-          {t('challenges_create_btn') || 'Создать челлендж'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => handleCreateChallenge(false)}
+            className="flex-1 py-2 rounded-lg border border-orange-500/40 text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 font-bold text-xs uppercase tracking-widest transition-colors"
+          >
+            {t('challenges_create_btn') || 'Создать челлендж'}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleCreateChallenge(true)}
+            className="flex-1 py-2 rounded-lg border border-orange-500/40 text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 font-bold text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-1"
+          >
+            <Users size={14} />
+            {t('challenges_group_create_btn') || 'Групповой'}
+          </button>
+        </div>
 
         {challengesLoading && challenges.length === 0 ? (
           <LoadingState terminal message={t('loading')} className="mt-3 py-4 min-h-0" />
         ) : challenges.length > 0 ? (
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 space-y-3">
             <span className="text-xs text-muted uppercase tracking-wider">
               {t('challenges_my_list') || 'Мои челленджи'}
             </span>
-            {challenges.map((c) => (
+            {groupChallenges.map(([groupId, list]) => (
+              <div key={groupId} className="rounded-lg bg-black/30 border border-orange-500/20 overflow-hidden">
+                <div className="px-3 py-2 border-b border-border/50 flex items-center gap-2 text-xs">
+                  <Users size={12} className="text-orange-400 shrink-0" />
+                  <span className="text-orange-400/90 font-bold uppercase">
+                    {t('challenges_group_label') || 'Групповой челлендж'}
+                  </span>
+                  <span className="text-muted truncate">
+                    {list.map((c) => getOpponentLabel(c)).join(', ')}
+                  </span>
+                </div>
+                {list.map((c) => (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between gap-2 py-2 px-3 text-xs flex-wrap border-t border-border/30"
+                  >
+                    <span className="text-primary truncate min-w-0">{getOpponentLabel(c)}</span>
+                    <span className={`shrink-0 font-bold uppercase ${
+                      c.status === 'active' ? 'text-accent-lime' : 'text-muted'
+                    }`}>
+                      {c.status === 'active'
+                        ? (t('challenges_status_active') || 'Активен')
+                        : (t('challenges_status_pending') || 'Ожидает')}
+                    </span>
+                    {c.status === 'active' && (c.challenger?.currentStreak != null || c.opponent?.currentStreak != null) && (
+                      <span className="shrink-0 text-muted">
+                        {c.challenger?.currentStreak ?? 0} / {c.opponent?.currentStreak ?? 0}
+                      </span>
+                    )}
+                    {canAccept(c) && (
+                      <button
+                        type="button"
+                        disabled={acceptingId === c.id}
+                        onClick={() => handleAccept(c.id)}
+                        className="shrink-0 py-1 px-2 rounded border border-accent-lime/50 text-accent-lime bg-accent-lime/10 hover:bg-accent-lime/20 font-bold text-xs uppercase disabled:opacity-50"
+                      >
+                        {acceptingId === c.id ? (t('loading') || '...') : (t('challenges_accept_btn') || 'Принять')}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
+            {singleChallenges.map((c) => (
               <div
                 key={c.id}
                 className="flex items-center justify-between gap-2 py-2 px-3 rounded-lg bg-black/30 border border-border/50 text-xs flex-wrap"
@@ -216,8 +326,10 @@ const Referral: React.FC = () => {
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-heading text-sm font-black uppercase text-orange-400 flex items-center gap-2">
-                  <Flame size={16} />
-                  {t('challenges_create_modal_title') || 'Вызвать на челлендж'}
+                  {createGroupMode ? <Users size={16} /> : <Flame size={16} />}
+                  {createGroupMode
+                    ? (t('challenges_group_modal_title') || 'Групповой челлендж')
+                    : (t('challenges_create_modal_title') || 'Вызвать на челлендж')}
                 </h3>
                 <button
                   type="button"
@@ -229,7 +341,9 @@ const Referral: React.FC = () => {
                 </button>
               </div>
               <p className="text-xs text-muted mb-3">
-                {t('challenges_create_modal_desc') || 'Выбери друга из рефералов. Кто дольше продержит серию — победит.'}
+                {createGroupMode
+                  ? (t('challenges_group_modal_desc') || 'Выбери нескольких друзей. Кто дольше продержит стрик — победит.')
+                  : (t('challenges_create_modal_desc') || 'Выбери друга из рефералов. Кто дольше продержит серию — победит.')}
               </p>
               {referralsLoading ? (
                 <LoadingState terminal message={t('loading')} className="py-6 min-h-0" />
@@ -237,6 +351,36 @@ const Referral: React.FC = () => {
                 <div className="py-6 text-center text-xs text-muted">
                   {t('challenges_no_referrals') || 'Пригласи друзей по реферальной ссылке ниже — тогда сможешь вызвать их на челлендж.'}
                 </div>
+              ) : createGroupMode ? (
+                <>
+                  <div className="space-y-2 max-h-48 overflow-y-auto mb-3">
+                    {referrals.map((r) => (
+                      <label
+                        key={r.userId}
+                        className="flex items-center gap-2 py-2 px-3 rounded-lg bg-black/30 border border-border/50 cursor-pointer hover:border-orange-500/30"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedForGroup.has(r.userId)}
+                          onChange={() => toggleGroupSelect(r.userId)}
+                          className="rounded border-border"
+                        />
+                        <User size={14} className="text-muted shrink-0" />
+                        <span className="text-xs text-primary truncate">
+                          {r.title && String(r.title).trim() ? r.title : `${t('challenges_friend') || 'Друг'} #${r.userId}`}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={selectedForGroup.size === 0 || groupSending}
+                    onClick={handleSendGroupChallenge}
+                    className="w-full py-2 rounded-lg border border-orange-500/50 text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 disabled:opacity-50 font-bold text-xs uppercase tracking-widest"
+                  >
+                    {groupSending ? (t('loading') || '...') : (t('challenges_group_create_btn') || 'Создать групповой челлендж')}
+                  </button>
+                </>
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {referrals.map((r) => (

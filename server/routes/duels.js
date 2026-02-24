@@ -28,10 +28,36 @@ const duelSchema = z.object({
   status: z.enum(['pending', 'active', 'completed', 'shame']).optional(),
   isPublic: z.boolean().optional(),
   isTeam: z.boolean().optional(),
+  challengerTeamId: z.string().uuid().optional().nullable(),
+  opponentTeamId: z.string().uuid().optional().nullable(),
   witnessCount: z.number().int().nonnegative().max(MAX_WITNESS_COUNT).optional(),
   loser: z.union([z.string(), z.number()]).optional(),
   isFavorite: z.boolean().optional()
 });
+
+// 6.1.3: Load friend_groups name + member count for team duels
+async function loadTeamInfo(pool, groupIds) {
+  if (!pool || !groupIds || groupIds.length === 0) return {};
+  const ids = [...new Set(groupIds)].filter(Boolean);
+  if (ids.length === 0) return {};
+  try {
+    const result = await pool.query(
+      `SELECT g.id, g.name,
+              (SELECT COUNT(*) FROM friend_group_members WHERE group_id = g.id) AS member_count
+       FROM friend_groups g
+       WHERE g.id::text = ANY($1::text[])`,
+      [ids]
+    );
+    const map = {};
+    for (const row of result.rows || []) {
+      map[row.id] = { id: row.id, name: row.name, memberCount: parseInt(row.member_count, 10) || 0 };
+    }
+    return map;
+  } catch (err) {
+    logger.debug('loadTeamInfo failed', { error: err?.message });
+    return {};
+  }
+}
 
 const createDuelsRoutes = (pool, createLimiter, duelLimitCheck, bot = null) => {
   // GET /api/duels - Get all duels for user
@@ -200,10 +226,24 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck, bot = null) => {
       );
       const friendIds = new Set((friendIdsResult.rows || []).map((r) => Number(r.friend_id)));
 
+      // 6.1.3: load team (group) info for team duels
+      const teamIds = [...new Set([
+        ...result.rows.map((r) => r.challenger_team_id).filter(Boolean),
+        ...result.rows.map((r) => r.opponent_team_id).filter(Boolean)
+      ])];
+      const teamMap = await loadTeamInfo(pool, teamIds);
+
       const duels = result.rows.map((row) => {
         const d = normalizeDuel(row);
         const otherId = row.challenger_id === userId ? row.opponent_id : row.challenger_id;
-        return { ...d, isFriend: otherId != null && friendIds.has(Number(otherId)) };
+        const challengerTeam = row.challenger_team_id ? teamMap[row.challenger_team_id] : undefined;
+        const opponentTeam = row.opponent_team_id ? teamMap[row.opponent_team_id] : undefined;
+        return {
+          ...d,
+          isFriend: otherId != null && friendIds.has(Number(otherId)),
+          ...(challengerTeam && { challengerTeam }),
+          ...(opponentTeam && { opponentTeam })
+        };
       });
 
       // 5.4.4: stats for duels with friends (wins / losses)
@@ -265,6 +305,8 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck, bot = null) => {
         status = 'pending',
         isPublic = false,
         isTeam = false,
+        challengerTeamId,
+        opponentTeamId,
         witnessCount = 0,
         loser,
         isFavorite = false
@@ -300,11 +342,39 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck, bot = null) => {
         }
       }
 
+      // 6.1.3: Validate team groups (challenger team = user's group, opponent team = opponent's group)
+      const challengerTeamIdValue = challengerTeamId && String(challengerTeamId).trim() ? String(challengerTeamId).trim() : null;
+      const opponentTeamIdValue = opponentTeamId && String(opponentTeamId).trim() ? String(opponentTeamId).trim() : null;
+      const effectiveIsTeam = isTeam || !!(challengerTeamIdValue || opponentTeamIdValue);
+
+      if (challengerTeamIdValue) {
+        const groupCheck = await pool.query(
+          'SELECT id FROM friend_groups WHERE id = $1 AND user_id = $2',
+          [challengerTeamIdValue, userId]
+        );
+        if (groupCheck.rowCount === 0) {
+          return sendError(res, 404, 'CHALLENGER_TEAM_NOT_FOUND', 'Challenger team group not found or not yours');
+        }
+      }
+      if (opponentTeamIdValue) {
+        if (!opponentIdValue) {
+          return sendError(res, 400, 'VALIDATION_ERROR', 'opponentId required when opponentTeamId is set');
+        }
+        const groupCheck = await pool.query(
+          'SELECT id FROM friend_groups WHERE id = $1 AND user_id = $2',
+          [opponentTeamIdValue, opponentIdValue]
+        );
+        if (groupCheck.rowCount === 0) {
+          return sendError(res, 404, 'OPPONENT_TEAM_NOT_FOUND', 'Opponent team group not found or not owned by opponent');
+        }
+      }
+
       await pool.query(
         `INSERT INTO duels (
           id, challenger_id, opponent_id, opponent_name, title, stake, deadline,
-          status, is_public, is_team, witness_count, loser_id, is_favorite
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          status, is_public, is_team, witness_count, loser_id, is_favorite,
+          challenger_team_id, opponent_team_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         ON CONFLICT (id) DO UPDATE SET
           opponent_id = EXCLUDED.opponent_id,
           opponent_name = EXCLUDED.opponent_name,
@@ -317,6 +387,8 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck, bot = null) => {
           witness_count = EXCLUDED.witness_count,
           loser_id = EXCLUDED.loser_id,
           is_favorite = EXCLUDED.is_favorite,
+          challenger_team_id = EXCLUDED.challenger_team_id,
+          opponent_team_id = EXCLUDED.opponent_team_id,
           updated_at = now()`,
         [
           duelId,
@@ -328,10 +400,12 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck, bot = null) => {
           deadlineValue,
           status,
           isPublic,
-          isTeam,
+          effectiveIsTeam,
           witnessCount,
           loserIdValue,
-          isFavorite
+          isFavorite,
+          challengerTeamIdValue,
+          opponentTeamIdValue
         ]
       );
 
@@ -449,7 +523,20 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck, bot = null) => {
         return sendError(res, 404, 'DUEL_NOT_FOUND', 'Duel not found');
       }
 
-      const duel = normalizeDuel(result.rows[0]);
+      const row = result.rows[0];
+      const duel = normalizeDuel(row);
+
+      // 6.1.3: attach team info for team duels
+      const teamIds = [row.challenger_team_id, row.opponent_team_id].filter(Boolean);
+      if (teamIds.length > 0) {
+        const teamMap = await loadTeamInfo(pool, teamIds);
+        if (row.challenger_team_id && teamMap[row.challenger_team_id]) {
+          duel.challengerTeam = teamMap[row.challenger_team_id];
+        }
+        if (row.opponent_team_id && teamMap[row.opponent_team_id]) {
+          duel.opponentTeam = teamMap[row.opponent_team_id];
+        }
+      }
 
       // Increment view count for public duels (if not the owner)
       if (duel.isPublic && duel.challengerId !== userId && duel.opponentId !== userId) {

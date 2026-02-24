@@ -62,8 +62,8 @@ const createChallengesRoutes = (pool, bot) => {
           id, challenger_id, opponent_id, opponent_name, status,
           challenger_start_streak, opponent_start_streak,
           challenger_current_streak, opponent_current_streak,
-          stake_type, stake_amount, reward_xp, reward_rep, expires_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+          stake_type, stake_amount, reward_xp, reward_rep, expires_at, group_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NULL)`,
         [
           challengeId, userId, opponentId || null, opponentName || null, 'pending',
           challengerStartStreak, opponentStartStreak,
@@ -127,6 +127,131 @@ const createChallengesRoutes = (pool, bot) => {
     }
   });
 
+  // POST /api/challenges/create-group — 6.1.2: create multiple streak challenges (one per opponent) with same group_id
+  router.post('/create-group', async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+
+      const userId = req.userId;
+      if (!userId) {
+        return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+      }
+
+      const { opponentIds, stakeType = 'pride', stakeAmount = 0, expiresInDays = 30 } = req.body || {};
+
+      if (!Array.isArray(opponentIds) || opponentIds.length === 0) {
+        return sendError(res, 400, 'VALIDATION_ERROR', 'opponentIds array required (at least one)');
+      }
+
+      const uniqueIds = [...new Set(opponentIds.map(id => Number(id)).filter(Boolean))];
+      if (uniqueIds.length > 20) {
+        return sendError(res, 400, 'VALIDATION_ERROR', 'Max 20 opponents per group challenge');
+      }
+
+      const challengerSettings = await pool.query(
+        'SELECT current_streak FROM user_settings WHERE user_id = $1',
+        [userId]
+      );
+      if (challengerSettings.rowCount === 0) {
+        return sendError(res, 404, 'USER_NOT_FOUND', 'Challenger not found');
+      }
+      const challengerStartStreak = challengerSettings.rows[0].current_streak || 0;
+
+      const rewardXP = stakeType === 'pride' ? 50 : Math.floor(stakeAmount * 0.1);
+      const rewardREP = stakeType === 'pride' ? 10 : Math.floor(stakeAmount * 0.05);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+
+      const groupId = uuidv4();
+      const created = [];
+
+      for (const opponentId of uniqueIds) {
+        let opponentStartStreak = 0;
+        let opponentName = null;
+        const oppSettings = await pool.query(
+          'SELECT current_streak FROM user_settings WHERE user_id = $1',
+          [opponentId]
+        );
+        if (oppSettings.rowCount > 0) {
+          opponentStartStreak = oppSettings.rows[0].current_streak || 0;
+        }
+        const oppProfile = await pool.query(
+          'SELECT title FROM profiles WHERE user_id = $1',
+          [opponentId]
+        );
+        if (oppProfile.rowCount > 0) {
+          opponentName = oppProfile.rows[0].title || null;
+        }
+
+        const challengeId = uuidv4();
+        await pool.query(
+          `INSERT INTO streak_challenges (
+            id, challenger_id, opponent_id, opponent_name, status,
+            challenger_start_streak, opponent_start_streak,
+            challenger_current_streak, opponent_current_streak,
+            stake_type, stake_amount, reward_xp, reward_rep, expires_at, group_id
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+          [
+            challengeId, userId, opponentId, opponentName, 'pending',
+            challengerStartStreak, opponentStartStreak,
+            challengerStartStreak, opponentStartStreak,
+            stakeType, stakeAmount, rewardXP, rewardREP, expiresAt, groupId
+          ]
+        );
+
+        if (bot) {
+          try {
+            const challengerProfile = await pool.query(
+              'SELECT title FROM profiles WHERE user_id = $1',
+              [userId]
+            );
+            const challengerName = challengerProfile.rows[0]?.title || 'Someone';
+            await bot.telegram.sendMessage(
+              opponentId.toString(),
+              `🔥 <b>Group Streak Challenge!</b>\n\n${challengerName} challenged you (and others) to a days-in-a-row competition. Who will last longer? Accept in the app!`,
+              { parse_mode: 'HTML' }
+            );
+          } catch (notifError) {
+            logger.debug('Failed to send group challenge notification', { error: notifError?.message });
+          }
+        }
+
+        await cache.del(`challenges:${opponentId}`);
+        created.push({
+          id: challengeId,
+          opponentId,
+          opponentName,
+          status: 'pending',
+          challengerStartStreak,
+          opponentStartStreak,
+          stakeType,
+          stakeAmount,
+          rewardXP,
+          rewardREP,
+          expiresAt: expiresAt.toISOString()
+        });
+      }
+
+      await cache.del(`challenges:${userId}`);
+
+      try {
+        const { logChallengeCreated } = require('../utils/friendInteractions');
+        for (const c of created) {
+          await logChallengeCreated(pool, userId, c.opponentId, c.id);
+        }
+      } catch (fiErr) {
+        logger.debug('Failed to log group challenge created', { error: fiErr?.message });
+      }
+
+      return res.json({ ok: true, groupId, challenges: created });
+    } catch (error) {
+      logger.error('Create group challenge error:', error);
+      return sendError(res, 500, 'CHALLENGE_CREATE_FAILED', 'Failed to create group challenge');
+    }
+  });
+
   // GET /api/challenges - Get user's challenges (active and completed)
   router.get('/', async (req, res) => {
     try {
@@ -174,6 +299,7 @@ const createChallengesRoutes = (pool, bot) => {
 
       const challenges = result.rows.map(row => ({
         id: row.id,
+        groupId: row.group_id || undefined,
         challenger: {
           id: row.challenger_id,
           title: row.challenger_title,

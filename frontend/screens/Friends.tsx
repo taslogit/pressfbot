@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, UserPlus, Search, X, Check, XCircle, User, Loader2, FolderPlus, Heart, Star, Zap, Gamepad2, Trophy, Crown, Flame, Pencil } from 'lucide-react';
+import { Users, UserPlus, Search, X, Check, XCircle, User, Loader2, FolderPlus, Heart, Star, Zap, Gamepad2, Trophy, Crown, Flame, Pencil, MessageCircle } from 'lucide-react';
 import { friendsAPI, type FriendGroup } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
@@ -37,7 +37,8 @@ type SearchUser = {
   level: number;
   isFriend: boolean;
   hasPending: boolean;
-  reason?: 'mutual_friend' | 'mutual_duel' | 'mutual_squad' | 'referral';
+  reason?: 'mutual_friend' | 'mutual_duel' | 'mutual_letter_type' | 'mutual_squad' | 'referral';
+  reasonDetail?: { mutualCount?: number };
 };
 
 type Tab = 'friends' | 'pending' | 'search' | 'suggestions' | 'groups';
@@ -77,6 +78,7 @@ const Friends: React.FC = () => {
   const [pending, setPending] = useState<{ incoming: PendingItem[]; outgoing: PendingItem[] }>({ incoming: [], outgoing: [] });
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [suggestions, setSuggestions] = useState<SearchUser[]>([]);
+  const [suggestionsAbVariant, setSuggestionsAbVariant] = useState<'A' | 'B' | null>(null);
   const [groups, setGroups] = useState<FriendGroup[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [onlineFriends, setOnlineFriends] = useState<Friend[]>([]);
@@ -95,6 +97,7 @@ const Friends: React.FC = () => {
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState<string>('purple');
   const [editIcon, setEditIcon] = useState<string>('Users');
+  const [editTelegramInviteLink, setEditTelegramInviteLink] = useState('');
   const [updatingGroup, setUpdatingGroup] = useState(false);
   const lastPendingLoadRef = useRef<number>(0);
   const pendingLoadInFlightRef = useRef(false);
@@ -175,6 +178,7 @@ const Friends: React.FC = () => {
     setEditName(g.name);
     setEditColor(g.color || 'purple');
     setEditIcon(g.icon || 'Users');
+    setEditTelegramInviteLink(g.telegramInviteLink || '');
   };
 
   const closeEditGroup = () => {
@@ -182,6 +186,7 @@ const Friends: React.FC = () => {
     setEditName('');
     setEditColor('purple');
     setEditIcon('Users');
+    setEditTelegramInviteLink('');
   };
 
   const handleUpdateGroup = async () => {
@@ -193,7 +198,7 @@ const Friends: React.FC = () => {
     }
     setUpdatingGroup(true);
     try {
-      const result = await friendsAPI.updateGroup(editingGroupId, { name, color: editColor, icon: editIcon });
+      const result = await friendsAPI.updateGroup(editingGroupId, { name, color: editColor, icon: editIcon, telegramInviteLink: editTelegramInviteLink.trim() || null });
       if (result.ok && result.data?.group) {
         setGroups((prev) => prev.map((gr) => (gr.id === editingGroupId ? result.data!.group! : gr)));
         closeEditGroup();
@@ -271,7 +276,9 @@ const Friends: React.FC = () => {
   };
 
   const handleSearch = async (query: string) => {
-    if (!query.trim() || query.length < 2) {
+    const q = query.trim();
+    const isNumericId = /^\d+$/.test(q);
+    if (!q || (q.length < 1) || (!isNumericId && q.length < 2)) {
       setSearchResults([]);
       return;
     }
@@ -290,7 +297,7 @@ const Friends: React.FC = () => {
     }
   };
 
-  const handleSendRequest = async (userId: number) => {
+  const handleSendRequest = async (userId: number, opts?: { fromSuggestions?: boolean }) => {
     if (processingIds.has(userId)) return;
     setProcessingIds(prev => new Set(prev).add(userId));
     playSound('click');
@@ -298,7 +305,10 @@ const Friends: React.FC = () => {
     try {
       const result = await friendsAPI.sendRequest(userId);
       if (result.ok) {
-        analytics.track('friend_request_sent', { friendId: userId });
+        analytics.track('friend_request_sent', {
+          friendId: userId,
+          ...(opts?.fromSuggestions && suggestionsAbVariant != null && { suggestionsAbVariant })
+        });
         toast.success(t('friend_request_sent') || 'Friend request sent!');
         await loadPending();
         // Update search result
@@ -443,10 +453,15 @@ const Friends: React.FC = () => {
       }
       if (result.ok && result.data) {
         const suggestionsList = result.data.suggestions || [];
+        const abVariant = result.data.abVariant ?? null;
         if (import.meta.env.DEV) {
-          console.log('[Friends] Suggestions loaded:', suggestionsList.length, suggestionsList);
+          console.log('[Friends] Suggestions loaded:', suggestionsList.length, 'abVariant:', abVariant);
         }
         setSuggestions(suggestionsList);
+        setSuggestionsAbVariant(abVariant);
+        if (abVariant) {
+          analytics.track('suggestions_shown', { abVariant, count: suggestionsList.length });
+        }
       } else {
         console.warn('[Friends] Failed to load suggestions:', result.error);
         // Не показываем toast для пустых результатов - это нормально
@@ -454,11 +469,12 @@ const Friends: React.FC = () => {
           toast.error(result.error || t('suggestions_load_failed') || 'Failed to load suggestions');
         }
         setSuggestions([]);
+        setSuggestionsAbVariant(null);
       }
     } catch (error) {
       console.error('[Friends] Failed to load suggestions:', error);
-      // Не показываем toast для ошибок загрузки - просто пустой список
       setSuggestions([]);
+      setSuggestionsAbVariant(null);
     } finally {
       setSuggestionsLoading(false);
     }
@@ -809,7 +825,10 @@ const Friends: React.FC = () => {
 
       {activeTab === 'search' && (
         <div className="space-y-3">
-          {/* Search input */}
+          {/* 4.2.5: Find by Telegram ID or name */}
+          <p className="text-xs text-muted">
+            {t('friends_find_by_telegram_hint') || 'Введите Telegram ID (число) или имя пользователя'}
+          </p>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
             <input
@@ -819,7 +838,7 @@ const Friends: React.FC = () => {
                 setSearchQuery(e.target.value);
                 handleSearch(e.target.value);
               }}
-              placeholder={t('search_users') || 'Поиск пользователей...'}
+              placeholder={t('friends_search_telegram_placeholder') || 'Telegram ID или имя...'}
               className="w-full pl-10 pr-4 py-2.5 bg-input border border-border rounded-xl text-primary placeholder:text-muted outline-none focus:border-purple-500"
             />
             {searching && (
@@ -828,7 +847,7 @@ const Friends: React.FC = () => {
           </div>
 
           {/* Search results */}
-          {searchQuery.length >= 2 && (
+          {(searchQuery.trim().length >= 1 && /^\d+$/.test(searchQuery.trim())) || searchQuery.trim().length >= 2 ? (
             <div className="space-y-2">
               {searchResults.length === 0 ? (
                 <div className="text-center py-8 text-muted text-sm">
@@ -915,8 +934,16 @@ const Friends: React.FC = () => {
                         Level {user.level}
                         {user.reason && (
                           <span className="ml-2 text-accent-cyan">
-                            {user.reason === 'mutual_friend' && (t('suggestion_mutual_friend') || 'Общий друг')}
+                            {user.reason === 'mutual_friend' && (
+                              user.reasonDetail?.mutualCount != null
+                                ? (user.reasonDetail.mutualCount === 1
+                                    ? (t('suggestion_mutual_friend_one') || '1 общий друг')
+                                    : t('suggestion_mutual_friend_count', { count: user.reasonDetail.mutualCount }) || `${user.reasonDetail.mutualCount} общих друзей`)
+                                : (t('suggestion_mutual_friend') || 'Общий друг')
+                            )}
                             {user.reason === 'mutual_duel' && (t('suggestion_mutual_duel') || 'Общая дуэль')}
+                            {user.reason === 'similar_activity' && (t('suggestion_similar_activity') || 'Похожая активность')}
+                            {user.reason === 'mutual_letter_type' && (t('suggestion_mutual_letter_type') || 'Общие интересы')}
                             {user.reason === 'mutual_squad' && (t('suggestion_mutual_squad') || 'Общий сквад')}
                             {user.reason === 'referral' && (t('suggestion_referral') || 'Реферал')}
                             {user.reason === 'popular' && (t('suggestion_popular') || 'Популярный пользователь')}
@@ -935,7 +962,7 @@ const Friends: React.FC = () => {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => handleSendRequest(user.userId)}
+                        onClick={() => handleSendRequest(user.userId, { fromSuggestions: true })}
                         disabled={processingIds.has(user.userId)}
                         className="px-3 py-1.5 rounded-lg border border-purple-500/30 text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 transition-colors disabled:opacity-50 text-xs font-bold uppercase"
                       >
@@ -1035,7 +1062,22 @@ const Friends: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
+                    <div className="flex gap-2 flex-shrink-0 items-center">
+                      {g.telegramInviteLink && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playSound('click');
+                            const url = g.telegramInviteLink!.startsWith('http') ? g.telegramInviteLink! : `https://${g.telegramInviteLink!}`;
+                            tg.openLink?.(url) || window.open(url, '_blank');
+                          }}
+                          className="p-1.5 rounded-lg border border-accent-cyan/50 text-accent-cyan bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-colors"
+                          title={t('friends_open_group_chat') || 'Открыть групповой чат'}
+                          aria-label={t('friends_open_group_chat') || 'Open group chat'}
+                        >
+                          <MessageCircle size={16} />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => openEditGroup(g)}
@@ -1130,6 +1172,16 @@ const Friends: React.FC = () => {
                       <GroupIcon iconId={iconId} size={18} />
                     </button>
                   ))}
+                </div>
+                <div className="mb-4">
+                  <label className="text-xs text-muted block mb-1">{t('friends_group_chat_link') || 'Ссылка на групповой чат (Telegram)'}</label>
+                  <input
+                    type="url"
+                    value={editTelegramInviteLink}
+                    onChange={(e) => setEditTelegramInviteLink(e.target.value)}
+                    placeholder="https://t.me/joinchat/..."
+                    className="w-full px-3 py-2 bg-input border border-border rounded-xl text-primary text-sm placeholder:text-muted"
+                  />
                 </div>
                 <div className="flex gap-2">
                   <button

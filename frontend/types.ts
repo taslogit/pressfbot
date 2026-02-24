@@ -18,6 +18,12 @@ export interface Letter {
   isFavorite?: boolean;
 }
 
+export interface DuelTeam {
+  id: string;
+  name: string;
+  memberCount: number;
+}
+
 export interface Duel {
   id: string;
   title: string;
@@ -26,7 +32,7 @@ export interface Duel {
   status: 'pending' | 'active' | 'completed' | 'shame'; // Added 'shame'
   deadline: string;
   isPublic?: boolean;
-  isTeam?: boolean; // Team mode
+  isTeam?: boolean; // Team mode (6.1.3)
   witnessCount?: number;
   viewsCount?: number; // Hype system: view count for public duels
   lastViewedAt?: string;
@@ -35,6 +41,10 @@ export interface Duel {
   challengerId?: number;
   opponentId?: number;
   isFriend?: boolean; // 5.4.6: opponent is in friends list
+  challengerTeamId?: string;
+  opponentTeamId?: string;
+  challengerTeam?: DuelTeam;
+  opponentTeam?: DuelTeam;
 }
 
 export interface LegacyItem {

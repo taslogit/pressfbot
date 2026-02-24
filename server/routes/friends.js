@@ -6,6 +6,7 @@ const { z, validateQuery, validateParams, validateBody } = require('../validatio
 const { validateUserId, parseAndValidateUserId } = require('../utils/validation');
 
 const FRIENDSHIP_STATUS = ['pending', 'accepted', 'blocked'];
+const MAX_GROUP_MEMBERS = 20; // 6.1.1: private groups up to 10-20 people
 
 // Security: Query parameter validation schemas
 // Note: Query params come as strings, so we need to transform them
@@ -454,7 +455,8 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
       const q = (req.query.q || '').trim();
-      if (q.length < 2) {
+      const isNumericId = /^\d+$/.test(q);
+      if (q.length < 1 || (!isNumericId && q.length < 2)) {
         return res.json({ ok: true, users: [] });
       }
       
@@ -514,18 +516,18 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
       // Get suggestions with priority:
       // 1. Mutual friends (friends of friends) - priority 1
       // 2. Mutual duels (users who dueled with same opponents) - priority 2
-      // 3. Mutual squads (same squad members) - priority 3
-      // 4. Referrals (referrer/referred) - priority 4
+      // 3. Similar activity (6.3.1: same letter types + similarly active: letters in 30d or duels) - priority 3
+      // 4. Common interests: same letter types (6.3.2) - priority 4
+      // 5. Mutual squads (same squad members) - priority 5
+      // 6. Referrals (referrer/referred) - priority 6
       const result = await pool.query(
         `WITH user_duel_opponents AS (
-          -- Get all opponents the user has dueled with
           SELECT DISTINCT 
             CASE WHEN challenger_id = $1 THEN opponent_id ELSE challenger_id END AS opponent_id
           FROM duels
           WHERE (challenger_id = $1 OR opponent_id = $1) AND opponent_id IS NOT NULL
         ),
         mutual_duel_users AS (
-          -- Find users who also dueled with the same opponents
           SELECT DISTINCT 
             CASE WHEN d.challenger_id = uo.opponent_id THEN d.opponent_id ELSE d.challenger_id END AS user_id
           FROM user_duel_opponents uo
@@ -533,15 +535,36 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
           WHERE (d.challenger_id != $1 AND d.opponent_id != $1)
             AND d.opponent_id IS NOT NULL
         ),
+        user_letter_types AS (
+          SELECT DISTINCT letter_type FROM letters
+          WHERE user_id = $1 AND letter_type IS NOT NULL AND letter_type != ''
+        ),
+        mutual_letter_type_users AS (
+          SELECT DISTINCT l.user_id
+          FROM letters l
+          WHERE l.letter_type IN (SELECT letter_type FROM user_letter_types)
+            AND l.user_id != $1
+            AND NOT EXISTS (
+              SELECT 1 FROM friendships f
+              WHERE ((f.user_id = $1 AND f.friend_id = l.user_id) OR (f.user_id = l.user_id AND f.friend_id = $1))
+            )
+        ),
+        similar_activity_users AS (
+          SELECT DISTINCT mlt.user_id
+          FROM mutual_letter_type_users mlt
+          WHERE EXISTS (
+            SELECT 1 FROM letters l2 WHERE l2.user_id = mlt.user_id AND l2.created_at > now() - INTERVAL '30 days'
+          ) OR EXISTS (
+            SELECT 1 FROM duels d WHERE (d.challenger_id = mlt.user_id OR d.opponent_id = mlt.user_id)
+          )
+        ),
         user_squad_members AS (
-          -- Get all members from squads where user is a member
           SELECT DISTINCT (member->>'id')::bigint AS member_id
           FROM squads
           CROSS JOIN LATERAL jsonb_array_elements(members) AS member
           WHERE creator_id = $1 OR members @> $2::jsonb
         ),
         suggestions AS (
-          -- Mutual friends (friends of friends)
           SELECT DISTINCT f2.friend_id AS user_id, 1 AS priority
           FROM friendships f1
           JOIN friendships f2 ON f1.friend_id = f2.user_id AND f2.status = 'accepted'
@@ -551,10 +574,7 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
               SELECT 1 FROM friendships f3
               WHERE ((f3.user_id = $1 AND f3.friend_id = f2.friend_id) OR (f3.user_id = f2.friend_id AND f3.friend_id = $1))
             )
-          
           UNION
-          
-          -- Mutual duels (users who dueled with same opponents)
           SELECT DISTINCT mdu.user_id, 2 AS priority
           FROM mutual_duel_users mdu
           WHERE mdu.user_id IS NOT NULL
@@ -562,22 +582,24 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
               SELECT 1 FROM friendships f
               WHERE ((f.user_id = $1 AND f.friend_id = mdu.user_id) OR (f.user_id = mdu.user_id AND f.friend_id = $1))
             )
-          
           UNION
-          
-          -- Mutual squads (same squad members)
-          SELECT DISTINCT usm.member_id AS user_id, 3 AS priority
+          SELECT DISTINCT mlt.user_id, 4 AS priority
+          FROM mutual_letter_type_users mlt
+          WHERE mlt.user_id IS NOT NULL
+          UNION
+          SELECT DISTINCT sau.user_id, 3 AS priority
+          FROM similar_activity_users sau
+          WHERE sau.user_id IS NOT NULL
+          UNION
+          SELECT DISTINCT usm.member_id AS user_id, 5 AS priority
           FROM user_squad_members usm
           WHERE usm.member_id != $1 AND usm.member_id IS NOT NULL
             AND NOT EXISTS (
               SELECT 1 FROM friendships f
               WHERE ((f.user_id = $1 AND f.friend_id = usm.member_id) OR (f.user_id = usm.member_id AND f.friend_id = $1))
             )
-          
           UNION
-          
-          -- Referrals (referrer/referred)
-          SELECT DISTINCT p.user_id, 4 AS priority
+          SELECT DISTINCT p.user_id, 6 AS priority
           FROM profiles p
           WHERE p.user_id != $1
             AND NOT EXISTS (
@@ -597,15 +619,14 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
           GROUP BY p.user_id, p.avatar, p.title, p.level, p.created_at
         ),
         fallback_users AS (
-          -- Fallback: random active users if no suggestions found
-          SELECT p.user_id, p.avatar, p.title, p.level, 5 AS priority
+          SELECT p.user_id, p.avatar, p.title, p.level, 7 AS priority
           FROM profiles p
           WHERE p.user_id != $1
             AND NOT EXISTS (
               SELECT 1 FROM friendships f
               WHERE ((f.user_id = $1 AND f.friend_id = p.user_id) OR (f.user_id = p.user_id AND f.friend_id = $1))
             )
-            AND p.created_at > now() - INTERVAL '30 days' -- Active in last 30 days
+            AND p.created_at > now() - INTERVAL '30 days'
         ),
         suggestions_count AS (
           SELECT COUNT(*) as cnt FROM all_suggestions
@@ -628,20 +649,58 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
         avatar: row.avatar || 'pressf',
         title: row.title,
         level: row.level || 1,
-        reason: row.priority === 1 ? 'mutual_friend' : 
+        reason: row.priority === 1 ? 'mutual_friend' :
                 row.priority === 2 ? 'mutual_duel' :
-                row.priority === 3 ? 'mutual_squad' : 
-                row.priority === 4 ? 'referral' : 'popular',
+                row.priority === 3 ? 'similar_activity' :
+                row.priority === 4 ? 'mutual_letter_type' :
+                row.priority === 5 ? 'mutual_squad' :
+                row.priority === 6 ? 'referral' : 'popular',
       }));
 
-      logger.debug('Friends suggestions result', { 
-        userId, 
-        suggestionsCount: suggestions.length,
-        hasReferrals: suggestions.some(s => s.reason === 'referral'),
-        hasMutualFriends: suggestions.some(s => s.reason === 'mutual_friend')
+      // 6.3.5: Explanation for suggestions — mutual friend count for priority-1
+      const mutualUserIds = suggestions.filter((s) => s.reason === 'mutual_friend').map((s) => s.userId);
+      let mutualCounts = {};
+      if (mutualUserIds.length > 0) {
+        const countResult = await pool.query(
+          `SELECT f2.friend_id AS suggested_id, COUNT(*)::int AS cnt
+           FROM friendships f1
+           JOIN friendships f2 ON f1.friend_id = f2.user_id AND f2.status = 'accepted'
+           WHERE f1.user_id = $1 AND f1.status = 'accepted' AND f2.friend_id = ANY($2::bigint[])
+           GROUP BY f2.friend_id`,
+          [userId, mutualUserIds]
+        );
+        mutualCounts = countResult.rows.reduce((acc, r) => {
+          acc[Number(r.suggested_id)] = r.cnt;
+          return acc;
+        }, {});
+      }
+      suggestions.forEach((s) => {
+        if (s.reason === 'mutual_friend' && mutualCounts[s.userId]) {
+          s.reasonDetail = { mutualCount: mutualCounts[s.userId] };
+        }
       });
 
-      return res.json({ ok: true, suggestions });
+      // 6.3.4: A/B variant — control (A) vs interest-first (B) ordering
+      const abVariantParam = req.query.ab_variant;
+      const abVariant = abVariantParam === 'B' || abVariantParam === 'b' ? 'B'
+        : (abVariantParam === 'A' || abVariantParam === 'a' ? 'A' : (userId % 2 === 0 ? 'A' : 'B'));
+      const orderKey = (reason) => {
+        const orderA = { mutual_friend: 1, mutual_duel: 2, similar_activity: 3, mutual_letter_type: 4, mutual_squad: 5, referral: 6, popular: 7 };
+        const orderB = { mutual_friend: 1, mutual_letter_type: 2, similar_activity: 3, mutual_duel: 4, mutual_squad: 5, referral: 6, popular: 7 };
+        return (abVariant === 'B' ? orderB : orderA)[reason] ?? 8;
+      };
+      suggestions.sort((a, b) => orderKey(a.reason) - orderKey(b.reason));
+
+      logger.debug('Friends suggestions result', {
+        userId,
+        suggestionsCount: suggestions.length,
+        abVariant,
+        hasReferrals: suggestions.some(s => s.reason === 'referral'),
+        hasMutualFriends: suggestions.some(s => s.reason === 'mutual_friend'),
+        hasMutualLetterType: suggestions.some(s => s.reason === 'mutual_letter_type')
+      });
+
+      return res.json({ ok: true, suggestions, abVariant });
     } catch (error) {
       const errorMessage = error?.message || (typeof error === 'string' ? error : JSON.stringify(error));
       logger.error('Friends suggestions error:', { error: errorMessage, stack: error?.stack });
@@ -665,7 +724,8 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
   const updateGroupBodySchema = z.object({
     name: z.string().min(1).max(100).trim().optional(),
     color: z.string().max(20).optional().nullable(),
-    icon: z.string().max(50).optional().nullable()
+    icon: z.string().max(50).optional().nullable(),
+    telegramInviteLink: z.string().max(512).trim().optional().nullable().or(z.literal(''))
   });
   const addMemberBodySchema = z.object({
     friendId: z.number().int().positive()
@@ -679,12 +739,12 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
       if (!userId) return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
 
       const result = await pool.query(
-        `SELECT g.id, g.name, g.color, g.icon, g.created_at,
+        `SELECT g.id, g.name, g.color, g.icon, g.telegram_invite_link, g.created_at,
                 COUNT(m.friend_id) AS member_count
          FROM friend_groups g
          LEFT JOIN friend_group_members m ON m.group_id = g.id
          WHERE g.user_id = $1
-         GROUP BY g.id, g.name, g.color, g.icon, g.created_at
+         GROUP BY g.id, g.name, g.color, g.icon, g.telegram_invite_link, g.created_at
          ORDER BY g.name`,
         [userId]
       );
@@ -693,6 +753,7 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
         name: row.name,
         color: row.color || null,
         icon: row.icon || null,
+        telegramInviteLink: row.telegram_invite_link || null,
         memberCount: parseInt(row.member_count, 10),
         createdAt: row.created_at?.toISOString()
       }));
@@ -743,19 +804,20 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
       if (!userId) return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
 
       const { id } = req.params;
-      const { name, color, icon } = req.body;
+      const { name, color, icon, telegramInviteLink } = req.body;
       const updates = [];
       const values = [];
       let idx = 1;
       if (name !== undefined) { updates.push(`name = $${idx++}`); values.push(name); }
       if (color !== undefined) { updates.push(`color = $${idx++}`); values.push(color); }
       if (icon !== undefined) { updates.push(`icon = $${idx++}`); values.push(icon); }
+      if (telegramInviteLink !== undefined) { updates.push(`telegram_invite_link = $${idx++}`); values.push(telegramInviteLink === '' ? null : telegramInviteLink); }
       if (updates.length === 0) return sendError(res, 400, 'VALIDATION_ERROR', 'No fields to update');
 
       values.push(id, userId);
       const result = await pool.query(
         `UPDATE friend_groups SET ${updates.join(', ')} WHERE id = $${idx} AND user_id = $${idx + 1}
-         RETURNING id, name, color, icon, created_at`,
+         RETURNING id, name, color, icon, telegram_invite_link, created_at`,
         values
       );
       if (result.rowCount === 0) return sendError(res, 404, 'GROUP_NOT_FOUND', 'Group not found');
@@ -769,6 +831,7 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
           name: row.name,
           color: row.color || null,
           icon: row.icon || null,
+          telegramInviteLink: row.telegram_invite_link || null,
           memberCount,
           createdAt: row.created_at?.toISOString()
         }
@@ -795,6 +858,11 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
         [userId, friendId]
       );
       if (friendCheck.rowCount === 0) return sendError(res, 400, 'NOT_FRIEND', 'User is not your friend');
+      const countResult = await pool.query(`SELECT COUNT(*) AS c FROM friend_group_members WHERE group_id = $1`, [id]);
+      const currentCount = parseInt(countResult.rows[0]?.c || '0', 10);
+      if (currentCount >= MAX_GROUP_MEMBERS) {
+        return sendError(res, 400, 'GROUP_FULL', `Group cannot have more than ${MAX_GROUP_MEMBERS} members`);
+      }
       await pool.query(
         `INSERT INTO friend_group_members (group_id, friend_id) VALUES ($1, $2) ON CONFLICT (group_id, friend_id) DO NOTHING`,
         [id, friendId]

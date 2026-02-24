@@ -73,6 +73,11 @@ const createTables = async (pool) => {
     // Performance: Composite indexes for common query patterns
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_challenger_status ON duels(challenger_id, status, created_at DESC)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_opponent_status ON duels(opponent_id, status, created_at DESC)`);
+    // 6.1.3 Team duels: link to friend_groups
+    await pool.query(`ALTER TABLE duels ADD COLUMN IF NOT EXISTS challenger_team_id UUID`);
+    await pool.query(`ALTER TABLE duels ADD COLUMN IF NOT EXISTS opponent_team_id UUID`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_challenger_team ON duels(challenger_team_id) WHERE challenger_team_id IS NOT NULL`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_opponent_team ON duels(opponent_team_id) WHERE opponent_team_id IS NOT NULL`);
     
     // Full-text search indexes for duels
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_duels_title_gin ON duels USING gin(to_tsvector('russian', title))`);
@@ -419,6 +424,8 @@ const createTables = async (pool) => {
       )
     `);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_friend_groups_user ON friend_groups(user_id)`);
+    // 6.1.4: Group chat via Telegram — store invite link
+    await pool.query(`ALTER TABLE friend_groups ADD COLUMN IF NOT EXISTS telegram_invite_link VARCHAR(512)`);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS friend_group_members (
         group_id UUID NOT NULL,
@@ -476,6 +483,9 @@ const createTables = async (pool) => {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_streak_challenges_challenger ON streak_challenges(challenger_id, status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_streak_challenges_opponent ON streak_challenges(opponent_id, status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_streak_challenges_status ON streak_challenges(status, expires_at)`);
+    // 6.1.2 Group streak challenges: link multiple 1v1 challenges
+    await pool.query(`ALTER TABLE streak_challenges ADD COLUMN IF NOT EXISTS group_id UUID`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_streak_challenges_group ON streak_challenges(group_id) WHERE group_id IS NOT NULL`);
 
     // Gifts table (Gamification)
     await pool.query(`
