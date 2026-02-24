@@ -1,16 +1,52 @@
 const express = require('express');
 const router = express.Router();
-const { v4: uuidv4, validate: validateUUID } = require('uuid');
+const { v4: uuidv4 } = require('uuid');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { cache } = require('../utils/cache');
 const { safeStringify } = require('../utils/safeJson');
 const { logActivity } = require('./activity');
+const { validateBody, validateParams, validateQuery } = require('../validation');
+const { z } = require('zod');
 
-// Constants
+const squadIdParamsSchema = z.object({
+  id: z.string().min(10).max(120).refine((s) => s.startsWith('squad_'), { message: 'Invalid squad ID format' })
+});
+
+const squadIdAndMemberIdParamsSchema = z.object({
+  id: z.string().min(10).max(120).refine((s) => s.startsWith('squad_'), { message: 'Invalid squad ID format' }),
+  memberId: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().positive())
+});
+
+const createSquadBodySchema = z.object({
+  name: z.string().min(1).max(255).trim()
+});
+
 const MAX_SQUAD_MEMBERS = 50;
 const MAX_SHARED_PAYLOAD_SIZE = 10 * 1024; // 10KB
+
+const updateSquadBodySchema = z.object({
+  name: z.string().min(1).max(255).trim().optional(),
+  sharedPayload: z.string().max(MAX_SHARED_PAYLOAD_SIZE).optional(),
+  pactHealth: z.number().int().min(0).max(100).optional(),
+  bannerUrl: z
+    .union(z.string().url().max(500), z.literal(''))
+    .optional()
+    .transform((v) => (v === '' ? null : v))
+}).refine((data) => Object.keys(data).length > 0, { message: 'No fields to update' });
+
 const MAX_MEMBER_NAME_LENGTH = 100;
+
+const addMemberBodySchema = z.object({
+  memberId: z.string().min(1),
+  memberName: z.string().max(MAX_MEMBER_NAME_LENGTH).optional(),
+  avatarId: z.string().max(50).optional()
+});
+
+const leaderboardQuerySchema = z.object({
+  limit: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(1).max(100).optional()).default(50),
+  offset: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(0).optional()).default(0)
+});
 
 const createSquadsRoutes = (pool) => {
   // GET /api/squads - Get user's squad (with caching)
@@ -70,7 +106,7 @@ const createSquadsRoutes = (pool) => {
   });
 
   // POST /api/squads - Create new squad
-  router.post('/', async (req, res) => {
+  router.post('/', validateBody(createSquadBodySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -82,14 +118,6 @@ const createSquadsRoutes = (pool) => {
       }
 
       const { name } = req.body;
-
-      if (!name || typeof name !== 'string' || name.trim().length === 0) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Squad name is required');
-      }
-
-      if (name.length > 255) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Squad name exceeds maximum length of 255 characters');
-      }
 
       // Check if user already has a squad
       const existingResult = await pool.query(
@@ -155,7 +183,7 @@ const createSquadsRoutes = (pool) => {
   });
 
   // PUT /api/squads/:id - Update squad
-  router.put('/:id', async (req, res) => {
+  router.put('/:id', validateParams(squadIdParamsSchema), validateBody(updateSquadBodySchema), async (req, res) => {
     if (!pool) {
       return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
     }
@@ -167,21 +195,6 @@ const createSquadsRoutes = (pool) => {
 
     const squadId = req.params.id;
     const { name, sharedPayload, pactHealth, bannerUrl } = req.body;
-
-    // Validate squadId format
-    if (!squadId || !squadId.startsWith('squad_')) {
-      return sendError(res, 400, 'INVALID_SQUAD_ID', 'Invalid squad ID format');
-    }
-
-    // Validate sharedPayload size
-    if (sharedPayload !== undefined && sharedPayload !== null) {
-      if (typeof sharedPayload !== 'string') {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'sharedPayload must be a string');
-      }
-      if (sharedPayload.length > MAX_SHARED_PAYLOAD_SIZE) {
-        return sendError(res, 400, 'PAYLOAD_TOO_LARGE', `sharedPayload exceeds ${MAX_SHARED_PAYLOAD_SIZE / 1024}KB limit`);
-      }
-    }
 
     const client = await pool.connect();
     try {
@@ -212,36 +225,16 @@ const createSquadsRoutes = (pool) => {
       let paramIndex = 1;
 
       if (name !== undefined) {
-        if (typeof name !== 'string' || name.trim().length === 0) {
-          await client.query('ROLLBACK');
-          client.release();
-          return sendError(res, 400, 'VALIDATION_ERROR', 'Squad name must be a non-empty string');
-        }
-        if (name.length > 255) {
-          await client.query('ROLLBACK');
-          client.release();
-          return sendError(res, 400, 'VALIDATION_ERROR', 'Squad name exceeds maximum length');
-        }
         updateFields.push(`name = $${paramIndex++}`);
         updateValues.push(name.trim());
       }
 
       if (sharedPayload !== undefined) {
-        if (typeof sharedPayload !== 'string') {
-          await client.query('ROLLBACK');
-          client.release();
-          return sendError(res, 400, 'VALIDATION_ERROR', 'sharedPayload must be a string');
-        }
         updateFields.push(`shared_payload = $${paramIndex++}`);
         updateValues.push(sharedPayload);
       }
 
       if (pactHealth !== undefined) {
-        if (!Number.isInteger(pactHealth) || pactHealth < 0 || pactHealth > 100) {
-          await client.query('ROLLBACK');
-          client.release();
-          return sendError(res, 400, 'VALIDATION_ERROR', 'pactHealth must be an integer between 0 and 100');
-        }
         updateFields.push(`pact_health = $${paramIndex++}`);
         updateValues.push(pactHealth);
       }
@@ -264,29 +257,8 @@ const createSquadsRoutes = (pool) => {
           client.release();
           return sendError(res, 403, 'SQUAD_BANNER_REQUIRED', 'Purchase squad_banner in store to set a custom banner');
         }
-        if (bannerUrl !== null && bannerUrl !== '') {
-          if (typeof bannerUrl !== 'string' || bannerUrl.length > 500) {
-            await client.query('ROLLBACK');
-            client.release();
-            return sendError(res, 400, 'VALIDATION_ERROR', 'bannerUrl must be a string up to 500 characters');
-          }
-          // Basic URL format check
-          try {
-            new URL(bannerUrl);
-          } catch {
-            await client.query('ROLLBACK');
-            client.release();
-            return sendError(res, 400, 'VALIDATION_ERROR', 'bannerUrl must be a valid URL');
-          }
-        }
         updateFields.push(`banner_url = $${paramIndex++}`);
-        updateValues.push(bannerUrl === '' ? null : bannerUrl);
-      }
-
-      if (updateFields.length === 0) {
-        await client.query('ROLLBACK');
-        client.release();
-        return sendError(res, 400, 'VALIDATION_ERROR', 'No fields to update');
+        updateValues.push(bannerUrl);
       }
 
         updateFields.push(`updated_at = now()`);
@@ -341,7 +313,7 @@ const createSquadsRoutes = (pool) => {
     });
 
   // POST /api/squads/:id/members - Add member to squad
-  router.post('/:id/members', async (req, res) => {
+  router.post('/:id/members', validateParams(squadIdParamsSchema), validateBody(addMemberBodySchema), async (req, res) => {
     const client = await pool?.connect();
     if (!client) {
       return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -356,23 +328,6 @@ const createSquadsRoutes = (pool) => {
 
       const squadId = req.params.id;
       const { memberId, memberName, avatarId } = req.body;
-
-      // Validate squadId format
-      if (!squadId || !squadId.startsWith('squad_')) {
-        client.release();
-        return sendError(res, 400, 'INVALID_SQUAD_ID', 'Invalid squad ID format');
-      }
-
-      if (!memberId || typeof memberId !== 'string') {
-        client.release();
-        return sendError(res, 400, 'VALIDATION_ERROR', 'memberId is required');
-      }
-
-      // Validate memberName
-      if (memberName && (typeof memberName !== 'string' || memberName.length > MAX_MEMBER_NAME_LENGTH)) {
-        client.release();
-        return sendError(res, 400, 'VALIDATION_ERROR', `memberName must be a string with max length ${MAX_MEMBER_NAME_LENGTH}`);
-      }
 
       await client.query('BEGIN');
 
@@ -468,7 +423,7 @@ const createSquadsRoutes = (pool) => {
   });
 
   // DELETE /api/squads/:id/members/:memberId - Remove member from squad
-  router.delete('/:id/members/:memberId', async (req, res) => {
+  router.delete('/:id/members/:memberId', validateParams(squadIdAndMemberIdParamsSchema), async (req, res) => {
     const client = await pool?.connect();
     if (!client) {
       return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -483,12 +438,6 @@ const createSquadsRoutes = (pool) => {
 
       const squadId = req.params.id;
       const memberId = req.params.memberId;
-
-      // Validate squadId format
-      if (!squadId || !squadId.startsWith('squad_')) {
-        client.release();
-        return sendError(res, 400, 'INVALID_SQUAD_ID', 'Invalid squad ID format');
-      }
 
       await client.query('BEGIN');
 
@@ -552,7 +501,7 @@ const createSquadsRoutes = (pool) => {
   });
 
   // POST /api/squads/:id/join - Join squad via invite link
-  router.post('/:id/join', async (req, res) => {
+  router.post('/:id/join', validateParams(squadIdParamsSchema), async (req, res) => {
     const client = await pool?.connect();
     if (!client) {
       return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -566,12 +515,6 @@ const createSquadsRoutes = (pool) => {
       }
 
       const squadId = req.params.id;
-
-      // Validate squadId format
-      if (!squadId || !squadId.startsWith('squad_')) {
-        client.release();
-        return sendError(res, 400, 'INVALID_SQUAD_ID', 'Invalid squad ID format');
-      }
 
       // Check if user already has a squad
       const existingResult = await client.query(
@@ -683,18 +626,13 @@ const createSquadsRoutes = (pool) => {
   });
 
   // GET /api/squads/leaderboard - Get global leaderboard
-  router.get('/leaderboard', async (req, res) => {
+  router.get('/leaderboard', validateQuery(leaderboardQuerySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
       }
 
-      const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Max 100
-      const offset = Math.max(parseInt(req.query.offset) || 0, 0);
-
-      if (isNaN(limit) || limit < 1 || isNaN(offset) || offset < 0) {
-        return sendError(res, 400, 'INVALID_PARAMS', 'Invalid limit or offset');
-      }
+      const { limit, offset } = req.query;
 
       // Get top squads by pact_health
       const result = await pool.query(

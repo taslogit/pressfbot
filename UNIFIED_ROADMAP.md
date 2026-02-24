@@ -356,7 +356,7 @@
 | 8.2.1 | E2E шифрование контента (в разработке по README) | 🚧 | 10-15 дней |
 | 8.2.2 | Rate limiting для всех критичных endpoints | ✅ | Расширено: friend request, challenge create |
 | 8.2.3 | SQL injection защита (тесты в TODO) | ✅ | Добавлены integration-тесты в __tests__/integration/security/sqlInjection.test.js |
-| 8.2.4 | Валидация всех входных данных | ⚠️ | Zod: store, gifts, challenges, activity, daily-quests, duels, letters (id), notifications (list+mark-read) |
+| 8.2.4 | Валидация всех входных данных | ⚠️ | Zod: store, gifts, challenges, activity, daily-quests, duels, letters, notifications, squads (id, create, update, add-member, leaderboard query) |
 
 **Итого:** ~15-20 дней работы
 
