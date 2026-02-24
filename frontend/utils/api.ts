@@ -231,7 +231,7 @@ export const lettersAPI = {
 // Duels API
 export const duelsAPI = {
   getAll: async (params?: QueryParams, options?: RequestInit) => {
-    return apiRequest<{ duels: any[] }>(`/api/duels${toQueryString(params)}`, options);
+    return apiRequest<{ duels: any[]; meta?: any; friendDuelStats?: { wins: number; losses: number } }>(`/api/duels${toQueryString(params)}`, options);
   },
   getHype: async (params?: QueryParams, options?: RequestInit) => {
     return apiRequest<{ duels: any[] }>(`/api/duels/hype${toQueryString(params)}`, options);
@@ -294,6 +294,9 @@ export const legacyAPI = {
 export const profileAPI = {
   get: async (options?: RequestInit) => {
     return apiRequest<{ profile: any; settings: any }>('/api/profile', options);
+  },
+  getById: async (userId: number) => {
+    return apiRequest<{ profile: any }>(`/api/profile/by-id/${userId}`);
   },
   update: async (profile: Partial<any>) => {
     return apiRequest('/api/profile', {
@@ -607,6 +610,15 @@ export const friendsAPI = {
   },
   getOnline: async () => {
     return apiRequest<{ friends: any[] }>('/api/friends/online');
+  },
+  getFriendHistory: async (userId: number, params?: { limit?: number; offset?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set('limit', String(params.limit));
+    if (params?.offset != null) q.set('offset', String(params.offset));
+    const suffix = q.toString() ? `?${q.toString()}` : '';
+    return apiRequest<{ interactions: any[]; stats: Record<string, number>; meta: { limit: number; offset: number; hasMore: boolean } }>(
+      `/api/friends/${userId}/history${suffix}`
+    );
   },
 };
 

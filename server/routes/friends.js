@@ -372,6 +372,77 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
     }
   });
 
+  // GET /api/friends/:userId/history — interactions with a friend (PHASE 5.3)
+  const historyQuerySchema = z.object({
+    limit: z.preprocess((v) => v === undefined ? undefined : Number(v), z.number().int().min(1).max(100).optional()),
+    offset: z.preprocess((v) => v === undefined ? undefined : Number(v), z.number().int().min(0).optional())
+  }).passthrough();
+  router.get('/:userId/history', validateParams(userIdParamsSchema), validateQuery(historyQuerySchema), async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+      const currentUserId = req.userId;
+      if (!currentUserId) {
+        return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+      }
+      const friendId = req.params.userId;
+      if (friendId === currentUserId) {
+        return sendError(res, 400, 'VALIDATION_ERROR', 'Cannot get history with yourself');
+      }
+
+      const { areFriends } = require('../utils/friendInteractions');
+      const friends = await areFriends(pool, currentUserId, friendId);
+      if (!friends) {
+        return sendError(res, 403, 'NOT_FRIENDS', 'User is not your friend');
+      }
+
+      const limit = req.query.limit || 50;
+      const offset = req.query.offset || 0;
+
+      const result = await pool.query(
+        `SELECT id, user_id, friend_id, interaction_type, target_id, target_type, metadata, created_at
+         FROM friend_interactions
+         WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)
+         ORDER BY created_at DESC
+         LIMIT $3 OFFSET $4`,
+        [currentUserId, friendId, limit, offset]
+      );
+
+      const interactions = result.rows.map((row) => ({
+        id: row.id,
+        userId: row.user_id,
+        friendId: row.friend_id,
+        type: row.interaction_type,
+        targetId: row.target_id,
+        targetType: row.target_type,
+        metadata: row.metadata || {},
+        createdAt: row.created_at?.toISOString()
+      }));
+
+      // Aggregate stats for this friend (counts by type)
+      const statsResult = await pool.query(
+        `SELECT interaction_type, COUNT(*) AS cnt
+         FROM friend_interactions
+         WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)
+         GROUP BY interaction_type`,
+        [currentUserId, friendId]
+      );
+      const stats = {};
+      statsResult.rows.forEach((r) => { stats[r.interaction_type] = parseInt(r.cnt, 10); });
+
+      return res.json({
+        ok: true,
+        interactions,
+        stats,
+        meta: { limit, offset, hasMore: result.rows.length === limit }
+      });
+    } catch (error) {
+      logger.error('Friends history error:', { error: error?.message });
+      return sendError(res, 500, 'HISTORY_FAILED', 'Failed to load history');
+    }
+  });
+
   // GET /api/friends/search?q= — search users by title (for adding friends)
   router.get('/search', validateQuery(friendsSearchQuerySchema), async (req, res) => {
     try {

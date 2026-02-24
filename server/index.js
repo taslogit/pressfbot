@@ -596,7 +596,7 @@ const giftLimitCheck = createLimitCheck(pool, 'gifts', 'gifts', 'sender_id');
 // Register API routes with rate limiting
 app.use('/api/letters', authMiddleware, getLimiter, ipLetterCreateLimiter, createLettersRoutes(pool, letterCreateLimiter, letterLimitCheck));
 app.use('/api/profile', authMiddleware, getLimiter, createProfileRoutes(pool, bot));
-app.use('/api/duels', authMiddleware, getLimiter, ipDuelCreateLimiter, createDuelsRoutes(pool, duelCreateLimiter, duelLimitCheck));
+app.use('/api/duels', authMiddleware, getLimiter, ipDuelCreateLimiter, createDuelsRoutes(pool, duelCreateLimiter, duelLimitCheck, bot));
 app.use('/api/legacy', authMiddleware, getLimiter, createLegacyRoutes(pool));
 app.use('/api/notifications', authMiddleware, getLimiter, createNotificationsRoutes(pool, bot));
 app.use('/api/ton', authMiddleware, getLimiter, createTonRoutes(pool));

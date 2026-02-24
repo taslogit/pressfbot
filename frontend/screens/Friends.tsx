@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, UserPlus, Search, X, Check, XCircle, User, Loader2, FolderPlus } from 'lucide-react';
+import { Users, UserPlus, Search, X, Check, XCircle, User, Loader2, FolderPlus, Heart, Star, Zap, Gamepad2, Trophy, Crown, Flame, Pencil } from 'lucide-react';
 import { friendsAPI, type FriendGroup } from '../utils/api';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
@@ -42,6 +42,32 @@ type SearchUser = {
 
 type Tab = 'friends' | 'pending' | 'search' | 'suggestions' | 'groups';
 
+// Цвета и иконки для групп друзей (5.2.7)
+const GROUP_COLORS = [
+  { id: 'purple', border: 'border-l-purple-500', bg: 'bg-purple-500/15', dot: 'bg-purple-500', label: 'Purple' },
+  { id: 'cyan', border: 'border-l-accent-cyan', bg: 'bg-accent-cyan/15', dot: 'bg-accent-cyan', label: 'Cyan' },
+  { id: 'green', border: 'border-l-green-500', bg: 'bg-green-500/15', dot: 'bg-green-500', label: 'Green' },
+  { id: 'orange', border: 'border-l-orange-500', bg: 'bg-orange-500/15', dot: 'bg-orange-500', label: 'Orange' },
+  { id: 'pink', border: 'border-l-pink-500', bg: 'bg-pink-500/15', dot: 'bg-pink-500', label: 'Pink' },
+  { id: 'amber', border: 'border-l-amber-500', bg: 'bg-amber-500/15', dot: 'bg-amber-500', label: 'Amber' },
+  { id: 'red', border: 'border-l-red-500', bg: 'bg-red-500/15', dot: 'bg-red-500', label: 'Red' },
+  { id: 'blue', border: 'border-l-blue-500', bg: 'bg-blue-500/15', dot: 'bg-blue-500', label: 'Blue' },
+] as const;
+
+const GROUP_ICON_IDS = ['Users', 'Heart', 'Star', 'Zap', 'Gamepad2', 'Trophy', 'Crown', 'Flame'] as const;
+const GROUP_ICON_MAP: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+  Users, Heart, Star, Zap, Gamepad2, Trophy, Crown, Flame,
+};
+
+function GroupIcon({ iconId, size = 18, className = '' }: { iconId: string | null; size?: number; className?: string }) {
+  const Icon = (iconId && GROUP_ICON_MAP[iconId]) ? GROUP_ICON_MAP[iconId] : Users;
+  return <Icon size={size} className={className} />;
+}
+
+function groupColorById(colorId: string | null) {
+  return GROUP_COLORS.find((c) => c.id === colorId) || GROUP_COLORS[0];
+}
+
 const Friends: React.FC = () => {
   const { t } = useTranslation();
   const toast = useToast();
@@ -62,7 +88,14 @@ const Friends: React.FC = () => {
   const [searching, setSearching] = useState(false);
   const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
   const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupColor, setNewGroupColor] = useState<string>('purple');
+  const [newGroupIcon, setNewGroupIcon] = useState<string>('Users');
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editColor, setEditColor] = useState<string>('purple');
+  const [editIcon, setEditIcon] = useState<string>('Users');
+  const [updatingGroup, setUpdatingGroup] = useState(false);
   const lastPendingLoadRef = useRef<number>(0);
   const pendingLoadInFlightRef = useRef(false);
   const PENDING_THROTTLE_MS = 1000;
@@ -119,10 +152,12 @@ const Friends: React.FC = () => {
     }
     setCreatingGroup(true);
     try {
-      const result = await friendsAPI.createGroup({ name });
+      const result = await friendsAPI.createGroup({ name, color: newGroupColor, icon: newGroupIcon });
       if (result.ok && result.data?.group) {
         setGroups((prev) => [result.data!.group!, ...prev]);
         setNewGroupName('');
+        setNewGroupColor('purple');
+        setNewGroupIcon('Users');
         toast.success(t('friends_group_created') || 'Группа создана');
         playSound('success');
       } else {
@@ -132,6 +167,45 @@ const Friends: React.FC = () => {
       toast.error(t('friends_load_failed') || 'Ошибка');
     } finally {
       setCreatingGroup(false);
+    }
+  };
+
+  const openEditGroup = (g: FriendGroup) => {
+    setEditingGroupId(g.id);
+    setEditName(g.name);
+    setEditColor(g.color || 'purple');
+    setEditIcon(g.icon || 'Users');
+  };
+
+  const closeEditGroup = () => {
+    setEditingGroupId(null);
+    setEditName('');
+    setEditColor('purple');
+    setEditIcon('Users');
+  };
+
+  const handleUpdateGroup = async () => {
+    if (!editingGroupId) return;
+    const name = editName.trim();
+    if (!name) {
+      toast.error(t('friends_group_name_required') || 'Введите название группы');
+      return;
+    }
+    setUpdatingGroup(true);
+    try {
+      const result = await friendsAPI.updateGroup(editingGroupId, { name, color: editColor, icon: editIcon });
+      if (result.ok && result.data?.group) {
+        setGroups((prev) => prev.map((gr) => (gr.id === editingGroupId ? result.data!.group! : gr)));
+        closeEditGroup();
+        toast.success(t('friends_group_updated') || 'Группа обновлена');
+        playSound('success');
+      } else {
+        toast.error(result.error || t('friends_load_failed') || 'Ошибка');
+      }
+    } catch {
+      toast.error(t('friends_load_failed') || 'Ошибка');
+    } finally {
+      setUpdatingGroup(false);
     }
   };
 
@@ -492,9 +566,23 @@ const Friends: React.FC = () => {
           >
             <option value="">{t('friends_filter_all') || 'Все друзья'}</option>
             {groups.map((g) => (
-              <option key={g.id} value={g.id}>{g.name} ({g.memberCount})</option>
+              <option key={g.id} value={g.id}>
+                {g.name} ({g.memberCount})
+              </option>
             ))}
           </select>
+          {selectedGroupId && (() => {
+            const g = groups.find((x) => x.id === selectedGroupId);
+            if (!g) return null;
+            const col = groupColorById(g.color);
+            return (
+              <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs ${col.bg} border ${col.border}`}>
+                <span className={`w-2 h-2 rounded-full ${col.dot}`} />
+                <GroupIcon iconId={g.icon} size={14} className="text-muted" />
+                <span className="text-primary font-medium">{g.name}</span>
+              </span>
+            );
+          })()}
         </div>
       )}
 
@@ -871,24 +959,53 @@ const Friends: React.FC = () => {
 
       {activeTab === 'groups' && (
         <div className="space-y-4">
-          <div className="flex gap-2 items-center">
-            <input
-              type="text"
-              value={newGroupName}
-              onChange={(e) => setNewGroupName(e.target.value)}
-              placeholder={t('friends_group_name_placeholder') || 'Название группы'}
-              className="flex-1 px-3 py-2 bg-input border border-border rounded-xl text-primary placeholder:text-muted text-sm"
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateGroup()}
-            />
-            <button
-              type="button"
-              onClick={handleCreateGroup}
-              disabled={creatingGroup || !newGroupName.trim()}
-              className="p-2 rounded-xl border border-purple-500/30 text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 transition-colors disabled:opacity-50"
-              title={t('friends_group_create') || 'Создать группу'}
-            >
-              {creatingGroup ? <Loader2 size={18} className="animate-spin" /> : <FolderPlus size={18} />}
-            </button>
+          <div className="space-y-3">
+            <div className="flex gap-2 items-center">
+              <input
+                type="text"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                placeholder={t('friends_group_name_placeholder') || 'Название группы'}
+                className="flex-1 px-3 py-2 bg-input border border-border rounded-xl text-primary placeholder:text-muted text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateGroup()}
+              />
+              <button
+                type="button"
+                onClick={handleCreateGroup}
+                disabled={creatingGroup || !newGroupName.trim()}
+                className="p-2 rounded-xl border border-purple-500/30 text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 transition-colors disabled:opacity-50"
+                title={t('friends_group_create') || 'Создать группу'}
+              >
+                {creatingGroup ? <Loader2 size={18} className="animate-spin" /> : <FolderPlus size={18} />}
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted">{t('friends_group_color') || 'Цвет:'}</span>
+              {GROUP_COLORS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setNewGroupColor(c.id)}
+                  className={`w-6 h-6 rounded-full ${c.dot} border-2 transition-all ${newGroupColor === c.id ? 'border-white scale-110' : 'border-transparent'}`}
+                  title={c.label}
+                  aria-label={c.label}
+                />
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted">{t('friends_group_icon') || 'Иконка:'}</span>
+              {GROUP_ICON_IDS.map((iconId) => (
+                <button
+                  key={iconId}
+                  type="button"
+                  onClick={() => setNewGroupIcon(iconId)}
+                  className={`p-1.5 rounded-lg border transition-colors ${newGroupIcon === iconId ? 'border-purple-500 bg-purple-500/20 text-purple-400' : 'border-border text-muted hover:text-primary'}`}
+                  aria-label={iconId}
+                >
+                  <GroupIcon iconId={iconId} size={18} />
+                </button>
+              ))}
+            </div>
           </div>
           {groupsLoading ? (
             <LoadingState terminal message={t('loading')} className="py-8 min-h-0" />
@@ -898,35 +1015,144 @@ const Friends: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-2">
-              {groups.map((g) => (
-                <motion.div
-                  key={g.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex items-center justify-between gap-3 p-3 rounded-xl bg-card/40 border border-border/50"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-primary truncate">{g.name}</div>
-                    <div className="text-xs text-muted">
-                      {g.memberCount} {t('friends_members') || 'участников'}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedGroupId(g.id);
-                      setActiveTab('friends');
-                    }}
-                    className="px-3 py-1.5 rounded-lg border border-border text-muted hover:text-primary text-xs font-bold"
+              {groups.map((g) => {
+                const col = groupColorById(g.color);
+                return (
+                  <motion.div
+                    key={g.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className={`flex items-center justify-between gap-3 p-3 rounded-xl border border-border/50 border-l-4 ${col.border} ${col.bg}`}
                   >
-                    {t('friends_show_group') || 'Показать'}
-                  </button>
-                </motion.div>
-              ))}
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="flex-shrink-0 text-muted">
+                        <GroupIcon iconId={g.icon} size={20} />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-bold text-primary truncate">{g.name}</div>
+                        <div className="text-xs text-muted">
+                          {g.memberCount} {t('friends_members') || 'участников'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => openEditGroup(g)}
+                        className="p-1.5 rounded-lg border border-border text-muted hover:text-primary hover:border-purple-500/50 transition-colors"
+                        title={t('friends_group_edit') || 'Изменить'}
+                        aria-label={t('friends_group_edit') || 'Edit'}
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedGroupId(g.id);
+                          setActiveTab('friends');
+                        }}
+                        className="px-3 py-1.5 rounded-lg border border-border text-muted hover:text-primary text-xs font-bold"
+                      >
+                        {t('friends_show_group') || 'Показать'}
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           )}
         </div>
       )}
+
+      {/* Edit group modal */}
+      <AnimatePresence>
+        {editingGroupId && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[110] bg-black/80"
+              onClick={closeEditGroup}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-0 z-[111] flex items-center justify-center p-4 pointer-events-none"
+            >
+              <div
+                className="bg-card border border-border rounded-2xl p-4 w-full max-w-sm shadow-xl pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-heading text-lg font-black uppercase text-primary">
+                    {t('friends_group_edit') || 'Изменить группу'}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={closeEditGroup}
+                    className="p-1 rounded-lg text-muted hover:text-primary"
+                    aria-label={t('close') || 'Close'}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder={t('friends_group_name_placeholder') || 'Название группы'}
+                  className="w-full px-3 py-2 bg-input border border-border rounded-xl text-primary text-sm mb-3"
+                />
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <span className="text-xs text-muted w-full">{t('friends_group_color') || 'Цвет:'}</span>
+                  {GROUP_COLORS.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setEditColor(c.id)}
+                      className={`w-6 h-6 rounded-full ${c.dot} border-2 transition-all ${editColor === c.id ? 'border-white scale-110' : 'border-transparent'}`}
+                      aria-label={c.label}
+                    />
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <span className="text-xs text-muted w-full">{t('friends_group_icon') || 'Иконка:'}</span>
+                  {GROUP_ICON_IDS.map((iconId) => (
+                    <button
+                      key={iconId}
+                      type="button"
+                      onClick={() => setEditIcon(iconId)}
+                      className={`p-1.5 rounded-lg border transition-colors ${editIcon === iconId ? 'border-purple-500 bg-purple-500/20 text-purple-400' : 'border-border text-muted hover:text-primary'}`}
+                      aria-label={iconId}
+                    >
+                      <GroupIcon iconId={iconId} size={18} />
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={closeEditGroup}
+                    className="flex-1 py-2 rounded-xl border border-border text-muted hover:text-primary text-sm font-bold"
+                  >
+                    {t('cancel') || 'Отмена'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUpdateGroup}
+                    disabled={updatingGroup || !editName.trim()}
+                    className="flex-1 py-2 rounded-xl bg-purple-500/30 border border-purple-500/50 text-purple-300 font-bold text-sm disabled:opacity-50"
+                  >
+                    {updatingGroup ? <Loader2 size={18} className="animate-spin mx-auto" /> : (t('save') || 'Сохранить')}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

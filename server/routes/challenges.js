@@ -97,6 +97,13 @@ const createChallengesRoutes = (pool, bot) => {
         await cache.del(`challenges:${opponentId}`);
       }
 
+      try {
+        const { logChallengeCreated } = require('../utils/friendInteractions');
+        await logChallengeCreated(pool, userId, opponentId || null, challengeId);
+      } catch (fiErr) {
+        logger.debug('Failed to log friend challenge created', { error: fiErr?.message });
+      }
+
       return res.json({
         ok: true,
         challenge: {
@@ -268,6 +275,13 @@ const createChallengesRoutes = (pool, bot) => {
       // Invalidate cache
       await cache.del(`challenges:${challenge.challenger_id}`);
       await cache.del(`challenges:${userId}`);
+
+      try {
+        const { logChallengeAccepted } = require('../utils/friendInteractions');
+        await logChallengeAccepted(pool, challenge.challenger_id, userId, challengeId);
+      } catch (fiErr) {
+        logger.debug('Failed to log friend challenge accepted', { error: fiErr?.message });
+      }
 
       // Notify challenger
       if (bot && challenge.challenger_id) {

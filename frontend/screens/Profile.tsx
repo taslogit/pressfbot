@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit2, Save, Fingerprint, Target, Sparkles, Shield, Zap, Hourglass, Brain, Share2, Activity, Gift, Settings, Trophy, Flame, Music, Pause, Award } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Edit2, Save, Fingerprint, Target, Sparkles, Shield, Zap, Hourglass, Brain, Share2, Activity, Gift, Settings, Trophy, Flame, Music, Pause, Award, History, Swords, Users } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { tg } from '../utils/telegram';
 import { storage } from '../utils/storage';
-import { notificationsAPI, avatarsAPI, profileAPI, storeAPI, dailyQuestsAPI, getStaticUrl } from '../utils/api';
+import { notificationsAPI, avatarsAPI, profileAPI, storeAPI, dailyQuestsAPI, getStaticUrl, giftsAPI, friendsAPI, duelsAPI } from '../utils/api';
 import { UserProfile } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useProfile } from '../contexts/ProfileContext';
@@ -13,7 +13,6 @@ import { playSound } from '../utils/sound';
 import { calculateLevel, getLevelProgress, getTitleForLevel, xpForLevel } from '../utils/levelSystem';
 import confetti from 'canvas-confetti';
 import SendGiftModal from '../components/SendGiftModal';
-import { giftsAPI } from '../utils/api';
 import { useApiAbort } from '../hooks/useApiAbort';
 import { useToast } from '../contexts/ToastContext';
 import { FUNERAL_TRACKS } from '../constants/funeralTracks';
@@ -48,11 +47,15 @@ const Profile = () => {
   const getSignal = useApiAbort();
   const toast = useToast();
   const { profile: profileFromContext, settings: settingsFromContext, refreshProfile } = useProfile();
-  const [profile, setProfile] = useState<UserProfile | null>(profileFromContext);
+  const [searchParams] = useSearchParams();
+  const viewFriendIdParam = searchParams.get('userId');
+  const viewFriendId = viewFriendIdParam ? parseInt(viewFriendIdParam, 10) : null;
+  const isFriendProfile = viewFriendId != null && profileFromContext?.user_id != null && viewFriendId !== profileFromContext.user_id;
+  const [profile, setProfile] = useState<UserProfile | null>(viewFriendIdParam ? null : profileFromContext);
   const [isEditing, setIsEditing] = useState(false);
   const [tempBio, setTempBio] = useState(profileFromContext?.bio || 'No bio yet.');
   const [tempTitle, setTempTitle] = useState(profileFromContext?.title || '');
-  const [activeTab, setActiveTab] = useState<'stats' | 'trophies' | 'system'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'trophies' | 'system' | 'history'>('stats');
   const [scanning, setScanning] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const [notificationEvents, setNotificationEvents] = useState<any[]>([]);
@@ -78,6 +81,12 @@ const Profile = () => {
   const [isFuneralPlaying, setIsFuneralPlaying] = useState(false);
   const funeralAudioRef = useRef<HTMLAudioElement>(null);
   
+  const [friendProfileLoading, setFriendProfileLoading] = useState(false);
+  const [friendHistory, setFriendHistory] = useState<{ id: string; type: string; targetId?: string; targetType?: string; createdAt: string; userId: number; friendId: number }[]>([]);
+  const [friendHistoryLoading, setFriendHistoryLoading] = useState(false);
+  const [friendStats, setFriendStats] = useState<Record<string, number>>({});
+  const [friendDuelStats, setFriendDuelStats] = useState<{ wins: number; losses: number } | null>(null);
+  
   // Calculate level from experience (needed before state initialization)
   const currentXP = profile?.experience || 0;
   const currentLevel = profile ? calculateLevel(currentXP) : 1;
@@ -85,19 +94,57 @@ const Profile = () => {
   const [previousLevel, setPreviousLevel] = useState(currentLevel);
   const [showLevelUpAnimation, setShowLevelUpAnimation] = useState(false);
 
-  // Sync profile from context (always from DB)
+  // Sync profile from context (always from DB) — только для своего профиля
   useEffect(() => {
-    if (profileFromContext) {
+    if (profileFromContext && !viewFriendIdParam) {
       setProfile(profileFromContext);
       setTempBio(profileFromContext.bio || 'No bio yet.');
       setTempTitle(profileFromContext.title || '');
     }
-  }, [profileFromContext]);
+  }, [profileFromContext, viewFriendIdParam]);
 
-  // При входе на экран — обновить профиль с сервера (репутация, аватар и т.д. актуальны)
+  // При входе на экран — обновить профиль с сервера (только свой профиль)
   useEffect(() => {
-    refreshProfile();
+    if (!viewFriendIdParam) refreshProfile();
   }, []);
+
+  // Просмотр профиля друга: загрузка по ?userId=
+  useEffect(() => {
+    if (!viewFriendId || !isFriendProfile) return;
+    let isMounted = true;
+    setFriendProfileLoading(true);
+    profileAPI.getById(viewFriendId).then((res) => {
+      if (!isMounted) return;
+      setFriendProfileLoading(false);
+      if (res.ok && res.data?.profile) {
+        setProfile(res.data.profile);
+      }
+    }).catch(() => {
+      if (isMounted) setFriendProfileLoading(false);
+    });
+    return () => { isMounted = false; };
+  }, [viewFriendId, isFriendProfile]);
+
+  // История с другом: загрузка при открытии вкладки «История»
+  useEffect(() => {
+    if (!isFriendProfile || viewFriendId == null || activeTab !== 'history') return;
+    setFriendHistoryLoading(true);
+    friendsAPI.getFriendHistory(viewFriendId, { limit: 50 }).then((res) => {
+      if (res.ok && res.data) {
+        setFriendHistory(res.data.interactions || []);
+        setFriendStats(res.data.stats || {});
+      }
+      setFriendHistoryLoading(false);
+    }).catch(() => setFriendHistoryLoading(false));
+  }, [isFriendProfile, viewFriendId, activeTab]);
+
+  // Дуэли с друзьями: статистика для своего профиля (5.4.7)
+  useEffect(() => {
+    if (viewFriendId != null) return;
+    duelsAPI.getAll({ friends: true, limit: 1 }).then((res) => {
+      if (res.ok && res.data?.friendDuelStats) setFriendDuelStats(res.data.friendDuelStats);
+    }).catch(() => {});
+  }, [viewFriendId]);
 
   // Предзагрузка списка аватаров при монтировании, чтобы выбранный аватар и селектор работали без задержки
   useEffect(() => {
@@ -402,8 +449,8 @@ const Profile = () => {
     setMainAvatarError(false);
   }, [displayAvatar?.id]);
 
-  // Guard: profile can be null after 401 or before first load
-  if (!profile) {
+  // Guard: profile can be null after 401 or before first load; when viewing friend, wait for friend profile load
+  if (!profile || (isFriendProfile && friendProfileLoading)) {
     return <LoadingState terminal className="min-h-screen" />;
   }
 
@@ -674,10 +721,20 @@ const Profile = () => {
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
           <h1 className="font-heading text-2xl font-black uppercase tracking-widest flex items-center gap-3 text-purple-500 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]">
-            <Fingerprint className="text-purple-500" size={28} />
-            <span className="drop-shadow-sm">{t('profile_title')}</span>
+            {isFriendProfile ? (
+              <button onClick={() => navigate('/friends')} className="flex items-center gap-2 text-left hover:opacity-80">
+                <span className="text-xl">←</span>
+                <span>{t('friends_profile_title') || 'Профиль друга'}</span>
+              </button>
+            ) : (
+              <>
+                <Fingerprint className="text-purple-500" size={28} />
+                <span className="drop-shadow-sm">{t('profile_title')}</span>
+              </>
+            )}
           </h1>
-          <div className="flex gap-2">
+          {!isFriendProfile && (
+            <div className="flex gap-2">
              <button onClick={() => setShowShareModal(true)} className="p-2 rounded-full border border-purple-500/30 text-purple-500 hover:bg-purple-500/10">
                <Share2 size={20} />
              </button>
@@ -686,8 +743,10 @@ const Profile = () => {
              </button>
              <InfoSection title={t('profile_title')} description={t('help_profile')} id="profile_help" autoOpen />
           </div>
+          )}
         </div>
 
+        {!isFriendProfile && (
         <div className="mb-6 bg-card/60 border border-border rounded-2xl p-4">
           <button
             onClick={() => setIsNotificationsOpen((v) => !v)}
@@ -756,6 +815,8 @@ const Profile = () => {
             )}
           </AnimatePresence>
         </div>
+
+        )}
 
         {/* Identity Card */}
         <div className={`bg-card/70 backdrop-blur-xl border rounded-2xl p-6 shadow-2xl relative overflow-hidden mb-8 group gpu-accelerated ${isDead ? 'border-red-500/50 border-2' : 'border-border'} ${profileThemeGold ? 'ring-2 ring-amber-400/50 shadow-[0_0_30px_rgba(251,191,36,0.25)]' : profileThemeNeon ? 'ring-2 ring-accent-cyan/50 shadow-[0_0_30px_rgba(0,224,255,0.2)]' : ''}`}>
@@ -842,14 +903,14 @@ const Profile = () => {
               </div>
 
               <h1 className="font-heading text-2xl font-black text-primary mb-1">
-                {tg.initDataUnsafe?.user?.first_name || 'ANON_USER'}
+                {isFriendProfile ? (profile?.title || displayTitle || 'Friend') : (tg.initDataUnsafe?.user?.first_name || 'ANON_USER')}
               </h1>
               <p className="font-heading text-xs text-purple-400 mb-4 tracking-widest uppercase">
-                 @{tg.initDataUnsafe?.user?.username || 'unknown'}
+                {isFriendProfile ? (`LVL ${currentLevel} // ${displayTitle}`) : (`@${tg.initDataUnsafe?.user?.username || 'unknown'}`)}
               </p>
 
               {/* Custom title edit (only when title_custom owned and editing) */}
-              {hasTitleCustom && isEditing && (
+              {!isFriendProfile && hasTitleCustom && isEditing && (
                 <div className="w-full mb-3">
                   <input
                     value={tempTitle}
@@ -863,7 +924,7 @@ const Profile = () => {
 
               {/* Bio Section */}
               <div className="w-full relative">
-                 {isEditing ? (
+                 {!isFriendProfile && isEditing ? (
                    <div className="relative animate-in fade-in zoom-in duration-200">
                      <textarea 
                        value={tempBio}
@@ -882,13 +943,15 @@ const Profile = () => {
                    </div>
                  ) : (
                    <div 
-                     onClick={() => setIsEditing(true)}
-                     className="bg-input/30 border border-transparent hover:border-border rounded-xl p-3 text-center cursor-pointer group/bio transition-all"
+                     onClick={() => !isFriendProfile && setIsEditing(true)}
+                     className={`bg-input/30 border border-transparent rounded-xl p-3 text-center transition-all ${!isFriendProfile ? 'hover:border-border cursor-pointer group/bio' : ''}`}
                    >
                       <p className="text-sm italic opacity-80 leading-relaxed">"{profile.bio}"</p>
+                      {!isFriendProfile && (
                       <span className="text-xs text-muted opacity-0 group-hover/bio:opacity-100 transition-opacity absolute bottom-1 right-2 flex items-center gap-1">
                         <Edit2 size={8} /> {t('profile_edit')}
                       </span>
+                      )}
                    </div>
                  )}
               </div>
@@ -948,18 +1011,31 @@ const Profile = () => {
            >
              {t('tab_stats')}
            </button>
-           <button 
-             onClick={() => { playSound('click'); setActiveTab('system'); }}
-             className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider border ${activeTab === 'system' ? 'bg-accent-cyan/10 border-accent-cyan text-accent-cyan' : 'bg-card border-border text-muted'}`}
-           >
-             {t('tab_system')}
-           </button>
-           <button 
-             onClick={() => { playSound('click'); setActiveTab('trophies'); }}
-             className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider border ${activeTab === 'trophies' ? 'bg-accent-gold/10 border-accent-gold text-accent-gold' : 'bg-card border-border text-muted'}`}
-           >
-             {t('tab_achievements')}
-           </button>
+           {!isFriendProfile && (
+             <>
+               <button 
+                 onClick={() => { playSound('click'); setActiveTab('system'); }}
+                 className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider border ${activeTab === 'system' ? 'bg-accent-cyan/10 border-accent-cyan text-accent-cyan' : 'bg-card border-border text-muted'}`}
+               >
+                 {t('tab_system')}
+               </button>
+               <button 
+                 onClick={() => { playSound('click'); setActiveTab('trophies'); }}
+                 className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider border ${activeTab === 'trophies' ? 'bg-accent-gold/10 border-accent-gold text-accent-gold' : 'bg-card border-border text-muted'}`}
+               >
+                 {t('tab_achievements')}
+               </button>
+             </>
+           )}
+           {isFriendProfile && (
+             <button 
+               onClick={() => { playSound('click'); setActiveTab('history'); }}
+               className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider border ${activeTab === 'history' ? 'bg-accent-lime/10 border-accent-lime text-accent-lime' : 'bg-card border-border text-muted'}`}
+             >
+               <History size={14} className="inline mr-1" />
+               {t('friends_history') || 'История'}
+             </button>
+           )}
         </div>
 
         <AnimatePresence mode="wait">
@@ -1013,6 +1089,30 @@ const Profile = () => {
                  </div>
                </div>
 
+               {/* Дуэли с друзьями (5.4.7) — только свой профиль */}
+               {!viewFriendIdParam && (
+                 <button
+                   type="button"
+                   onClick={() => { playSound('click'); navigate('/duels?friends=true'); }}
+                   className="w-full bg-card/50 border border-border hover:border-accent-cyan/50 rounded-xl p-4 text-left shadow-lg transition-colors flex items-center gap-3"
+                 >
+                   <div className="w-10 h-10 rounded-xl bg-accent-cyan/20 flex items-center justify-center flex-shrink-0">
+                     <Users size={20} className="text-accent-cyan" />
+                   </div>
+                   <div className="flex-1 min-w-0">
+                     <span className="text-xs text-muted uppercase font-bold block">{t('duels_friends_section') || 'Дуэли с друзьями'}</span>
+                     <span className="text-sm font-bold text-primary">
+                       {friendDuelStats ? (
+                         <><span className="text-accent-lime">{friendDuelStats.wins}</span> {t('duels_wins') || 'побед'} / <span className="text-red-400">{friendDuelStats.losses}</span> {t('duels_losses') || 'поражений'}</>
+                       ) : (
+                         t('duels_friends_open') || 'Открыть дуэли с друзьями'
+                       )}
+                     </span>
+                   </div>
+                   <Swords size={16} className="text-muted flex-shrink-0" />
+                 </button>
+               )}
+
                {/* Streak Leaderboard */}
                {streakLeaderboard.length > 0 && (
                  <div className="bg-card/50 border border-border rounded-xl p-4">
@@ -1038,6 +1138,71 @@ const Profile = () => {
                  </div>
                )}
 
+            </motion.div>
+          )}
+
+          {activeTab === 'history' && isFriendProfile && (
+            <motion.div
+              key="history"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="space-y-4"
+            >
+              <div className="bg-card/50 border border-border rounded-xl p-4">
+                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">{t('friends_history_stats') || 'Статистика'}</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {(friendStats.gift_sent || 0) + (friendStats.gift_received || 0) > 0 && (
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                      <Gift size={18} className="text-accent-pink" />
+                      <span className="text-sm">{t('friends_history_gifts') || 'Подарки'}: {(friendStats.gift_sent || 0) + (friendStats.gift_received || 0)}</span>
+                    </div>
+                  )}
+                  {(friendStats.duel_won || 0) + (friendStats.duel_lost || 0) > 0 && (
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                      <Swords size={18} className="text-accent-cyan" />
+                      <span className="text-sm">{t('friends_history_duels') || 'Дуэли'}: {friendStats.duel_won || 0} W / {friendStats.duel_lost || 0} L</span>
+                    </div>
+                  )}
+                  {(friendStats.challenge_created || 0) + (friendStats.challenge_won || 0) + (friendStats.challenge_lost || 0) > 0 && (
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                      <Flame size={18} className="text-orange-500" />
+                      <span className="text-sm">{t('friends_history_challenges') || 'Челленджи'}: {friendStats.challenge_won || 0} W / {friendStats.challenge_lost || 0} L</span>
+                    </div>
+                  )}
+                  {Object.keys(friendStats).length === 0 && !friendHistoryLoading && (
+                    <p className="text-sm text-muted col-span-2">{t('friends_history_empty') || 'Пока нет совместной активности'}</p>
+                  )}
+                </div>
+              </div>
+              <h3 className="text-xs font-bold text-muted uppercase tracking-wider">{t('friends_history_timeline') || 'Хронология'}</h3>
+              {friendHistoryLoading ? (
+                <LoadingState terminal message={t('loading')} className="py-6 min-h-0" />
+              ) : friendHistory.length === 0 ? (
+                <p className="text-sm text-muted py-4">{t('friends_history_empty') || 'Пока нет совместной активности'}</p>
+              ) : (
+                <div className="space-y-2">
+                  {friendHistory.map((item) => {
+                    const isMe = item.userId === profileFromContext?.user_id;
+                    const label = item.type === 'gift_sent' ? (isMe ? (t('friends_history_you_sent_gift') || 'Вы отправили подарок') : (t('friends_history_sent_gift') || 'Отправил подарок')) :
+                      item.type === 'gift_received' ? (isMe ? (t('friends_history_you_received_gift') || 'Вам отправили подарок') : (t('friends_history_received_gift') || 'Получил подарок')) :
+                      item.type === 'duel_won' ? (isMe ? (t('friends_history_you_won_duel') || 'Вы выиграли дуэль') : (t('friends_history_won_duel') || 'Выиграл дуэль')) :
+                      item.type === 'duel_lost' ? (isMe ? (t('friends_history_you_lost_duel') || 'Вы проиграли дуэль') : (t('friends_history_lost_duel') || 'Проиграл дуэль')) :
+                      item.type === 'duel_challenged' ? (t('friends_history_duel_challenged') || 'Вызов на дуэль') :
+                      item.type === 'challenge_created' ? (t('friends_history_challenge_created') || 'Челлендж создан') :
+                      item.type === 'challenge_accepted' ? (t('friends_history_challenge_accepted') || 'Челлендж принят') :
+                      item.type === 'challenge_won' ? (isMe ? (t('friends_history_you_won_challenge') || 'Вы выиграли челлендж') : (t('friends_history_won_challenge') || 'Выиграл челлендж')) :
+                      item.type === 'challenge_lost' ? (isMe ? (t('friends_history_you_lost_challenge') || 'Вы проиграли челлендж') : (t('friends_history_lost_challenge') || 'Проиграл челлендж')) :
+                      item.type;
+                    return (
+                      <div key={item.id} className="flex items-center gap-3 p-2 rounded-lg bg-card/40 border border-border/50 text-sm">
+                        <span className="text-muted shrink-0">{new Date(item.createdAt).toLocaleDateString()}</span>
+                        <span className="text-primary">{label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </motion.div>
           )}
 

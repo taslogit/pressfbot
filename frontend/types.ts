@@ -34,6 +34,7 @@ export interface Duel {
   isFavorite?: boolean;
   challengerId?: number;
   opponentId?: number;
+  isFriend?: boolean; // 5.4.6: opponent is in friends list
 }
 
 export interface LegacyItem {

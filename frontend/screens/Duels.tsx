@@ -16,7 +16,7 @@ import EnvelopeAnimation from '../components/EnvelopeAnimation';
 import { playSound } from '../utils/sound';
 import XPNotification from '../components/XPNotification';
 import { calculateLevel } from '../utils/levelSystem';
-import { duelsAPI, dailyQuestsAPI, profileAPI } from '../utils/api';
+import { duelsAPI, dailyQuestsAPI, profileAPI, friendsAPI } from '../utils/api';
 import { useApiAbort } from '../hooks/useApiAbort';
 import { useApiError } from '../contexts/ApiErrorContext';
 import { useToast } from '../contexts/ToastContext';
@@ -57,6 +57,14 @@ const Duels = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(saved?.sortOrder || 'desc');
   const [publicFilter, setPublicFilter] = useState<'all' | 'public' | 'private'>(saved?.publicFilter || 'all');
   const [favoriteFilter, setFavoriteFilter] = useState<'all' | 'favorites'>(saved?.favoriteFilter || 'all');
+  const [friendsFilter, setFriendsFilter] = useState<'all' | 'friends'>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get('friends') === 'true') return 'friends';
+    }
+    return saved?.friendsFilter || 'all';
+  });
+  const [friendDuelStats, setFriendDuelStats] = useState<{ wins: number; losses: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [showSkeleton, setShowSkeleton] = useState(false);
   const skeletonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -67,18 +75,20 @@ const Duels = () => {
   const isPremium = profile?.perks?.includes('premium') ?? false;
 
   // Form State
-  const [title, setTitle] = useState('');
   const [opponent, setOpponent] = useState('');
   const [stake, setStake] = useState('');
   const [isPublic, setIsPublic] = useState(false);
   const [isTeam, setIsTeam] = useState(false);
   const [showWitnessInvite, setShowWitnessInvite] = useState(false);
   const [showWitnessQR, setShowWitnessQR] = useState(false);
+  const [createFriends, setCreateFriends] = useState<Array<{ userId: number; title: string; avatar?: string }>>([]);
+  const [selectedOpponentId, setSelectedOpponentId] = useState<number | null>(null);
 
   const buildQueryParams = () => ({
     status: activeTab === 'shame' ? 'shame' : undefined,
     isPublic: publicFilter === 'all' ? undefined : publicFilter === 'public',
     isFavorite: favoriteFilter === 'favorites' ? true : undefined,
+    friends: friendsFilter === 'friends' ? true : undefined,
     q: searchQuery.trim() || undefined,
     sortBy,
     order: sortOrder
@@ -98,13 +108,27 @@ const Duels = () => {
         activeTab,
         publicFilter,
         favoriteFilter,
+        friendsFilter,
         searchQuery,
         sortBy,
         sortOrder
       };
       localStorage.setItem(DUELS_FILTERS_KEY, JSON.stringify(payload));
     } catch {}
-  }, [activeTab, publicFilter, favoriteFilter, searchQuery, sortBy, sortOrder]);
+  }, [activeTab, publicFilter, favoriteFilter, friendsFilter, searchQuery, sortBy, sortOrder]);
+
+  useEffect(() => {
+    if (!isCreating) return;
+    friendsAPI.getAll({ status: 'accepted', limit: 100 }).then((res) => {
+      if (res.ok && res.data?.friends) {
+        setCreateFriends(res.data.friends.map((f: any) => ({
+          userId: f.userId ?? f.user_id,
+          title: f.title || `User ${f.userId ?? f.user_id}`,
+          avatar: f.avatar
+        })));
+      }
+    }).catch(() => {});
+  }, [isCreating]);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -136,7 +160,30 @@ const Duels = () => {
             }
             return [];
           })
-        : storage.getDuelsAsync(buildQueryParams(), opts);
+        : duelsAPI.getAll(buildQueryParams(), opts).then(result => {
+            if (isMounted && result.ok && result.data) {
+              setFriendDuelStats(result.data.friendDuelStats || null);
+            }
+            if (result.ok && result.data?.duels) {
+              return result.data.duels.map((d: any) => ({
+                id: d.id,
+                title: d.title,
+                stake: d.stake,
+                opponent: d.opponent || '',
+                status: d.status,
+                deadline: d.deadline,
+                isPublic: d.isPublic,
+                isTeam: d.isTeam,
+                witnessCount: d.witnessCount,
+                loser: d.loser,
+                isFavorite: d.isFavorite || false,
+                isFriend: d.isFriend || false,
+                challengerId: d.challengerId,
+                opponentId: d.opponentId
+              }));
+            }
+            return storage.getDuels();
+          });
       
       loadPromise.then((apiDuels) => {
         if (isMounted) {
@@ -183,14 +230,10 @@ const Duels = () => {
     
     return () => {
       isMounted = false;
-      if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current);
-    };
-    return () => {
-      isMounted = false;
       clearTimeout(timer);
       if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current);
     };
-  }, [activeTab, publicFilter, favoriteFilter, searchQuery, sortBy, sortOrder, retryDuels, showApiError, t]);
+  }, [activeTab, publicFilter, favoriteFilter, friendsFilter, searchQuery, sortBy, sortOrder, retryDuels, showApiError, t]);
 
   const handleToggleFavorite = (duel: Duel) => {
     const updated = { ...duel, isFavorite: !duel.isFavorite };
@@ -199,6 +242,14 @@ const Duels = () => {
   };
 
   const validateDuel = (): { valid: boolean; error?: string } => {
+    if (selectedOpponentId) {
+      if (!title || !stake) {
+        return { valid: false, error: t('save_error') || 'Please fill title and stake' };
+      }
+      if (title.length > 500) return { valid: false, error: t('title_too_long') || 'Title is too long (max 500 characters)' };
+      if (stake.length > 500) return { valid: false, error: t('stake_too_long') || 'Stake description is too long (max 500 characters)' };
+      return { valid: true };
+    }
     if (!title || !opponent || !stake) {
       return { valid: false, error: t('save_error') || 'Please fill all required fields' };
     }
@@ -240,13 +291,14 @@ const Duels = () => {
       id: editingDuelId || Date.now().toString(),
       title,
       stake,
-      opponent: normalizedOpponent,
+      opponent: selectedOpponentId ? opponent : normalizedOpponent,
       status: existing?.status || 'active',
       deadline: existing?.deadline || new Date(Date.now() + 86400000 * 3).toISOString(), // 3 days default
       isPublic,
       isTeam,
       witnessCount: existing?.witnessCount || 0,
-      loser: existing?.loser
+      loser: existing?.loser,
+      ...(selectedOpponentId ? { opponentId: selectedOpponentId } : {})
     };
 
     setTimeout(async () => {
@@ -295,6 +347,8 @@ const Duels = () => {
       setIsPublic(false);
       setIsTeam(false);
       setShowWitnessInvite(false);
+      setSelectedOpponentId(null);
+      setCreateFriends([]);
     }, 1500);
   };
 
@@ -355,11 +409,15 @@ const Duels = () => {
           setOpponent('');
           setStake('');
           setEditingDuelId(null);
+          setSelectedOpponentId(null);
+          setCreateFriends([]);
         }
       });
     } else {
       setIsCreating(false);
       setEditingDuelId(null);
+      setSelectedOpponentId(null);
+      setCreateFriends([]);
     }
   };
 
@@ -515,6 +573,24 @@ const Duels = () => {
               {t('filter_favorites')}
             </button>
           </div>
+          {activeTab === 'mine' && (
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={() => setFriendsFilter(friendsFilter === 'friends' ? 'all' : 'friends')}
+                className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest border flex items-center justify-center gap-1 ${
+                  friendsFilter === 'friends' ? 'border-accent-cyan text-accent-cyan' : 'border-border text-muted'
+                }`}
+              >
+                <Users size={12} />
+                {t('duels_filter_friends') || 'С друзьями'}
+              </button>
+              {friendsFilter === 'friends' && friendDuelStats && (
+                <span className="text-xs text-muted whitespace-nowrap">
+                  <span className="text-accent-lime font-bold">{friendDuelStats.wins}</span> W / <span className="text-red-400 font-bold">{friendDuelStats.losses}</span> L
+                </span>
+              )}
+            </div>
+          )}
           <div className="flex gap-2 items-center">
             <div className="flex-1">
               <select
@@ -588,9 +664,34 @@ const Duels = () => {
                   </div>
                   <div>
                     <label className="text-xs text-muted uppercase font-bold tracking-wider mb-1 block">{t('duel_opponent_label')}</label>
+                    {createFriends.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {createFriends.map((friend) => (
+                          <button
+                            key={friend.userId}
+                            type="button"
+                            onClick={() => {
+                              playSound('click');
+                              setSelectedOpponentId(friend.userId);
+                              setOpponent(friend.title);
+                            }}
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                              selectedOpponentId === friend.userId
+                                ? 'bg-accent-cyan/20 border-accent-cyan text-accent-cyan'
+                                : 'bg-input border-border text-muted hover:border-accent-cyan/50'
+                            }`}
+                          >
+                            {friend.title}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <input 
                         value={opponent}
-                        onChange={(e) => setOpponent(e.target.value)}
+                        onChange={(e) => {
+                          setOpponent(e.target.value);
+                          if (selectedOpponentId) setSelectedOpponentId(null);
+                        }}
                         placeholder={t('duel_opponent_ph')}
                         className="w-full bg-input border border-border rounded-lg p-3 text-sm text-primary outline-none focus:border-orange-500 transition-all"
                       />
@@ -751,6 +852,9 @@ const Duels = () => {
                  <span className="font-mono text-primary">@{tg.initDataUnsafe?.user?.username || 'me'}</span>
                  <span className="text-xs font-bold text-orange-500">{t('vs')}</span>
                  <span className={`font-mono ${activeTab === 'shame' ? 'text-red-500 line-through' : 'text-primary'}`}>{duel.opponent}</span>
+                 {duel.isFriend && (
+                   <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/50">{t('duels_badge_friend') || 'Друг'}</span>
+                 )}
               </div>
               
               {activeTab === 'shame' && duel.loser && (

@@ -262,6 +262,13 @@ const createGiftsRoutes = (pool, giftLimitCheck) => {
         logger.debug('Failed to log activity for gift', { error: activityError?.message });
       }
 
+      try {
+        const { logGiftInteraction } = require('../utils/friendInteractions');
+        await logGiftInteraction(pool, userId, recipientId, giftId, giftType);
+      } catch (fiErr) {
+        logger.debug('Failed to log friend gift interaction', { error: fiErr?.message });
+      }
+
       logger.info('Gift sent', { giftId, senderId: userId, recipientId, giftType, cost: actualCost, usedFreeBalance: useFreeGift });
 
       return res.json({ ok: true, giftId, cost: actualCost, usedFreeBalance: useFreeGift });

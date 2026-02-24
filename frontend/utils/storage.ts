@@ -181,7 +181,10 @@ export const storage = {
         isTeam: d.isTeam,
         witnessCount: d.witnessCount,
         loser: d.loser,
-        isFavorite: d.isFavorite || false
+        isFavorite: d.isFavorite || false,
+        isFriend: d.isFriend || false,
+        challengerId: d.challengerId,
+        opponentId: d.opponentId
       }));
       safeSave(KEYS.DUELS, duels);
       return duels;

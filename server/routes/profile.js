@@ -1,7 +1,7 @@
 // Profile API routes
 const express = require('express');
 const router = express.Router();
-const { z, validateBody } = require('../validation');
+const { z, validateBody, validateParams } = require('../validation');
 const { normalizeProfile, normalizeSettings } = require('../services/profileService');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
@@ -41,6 +41,10 @@ const settingsUpdateSchema = z.object({
 });
 
 const createProfileRoutes = (pool, bot = null) => {
+  const userIdParamsSchema = z.object({
+    userId: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().positive())
+  });
+
   // GET /api/profile - Get user profile (with caching)
   router.get('/', async (req, res) => {
     try {
@@ -179,6 +183,53 @@ const createProfileRoutes = (pool, bot = null) => {
       return res.json(response);
     } catch (error) {
       logger.error('Get profile error', error);
+      return sendError(res, 500, 'PROFILE_FETCH_FAILED', 'Failed to fetch profile');
+    }
+  });
+
+  // GET /api/profile/by-id/:userId - Get another user's public profile (only if friend or self)
+  router.get('/by-id/:userId', validateParams(userIdParamsSchema), async (req, res) => {
+    try {
+      if (!pool) {
+        return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
+      }
+      const currentUserId = req.userId;
+      if (!currentUserId) {
+        return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
+      }
+      const targetUserId = req.params.userId;
+      if (targetUserId === currentUserId) {
+        const selfResult = await pool.query(
+          `SELECT p.*, us.avatar_frame
+           FROM profiles p
+           LEFT JOIN user_settings us ON p.user_id = us.user_id
+           WHERE p.user_id = $1`,
+          [currentUserId]
+        );
+        if (selfResult.rowCount === 0) return sendError(res, 404, 'PROFILE_NOT_FOUND', 'Profile not found');
+        const profile = normalizeProfile(selfResult.rows[0]);
+        return res.json({ ok: true, profile });
+      }
+
+      const { areFriends } = require('../utils/friendInteractions');
+      const friends = await areFriends(pool, currentUserId, targetUserId);
+      if (!friends) {
+        return sendError(res, 403, 'NOT_FRIENDS', 'User is not your friend');
+      }
+
+      const result = await pool.query(
+        `SELECT user_id, avatar, bio, title, level, experience, reputation, karma, stats, achievements, created_at
+         FROM profiles WHERE user_id = $1`,
+        [targetUserId]
+      );
+      if (result.rowCount === 0) {
+        return sendError(res, 404, 'PROFILE_NOT_FOUND', 'Profile not found');
+      }
+      const row = result.rows[0];
+      const profile = normalizeProfile(row);
+      return res.json({ ok: true, profile });
+    } catch (error) {
+      logger.error('Get profile by id error', error);
       return sendError(res, 500, 'PROFILE_FETCH_FAILED', 'Failed to fetch profile');
     }
   });

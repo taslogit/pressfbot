@@ -33,7 +33,7 @@ const duelSchema = z.object({
   isFavorite: z.boolean().optional()
 });
 
-const createDuelsRoutes = (pool, createLimiter, duelLimitCheck) => {
+const createDuelsRoutes = (pool, createLimiter, duelLimitCheck, bot = null) => {
   // GET /api/duels - Get all duels for user
   router.get('/', async (req, res) => {
     try {
@@ -51,6 +51,7 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck) => {
       const status = req.query.status;
       const isPublicRaw = req.query.isPublic;
       const isFavoriteRaw = req.query.isFavorite;
+      const friendsRaw = req.query.friends;
       const query = req.query.q;
       const sortBy = req.query.sortBy || 'created_at';
       const orderRaw = req.query.order || 'desc';
@@ -106,6 +107,16 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck) => {
             allowed: ['true', 'false']
           });
         }
+      }
+
+      let friendsOnly = false;
+      if (friendsRaw === 'true') {
+        friendsOnly = true;
+      } else if (friendsRaw !== undefined && friendsRaw !== 'false') {
+        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid friends', {
+          field: 'friends',
+          allowed: ['true', 'false']
+        });
       }
 
       if (!VALID_DUEL_SORT.includes(sortBy)) {
@@ -165,6 +176,14 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck) => {
         }
       }
 
+      // 5.4.2: only duels where the other participant is a friend
+      if (friendsOnly) {
+        conditions.push(`(
+          (challenger_id = $1 AND opponent_id IN (SELECT friend_id FROM friendships WHERE user_id = $1 AND status = 'accepted'))
+          OR (opponent_id = $1 AND challenger_id IN (SELECT friend_id FROM friendships WHERE user_id = $1 AND status = 'accepted'))
+        )`);
+      }
+
       values.push(limit, offset);
       const orderDir = order.toUpperCase();
       const result = await pool.query(
@@ -174,9 +193,47 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck) => {
         values
       );
 
-      const duels = result.rows.map(normalizeDuel);
+      // 5.4.6: load friend ids to set isFriend on each duel
+      const friendIdsResult = await pool.query(
+        'SELECT friend_id FROM friendships WHERE user_id = $1 AND status = $2',
+        [userId, 'accepted']
+      );
+      const friendIds = new Set((friendIdsResult.rows || []).map((r) => Number(r.friend_id)));
 
-      return res.json({ ok: true, duels, meta: { limit, offset, sortBy, order, q: query || '' } });
+      const duels = result.rows.map((row) => {
+        const d = normalizeDuel(row);
+        const otherId = row.challenger_id === userId ? row.opponent_id : row.challenger_id;
+        return { ...d, isFriend: otherId != null && friendIds.has(Number(otherId)) };
+      });
+
+      // 5.4.4: stats for duels with friends (wins / losses)
+      let friendDuelStats = null;
+      if (friendsOnly) {
+        const statsResult = await pool.query(
+          `SELECT
+            COUNT(*) FILTER (WHERE status = 'completed' AND loser_id = $1) AS losses,
+            COUNT(*) FILTER (WHERE status = 'completed' AND loser_id IS NOT NULL AND loser_id != $1) AS wins
+           FROM duels
+           WHERE (challenger_id = $1 OR opponent_id = $1)
+           AND (
+             (challenger_id = $1 AND opponent_id IN (SELECT friend_id FROM friendships WHERE user_id = $1 AND status = 'accepted'))
+             OR (opponent_id = $1 AND challenger_id IN (SELECT friend_id FROM friendships WHERE user_id = $1 AND status = 'accepted'))
+           )`,
+          [userId]
+        );
+        const row = statsResult.rows[0];
+        friendDuelStats = {
+          wins: parseInt(row?.wins || '0', 10),
+          losses: parseInt(row?.losses || '0', 10)
+        };
+      }
+
+      return res.json({
+        ok: true,
+        duels,
+        meta: { limit, offset, sortBy, order, q: query || '', friends: friendsOnly },
+        friendDuelStats: friendDuelStats || undefined
+      });
     } catch (error) {
       logger.error('Get duels error:', error);
       return sendError(res, 500, 'DUELS_FETCH_FAILED', 'Failed to fetch duels');
@@ -229,7 +286,7 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck) => {
       
       const deadlineValue = deadline ? new Date(deadline) : new Date();
       const opponentIdValue = opponentId ? Number(opponentId) : (Number(opponent) || null);
-      const opponentNameValue = opponentIdValue ? null : (opponent || null);
+      const opponentNameValue = opponent || null; // allow display name when opponentId is set (e.g. friend title)
       const loserIdValue = loser ? Number(loser) : null;
 
       // Security: Validate opponent exists if opponentId is provided
@@ -320,6 +377,44 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck) => {
         }, duelId, 'duel', isPublic);
       } catch (activityError) {
         logger.debug('Failed to log activity for duel creation', { error: activityError?.message });
+      }
+
+      try {
+        const { logDuelChallenged } = require('../utils/friendInteractions');
+        await logDuelChallenged(pool, userId, opponentIdValue || null, duelId);
+      } catch (fiErr) {
+        logger.debug('Failed to log friend duel challenged', { error: fiErr?.message });
+      }
+
+      // 5.4.3: notify friends when a public duel is created
+      if (isPublic && bot) {
+        try {
+          const friendRows = await pool.query(
+            'SELECT friend_id FROM friendships WHERE user_id = $1 AND status = $2',
+            [userId, 'accepted']
+          );
+          const challengerProfile = await pool.query(
+            'SELECT title FROM profiles WHERE user_id = $1',
+            [userId]
+          );
+          const challengerName = challengerProfile.rows[0]?.title || 'Someone';
+          const duelTitle = title || 'Untitled Duel';
+          for (const row of friendRows.rows || []) {
+            const friendId = row.friend_id;
+            if (!friendId) continue;
+            try {
+              await bot.telegram.sendMessage(
+                friendId.toString(),
+                `⚔️ <b>Новая публичная дуэль!</b>\n\n${challengerName} создал дуэль «${duelTitle}». Заходи в приложение и поддержи!`,
+                { parse_mode: 'HTML' }
+              );
+            } catch (sendErr) {
+              logger.debug('Failed to notify friend of public duel', { friendId, error: sendErr?.message });
+            }
+          }
+        } catch (notifErr) {
+          logger.debug('Failed to notify friends of public duel', { error: notifErr?.message });
+        }
       }
 
       return res.json({ ok: true, id: duelId, xp: xpReward || 0 });
@@ -534,6 +629,12 @@ const createDuelsRoutes = (pool, createLimiter, duelLimitCheck) => {
         if (duelRow.rows[0]) {
           const { challenger_id, opponent_id, loser_id, title } = duelRow.rows[0];
           const winnerId = loser_id === challenger_id ? opponent_id : challenger_id;
+          try {
+            const { logDuelResult } = require('../utils/friendInteractions');
+            await logDuelResult(pool, challenger_id, opponent_id, loser_id, duelId);
+          } catch (fiErr) {
+            logger.debug('Failed to log friend duel result', { error: fiErr?.message });
+          }
           if (winnerId) {
             const tauntRes = await pool.query(
               'SELECT duel_taunt_message FROM user_settings WHERE user_id = $1',

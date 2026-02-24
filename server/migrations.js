@@ -431,6 +431,25 @@ const createTables = async (pool) => {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_friend_group_members_group ON friend_group_members(group_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_friend_group_members_friend ON friend_group_members(friend_id)`);
 
+    // Friend interactions (PHASE 5.3 - history between friends)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS friend_interactions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id BIGINT NOT NULL,
+        friend_id BIGINT NOT NULL,
+        interaction_type VARCHAR(50) NOT NULL,
+        target_id VARCHAR(255),
+        target_type VARCHAR(50),
+        metadata JSONB,
+        created_at TIMESTAMP DEFAULT now(),
+        FOREIGN KEY (user_id) REFERENCES profiles(user_id) ON DELETE CASCADE,
+        FOREIGN KEY (friend_id) REFERENCES profiles(user_id) ON DELETE CASCADE
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_friend_interactions_user_friend ON friend_interactions(user_id, friend_id, created_at DESC)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_friend_interactions_friend ON friend_interactions(friend_id, created_at DESC)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_friend_interactions_type ON friend_interactions(interaction_type)`);
+
     // Streak Challenges table (Viral mechanics - friends compete on days in a row)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS streak_challenges (
