@@ -46,7 +46,7 @@ const Profile = () => {
   const navigate = useNavigate();
   const getSignal = useApiAbort();
   const toast = useToast();
-  const { profile: profileFromContext, settings: settingsFromContext, refreshProfile } = useProfile();
+  const { profile: profileFromContext, settings: settingsFromContext, refreshProfile, refreshSettings } = useProfile();
   const [searchParams] = useSearchParams();
   const viewFriendIdParam = searchParams.get('userId');
   const viewFriendId = viewFriendIdParam ? parseInt(viewFriendIdParam, 10) : null;
@@ -926,6 +926,12 @@ const Profile = () => {
                 {isFriendProfile ? (`LVL ${currentLevel} // ${displayTitle}`) : (`@${tg.initDataUnsafe?.user?.username || 'unknown'}`)}
               </p>
 
+              {!isFriendProfile && !hasTitleCustom && (
+                <p className="text-xs text-muted mb-2">
+                  {t('profile_title_store_hint') || 'Buy Custom Title in Store to set your own'}
+                </p>
+              )}
+
               {/* Custom title edit (only when title_custom owned and editing) */}
               {!isFriendProfile && hasTitleCustom && isEditing && (
                 <div className="w-full mb-3">
@@ -1426,12 +1432,15 @@ const Profile = () => {
         <SendGiftModal
           isOpen={showSendGiftModal}
           onClose={() => setShowSendGiftModal(false)}
-          recipientId={0} // Will be set when selecting user
+          recipientId={viewFriendId ?? 0}
+          recipientName={isFriendProfile ? profile?.title : undefined}
           onGiftSent={async () => {
             await loadGifts();
+            await refreshSettings();
             const apiProfile = await storage.getUserProfileAsync();
             setProfile(apiProfile);
           }}
+          freeGiftBalance={settingsFromContext?.freeGiftBalance ?? 0}
         />
       </div>
     </div>

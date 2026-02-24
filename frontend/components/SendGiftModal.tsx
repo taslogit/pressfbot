@@ -25,9 +25,11 @@ interface Props {
   recipientId: number;
   recipientName?: string;
   onGiftSent?: () => void;
+  /** Balance of free gifts from store (free_gift_pack). When > 0, next send uses one free instead of REP. */
+  freeGiftBalance?: number;
 }
 
-const SendGiftModal: React.FC<Props> = ({ isOpen, onClose, recipientId, recipientName, onGiftSent }) => {
+const SendGiftModal: React.FC<Props> = ({ isOpen, onClose, recipientId, recipientName, onGiftSent, freeGiftBalance = 0 }) => {
   const { t } = useTranslation();
   const toast = useToast();
   const [giftTypes, setGiftTypes] = useState<GiftType[]>([]);
@@ -136,6 +138,12 @@ const SendGiftModal: React.FC<Props> = ({ isOpen, onClose, recipientId, recipien
             </div>
           )}
 
+          {freeGiftBalance > 0 && (
+            <div className="mb-4 px-3 py-2 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400 text-sm font-medium">
+              {t('free_gifts_balance') || 'Free gifts'}: <strong>{freeGiftBalance}</strong>
+            </div>
+          )}
+
           <div className="space-y-4">
             {/* Gift Types */}
             <div>
@@ -162,7 +170,7 @@ const SendGiftModal: React.FC<Props> = ({ isOpen, onClose, recipientId, recipien
                       <div className="flex-1">
                         <div className="text-xs font-bold text-white">{gift.name}</div>
                         <div className="text-xs text-accent-gold font-black">
-                          {gift.cost} REP
+                          {freeGiftBalance > 0 ? (t('gift_cost_free') || 'Free') : `${gift.cost} REP`}
                         </div>
                       </div>
                     </div>

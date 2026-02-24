@@ -8,6 +8,8 @@ const path = require('path');
 const fs = require('fs');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
+const { validateBody } = require('../validation');
+const { z } = require('zod');
 const { activateBoost } = require('../utils/boosts');
 const { addExtraDailyQuest } = require('./dailyQuests');
 const { cache } = require('../utils/cache');
@@ -224,6 +226,10 @@ const XP_STORE = {
   }
 };
 
+const buyBodySchema = z.object({
+  itemId: z.string().min(1).max(200).trim()
+});
+
 // Public handler for /api/store/catalog (no auth — static data for vitrine)
 const handleStoreCatalog = (req, res) => {
     const entries = getAllCatalogEntries();
@@ -303,7 +309,7 @@ const createStoreRoutes = (pool) => {
   });
 
   // ─── POST /api/store/buy — Purchase with XP/REP ──
-  router.post('/buy', async (req, res) => {
+  router.post('/buy', validateBody(buyBodySchema), async (req, res) => {
     try {
       const userId = req.userId;
       if (!userId) return sendError(res, 401, 'AUTH_REQUIRED', 'Not authenticated');

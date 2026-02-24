@@ -3,6 +3,9 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
+const { validateBody } = require('../validation');
+const { z } = require('zod');
+const { safeStringify } = require('../utils/safeJson');
 
 // Gift types and their configurations
 const GIFT_TYPES = {
@@ -35,6 +38,15 @@ const GIFT_TYPES = {
     effect: { type: 'title', value: 'Legend', duration: 604800000, description: 'Эксклюзивный титул на неделю' }
   }
 };
+
+const sendGiftBodySchema = z.object({
+  recipientId: z.preprocess(
+    (v) => (v === undefined || v === null ? undefined : Number(v)),
+    z.number().int().positive()
+  ),
+  giftType: z.enum(['energy', 'protection', 'boost', 'legend']),
+  message: z.string().max(500).optional().nullable()
+});
 
 const createGiftsRoutes = (pool, giftLimitCheck) => {
   // GET /api/gifts - Get user's gifts (sent and received) with pagination
@@ -120,7 +132,7 @@ const createGiftsRoutes = (pool, giftLimitCheck) => {
   });
 
   // POST /api/gifts - Send a gift
-  router.post('/', giftLimitCheck || ((req, res, next) => next()), async (req, res) => {
+  router.post('/', giftLimitCheck || ((req, res, next) => next()), validateBody(sendGiftBodySchema), async (req, res) => {
     const client = await pool?.connect();
     if (!client) {
       return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -128,32 +140,16 @@ const createGiftsRoutes = (pool, giftLimitCheck) => {
 
     try {
       const userId = req.userId;
-      const { recipientId: recipientIdRaw, giftType, message } = req.body;
+      const { recipientId, giftType, message } = req.body;
 
-      // Validation: Check required fields
-      if (!userId || !recipientIdRaw || !giftType) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Missing required fields');
-      }
-
-      // Validation: Validate recipientId type and value
-      const recipientId = Number(recipientIdRaw);
-      if (!Number.isInteger(recipientId) || recipientId <= 0) {
-        return sendError(res, 400, 'INVALID_RECIPIENT_ID', 'Invalid recipient ID');
+      // Validation: Check required fields (Zod already validated shape; ensure userId)
+      if (!userId) {
+        return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
       // Validation: Check if user is trying to gift themselves
       if (userId === recipientId) {
         return sendError(res, 400, 'CANNOT_GIFT_SELF', 'Cannot send gift to yourself');
-      }
-
-      // Validation: Validate gift type
-      if (!GIFT_TYPES[giftType]) {
-        return sendError(res, 400, 'INVALID_GIFT_TYPE', 'Invalid gift type');
-      }
-
-      // Validation: Validate message length
-      if (message && (typeof message !== 'string' || message.length > 500)) {
-        return sendError(res, 400, 'MESSAGE_TOO_LONG', 'Message exceeds 500 characters');
       }
 
       const giftConfig = GIFT_TYPES[giftType];

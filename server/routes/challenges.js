@@ -3,12 +3,33 @@ const { v4: uuidv4 } = require('uuid');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { cache } = require('../utils/cache');
+const { validateBody, validateParams } = require('../validation');
+const { z } = require('zod');
+
+const createChallengeBodySchema = z.object({
+  opponentId: z.preprocess((v) => (v === undefined || v === null ? undefined : Number(v)), z.number().int().positive().optional()),
+  opponentName: z.string().max(200).trim().optional(),
+  stakeType: z.enum(['pride', 'rep']).optional().default('pride'),
+  stakeAmount: z.preprocess((v) => (v === undefined || v === null ? undefined : Number(v)), z.number().min(0).optional()).default(0),
+  expiresInDays: z.preprocess((v) => (v === undefined || v === null ? undefined : Number(v)), z.number().int().min(1).max(365).optional()).default(30)
+}).refine((data) => data.opponentId != null || (data.opponentName != null && String(data.opponentName).trim().length > 0), { message: 'opponentId or opponentName required' });
+
+const createGroupChallengeBodySchema = z.object({
+  opponentIds: z.array(z.preprocess((v) => (v === undefined || v === null ? undefined : Number(v)), z.number().int().positive())).min(1).max(20),
+  stakeType: z.enum(['pride', 'rep']).optional().default('pride'),
+  stakeAmount: z.preprocess((v) => (v === undefined || v === null ? undefined : Number(v)), z.number().min(0).optional()).default(0),
+  expiresInDays: z.preprocess((v) => (v === undefined || v === null ? undefined : Number(v)), z.number().int().min(1).max(365).optional()).default(30)
+});
+
+const challengeIdParamsSchema = z.object({
+  id: z.string().uuid('Invalid challenge ID')
+});
 
 const createChallengesRoutes = (pool, bot, createLimiter = null) => {
   const router = express.Router();
 
   // POST /api/challenges/create - Create a streak challenge (8.2.2: rate limited)
-  router.post('/create', createLimiter || ((req, res, next) => next()), async (req, res) => {
+  router.post('/create', createLimiter || ((req, res, next) => next()), validateBody(createChallengeBodySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -19,11 +40,7 @@ const createChallengesRoutes = (pool, bot, createLimiter = null) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      const { opponentId, opponentName, stakeType = 'pride', stakeAmount = 0, expiresInDays = 30 } = req.body || {};
-
-      if (!opponentId && !opponentName) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'opponentId or opponentName required');
-      }
+      const { opponentId, opponentName, stakeType, stakeAmount, expiresInDays } = req.body;
 
       // Get challenger's current streak
       const challengerSettings = await pool.query(
@@ -128,7 +145,7 @@ const createChallengesRoutes = (pool, bot, createLimiter = null) => {
   });
 
   // POST /api/challenges/create-group — 6.1.2: create multiple streak challenges (8.2.2: rate limited)
-  router.post('/create-group', createLimiter || ((req, res, next) => next()), async (req, res) => {
+  router.post('/create-group', createLimiter || ((req, res, next) => next()), validateBody(createGroupChallengeBodySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -139,16 +156,8 @@ const createChallengesRoutes = (pool, bot, createLimiter = null) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      const { opponentIds, stakeType = 'pride', stakeAmount = 0, expiresInDays = 30 } = req.body || {};
-
-      if (!Array.isArray(opponentIds) || opponentIds.length === 0) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'opponentIds array required (at least one)');
-      }
-
-      const uniqueIds = [...new Set(opponentIds.map(id => Number(id)).filter(Boolean))];
-      if (uniqueIds.length > 20) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Max 20 opponents per group challenge');
-      }
+      const { opponentIds, stakeType, stakeAmount, expiresInDays } = req.body;
+      const uniqueIds = [...new Set(opponentIds.filter(Boolean))];
 
       const challengerSettings = await pool.query(
         'SELECT current_streak FROM user_settings WHERE user_id = $1',
@@ -340,7 +349,7 @@ const createChallengesRoutes = (pool, bot, createLimiter = null) => {
   });
 
   // POST /api/challenges/:id/accept - Accept a challenge
-  router.post('/:id/accept', async (req, res) => {
+  router.post('/:id/accept', validateParams(challengeIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');

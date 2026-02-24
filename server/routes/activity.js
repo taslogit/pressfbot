@@ -4,8 +4,8 @@ const { v4: uuidv4 } = require('uuid');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { cache } = require('../utils/cache');
-const { validateParams } = require('../validation');
-const { z } = require('../validation');
+const { validateParams, validateQuery } = require('../validation');
+const { z } = require('zod');
 const { safeStringify } = require('../utils/safeJson');
 
 // Security: URL parameter validation schema for userId
@@ -13,53 +13,43 @@ const activityUserIdParamsSchema = z.object({
   userId: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().positive())
 });
 
+const feedQuerySchema = z.object({
+  limit: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(1).max(100).optional()).default(50),
+  offset: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(0).optional()).default(0),
+  cursor: z.string().max(64).optional(),
+  type: z.string().max(100).optional(),
+  friends: z.enum(['1', 'true', '0', 'false']).optional(),
+  friendsFilter: z.enum(['all', 'close', 'referrals']).optional()
+}).refine((data) => {
+  if (data.cursor == null || data.cursor === '') return true;
+  const d = new Date(data.cursor);
+  return !isNaN(d.getTime());
+}, { message: 'Invalid cursor format (use ISO date)', path: ['cursor'] });
+
 const createActivityRoutes = (pool, feedLimiter = null) => {
   // GET /api/activity/feed - Get activity feed
-  router.get('/feed', feedLimiter || ((req, res, next) => next()), async (req, res) => {
+  router.get('/feed', feedLimiter || ((req, res, next) => next()), validateQuery(feedQuerySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
       }
 
       const userId = req.userId;
-      
-      // Security: Validate query parameters
-      const limitRaw = req.query.limit;
-      const offsetRaw = req.query.offset;
-      const cursor = req.query.cursor; // Optional cursor for cursor-based pagination (ISO date)
-      const limit = limitRaw ? parseInt(limitRaw, 10) : 50;
-      const offset = offsetRaw ? parseInt(offsetRaw, 10) : 0;
-      const type = req.query.type; // Optional filter by activity type
-      const friendsOnly = req.query.friends === '1' || req.query.friends === 'true';
-      const friendsFilter = req.query.friendsFilter; // 'all' | 'close' | 'referrals'
 
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      // Validate limit
-      if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid limit', {
-          field: 'limit',
-          min: 1,
-          max: 100
-        });
-      }
+      const limit = req.query.limit ?? 50;
+      const offset = req.query.offset ?? 0;
+      const cursor = req.query.cursor;
+      const type = req.query.type;
+      const friendsOnly = req.query.friends === '1' || req.query.friends === 'true';
+      const friendsFilter = req.query.friendsFilter;
 
-      if (!Number.isInteger(offset) || offset < 0) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid offset', {
-          field: 'offset',
-          min: 0
-        });
-      }
-
-      // Cursor-based pagination: cursor must be valid ISO date when provided
       let cursorDate = null;
       if (cursor) {
         cursorDate = new Date(cursor);
-        if (isNaN(cursorDate.getTime())) {
-          return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid cursor format (use ISO date)');
-        }
       }
 
       let friendIds = [];

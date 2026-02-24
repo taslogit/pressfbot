@@ -10,7 +10,10 @@ certificatesResolvers:
     acme:
       email: "noreply@pressfbot.ru"
       storage: /letsencrypt/acme.json
+      # TLS-ALPN-01: нужен открытый 443. Если сертификат не выдаётся — используйте httpChallenge (раскомментируйте ниже и закомментируйте tlsChallenge).
       tlsChallenge: {}
+      # httpChallenge:
+      #   entryPoint: web
 
 providers:
   docker:

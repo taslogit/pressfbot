@@ -1552,10 +1552,16 @@ app.get('/api/session/:id', authMiddleware, async (req, res) => {
       });
       
       if (webhookInfo.last_error_message) {
-        logger.warn('Webhook has errors', { 
-          lastErrorDate: webhookInfo.last_error_date,
-          lastErrorMessage: webhookInfo.last_error_message
-        });
+        const errDate = webhookInfo.last_error_date;
+        const ageSeconds = errDate ? Math.floor(Date.now() / 1000) - errDate : Infinity;
+        if (ageSeconds < 3600) {
+          logger.warn('Webhook has errors', { 
+            lastErrorDate: webhookInfo.last_error_date,
+            lastErrorMessage: webhookInfo.last_error_message
+          });
+        } else {
+          logger.debug('Webhook last error (stale, not warning)', { lastErrorDate: errDate, lastErrorMessage: webhookInfo.last_error_message });
+        }
       }
     } else {
       // Delete webhook if exists
