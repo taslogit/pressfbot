@@ -902,7 +902,7 @@ const Friends: React.FC = () => {
                 })
               )}
             </div>
-          )}
+          ) : null}
         </div>
       )}
 
