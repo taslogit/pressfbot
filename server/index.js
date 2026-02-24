@@ -73,6 +73,11 @@ const RATE_LIMIT_FRIENDS_SUGGESTIONS_WINDOW_MS = 1 * 60 * 1000; // 1 minute
 const RATE_LIMIT_FRIENDS_SUGGESTIONS_MAX = 20; // 20 requests per minute
 const RATE_LIMIT_ACTIVITY_FEED_WINDOW_MS = 1 * 60 * 1000; // 1 minute
 const RATE_LIMIT_ACTIVITY_FEED_MAX = 60; // 60 requests per minute (can be called frequently)
+// 8.2.2: per-endpoint limits for critical write operations
+const RATE_LIMIT_FRIEND_REQUEST_WINDOW_MS = 15 * 60 * 1000;
+const RATE_LIMIT_FRIEND_REQUEST_MAX = 30;
+const RATE_LIMIT_CHALLENGE_CREATE_WINDOW_MS = 15 * 60 * 1000;
+const RATE_LIMIT_CHALLENGE_CREATE_MAX = 15;
 // IP-based limits for critical operations (in addition to session-based)
 const RATE_LIMIT_IP_VERIFY_MAX = 15; // verify per IP per 10 min (stricter than per-session)
 const RATE_LIMIT_IP_LETTER_CREATE_MAX = 10; // letter creates per IP per 15 min
@@ -525,7 +530,27 @@ const activityFeedLimiter = rateLimit({
   keyGenerator: (req) => req.get('x-session-id') || req.ip || 'anonymous'
 });
 
-// Rate limiters for general GET and POST requests (key by session when present so one IP can have many users)
+// 8.2.2: Rate limiting for friend request (send request)
+const friendRequestLimiter = rateLimit({
+  windowMs: RATE_LIMIT_FRIEND_REQUEST_WINDOW_MS,
+  max: (req, res) => adaptive.getAdaptiveMax(req, RATE_LIMIT_FRIEND_REQUEST_MAX),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many friend requests, please try again later',
+  keyGenerator: (req) => req.get('x-session-id') || req.ip || 'anonymous'
+});
+
+// 8.2.2: Rate limiting for streak challenge create
+const challengeCreateLimiter = rateLimit({
+  windowMs: RATE_LIMIT_CHALLENGE_CREATE_WINDOW_MS,
+  max: (req, res) => adaptive.getAdaptiveMax(req, RATE_LIMIT_CHALLENGE_CREATE_MAX),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many challenges created, please try again later',
+  keyGenerator: (req) => req.get('x-session-id') || req.ip || 'anonymous'
+});
+
+// Rate limiters for general GET and POST requests
 const getLimiter = rateLimit({
   windowMs: RATE_LIMIT_GET_WINDOW_MS,
   max: RATE_LIMIT_GET_MAX,
@@ -615,8 +640,8 @@ app.use('/api/gifts', authMiddleware, getLimiter, createGiftsRoutes(pool, giftLi
 app.use('/api/events', authMiddleware, getLimiter, createEventsRoutes(pool));
 app.use('/api/tournaments', authMiddleware, getLimiter, createTournamentsRoutes(pool));
 app.use('/api/activity', authMiddleware, getLimiter, createActivityRoutes(pool, activityFeedLimiter));
-app.use('/api/friends', authMiddleware, getLimiter, createFriendsRoutes(pool, friendsOnlineLimiter, friendsSuggestionsLimiter));
-app.use('/api/challenges', authMiddleware, getLimiter, createChallengesRoutes(pool, bot));
+app.use('/api/friends', authMiddleware, getLimiter, createFriendsRoutes(pool, friendsOnlineLimiter, friendsSuggestionsLimiter, friendRequestLimiter));
+app.use('/api/challenges', authMiddleware, getLimiter, createChallengesRoutes(pool, bot, challengeCreateLimiter));
 app.use('/api/squads', authMiddleware, getLimiter, createSquadsRoutes(pool));
 app.use('/api/witnesses', authMiddleware, getLimiter, createWitnessesRoutes(pool));
 // Monetization routes

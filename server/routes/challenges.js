@@ -4,11 +4,11 @@ const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { cache } = require('../utils/cache');
 
-const createChallengesRoutes = (pool, bot) => {
+const createChallengesRoutes = (pool, bot, createLimiter = null) => {
   const router = express.Router();
 
-  // POST /api/challenges/create - Create a streak challenge
-  router.post('/create', async (req, res) => {
+  // POST /api/challenges/create - Create a streak challenge (8.2.2: rate limited)
+  router.post('/create', createLimiter || ((req, res, next) => next()), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -127,8 +127,8 @@ const createChallengesRoutes = (pool, bot) => {
     }
   });
 
-  // POST /api/challenges/create-group — 6.1.2: create multiple streak challenges (one per opponent) with same group_id
-  router.post('/create-group', async (req, res) => {
+  // POST /api/challenges/create-group — 6.1.2: create multiple streak challenges (8.2.2: rate limited)
+  router.post('/create-group', createLimiter || ((req, res, next) => next()), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');

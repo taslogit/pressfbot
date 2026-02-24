@@ -25,7 +25,7 @@ describe('Friends API', () => {
 
     const mockOnlineLimiter = (req, res, next) => next();
     const mockSuggestionsLimiter = (req, res, next) => next();
-    app.use('/api/friends', createFriendsRoutes(pool, mockOnlineLimiter, mockSuggestionsLimiter));
+    app.use('/api/friends', createFriendsRoutes(pool, mockOnlineLimiter, mockSuggestionsLimiter, (req, res, next) => next()));
   });
 
   beforeEach(() => {
@@ -44,7 +44,7 @@ describe('Friends API', () => {
     });
 
     test('should return 503 when database is unavailable', async () => {
-      const routesWithoutPool = createFriendsRoutes(null, (req, res, next) => next(), (req, res, next) => next());
+      const routesWithoutPool = createFriendsRoutes(null, (req, res, next) => next(), (req, res, next) => next(), (req, res, next) => next());
       const testApp = express();
       testApp.use(express.json());
       testApp.use((req, res, next) => { req.userId = 123456; next(); });

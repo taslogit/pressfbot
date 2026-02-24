@@ -43,7 +43,7 @@ const userIdParamsSchema = z.object({
   userId: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().positive())
 });
 
-const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = null) => {
+const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = null, friendRequestLimiter = null) => {
   const router = express.Router();
   // GET /api/friends — list accepted friends with pagination
   router.get('/', validateQuery(friendsListQuerySchema), async (req, res) => {
@@ -168,8 +168,8 @@ const createFriendsRoutes = (pool, onlineLimiter = null, suggestionsLimiter = nu
     }
   });
 
-  // POST /api/friends/request/:userId — send friend request
-  router.post('/request/:userId', validateParams(userIdParamsSchema), async (req, res) => {
+  // POST /api/friends/request/:userId — send friend request (8.2.2: rate limited)
+  router.post('/request/:userId', friendRequestLimiter || ((req, res, next) => next()), validateParams(userIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
