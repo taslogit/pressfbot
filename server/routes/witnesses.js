@@ -1,17 +1,40 @@
 const express = require('express');
 const router = express.Router();
-const { v4: uuidv4, validate: validateUUID } = require('uuid');
+const { v4: uuidv4 } = require('uuid');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { cache } = require('../utils/cache');
 const { logActivity } = require('./activity');
+const { validateBody, validateParams, validateQuery } = require('../validation');
+const { z } = require('zod');
 
-// Constants
+const witnessIdParamsSchema = z.object({
+  id: z.string().min(10).max(120).refine((s) => s.startsWith('witness_'), { message: 'Invalid witness ID format' })
+});
+
+const letterIdParamSchema = z.object({
+  letterId: z.string().min(1).max(120)
+});
+
+const witnessesListQuerySchema = z.object({
+  letterId: z.string().min(1).max(120).optional()
+});
+
+const createWitnessBodySchema = z.object({
+  letterId: z.string().min(1).max(120).optional(),
+  name: z.string().min(2).max(255).trim()
+});
+
+const updateWitnessBodySchema = z.object({
+  name: z.string().min(2).max(255).trim().optional(),
+  status: z.enum(['pending', 'confirmed']).optional()
+}).refine((data) => Object.keys(data).length > 0, { message: 'No fields to update' });
+
 const MAX_WITNESSES_PER_USER = 100;
 
 const createWitnessesRoutes = (pool) => {
   // GET /api/witnesses - Get user's witnesses
-  router.get('/', async (req, res) => {
+  router.get('/', validateQuery(witnessesListQuerySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -22,7 +45,7 @@ const createWitnessesRoutes = (pool) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      const letterId = req.query.letterId; // Optional filter by letter
+      const letterId = req.query.letterId;
 
       let result;
       if (letterId) {
@@ -58,7 +81,7 @@ const createWitnessesRoutes = (pool) => {
   });
 
   // GET /api/witnesses/:id - Get specific witness
-  router.get('/:id', async (req, res) => {
+  router.get('/:id', validateParams(witnessIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -70,11 +93,6 @@ const createWitnessesRoutes = (pool) => {
       }
 
       const witnessId = req.params.id;
-
-      // Validate witnessId format
-      if (!witnessId || !witnessId.startsWith('witness_')) {
-        return sendError(res, 400, 'INVALID_WITNESS_ID', 'Invalid witness ID format');
-      }
 
       const result = await pool.query(
         `SELECT * FROM witnesses WHERE id = $1 AND user_id = $2`,
@@ -101,7 +119,7 @@ const createWitnessesRoutes = (pool) => {
   });
 
   // POST /api/witnesses - Add witness
-  router.post('/', async (req, res) => {
+  router.post('/', validateBody(createWitnessBodySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -113,18 +131,6 @@ const createWitnessesRoutes = (pool) => {
       }
 
       const { letterId, name } = req.body;
-
-      if (!name || typeof name !== 'string' || name.trim().length === 0) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Witness name is required');
-      }
-
-      if (name.length > 255) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Witness name exceeds maximum length of 255 characters');
-      }
-
-      if (name.trim().length < 2) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Witness name must be at least 2 characters');
-      }
 
       // Check witness limit
       const countResult = await pool.query(
@@ -182,7 +188,7 @@ const createWitnessesRoutes = (pool) => {
   });
 
   // PUT /api/witnesses/:id - Update witness
-  router.put('/:id', async (req, res) => {
+  router.put('/:id', validateParams(witnessIdParamsSchema), validateBody(updateWitnessBodySchema), async (req, res) => {
     const client = await pool?.connect();
     if (!client) {
       return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -197,12 +203,6 @@ const createWitnessesRoutes = (pool) => {
 
       const witnessId = req.params.id;
       const { name, status } = req.body;
-
-      // Validate witnessId format
-      if (!witnessId || !witnessId.startsWith('witness_')) {
-        client.release();
-        return sendError(res, 400, 'INVALID_WITNESS_ID', 'Invalid witness ID format');
-      }
 
       await client.query('BEGIN');
 
@@ -224,34 +224,13 @@ const createWitnessesRoutes = (pool) => {
       let paramIndex = 1;
 
       if (name !== undefined) {
-        if (typeof name !== 'string' || name.trim().length === 0) {
-          await client.query('ROLLBACK');
-          client.release();
-          return sendError(res, 400, 'VALIDATION_ERROR', 'Witness name must be a non-empty string');
-        }
-        if (name.length > 255) {
-          await client.query('ROLLBACK');
-          client.release();
-          return sendError(res, 400, 'VALIDATION_ERROR', 'Witness name exceeds maximum length');
-        }
         updateFields.push(`name = $${paramIndex++}`);
         updateValues.push(name.trim());
       }
 
       if (status !== undefined) {
-        if (!['pending', 'confirmed'].includes(status)) {
-          await client.query('ROLLBACK');
-          client.release();
-          return sendError(res, 400, 'VALIDATION_ERROR', 'Status must be "pending" or "confirmed"');
-        }
         updateFields.push(`status = $${paramIndex++}`);
         updateValues.push(status);
-      }
-
-      if (updateFields.length === 0) {
-        await client.query('ROLLBACK');
-        client.release();
-        return sendError(res, 400, 'VALIDATION_ERROR', 'No fields to update');
       }
 
       updateFields.push(`updated_at = now()`);
@@ -298,7 +277,7 @@ const createWitnessesRoutes = (pool) => {
   });
 
   // POST /api/witnesses/:id/confirm - Confirm witness
-  router.post('/:id/confirm', async (req, res) => {
+  router.post('/:id/confirm', validateParams(witnessIdParamsSchema), async (req, res) => {
     const client = await pool?.connect();
     if (!client) {
       return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -312,12 +291,6 @@ const createWitnessesRoutes = (pool) => {
       }
 
       const witnessId = req.params.id;
-
-      // Validate witnessId format
-      if (!witnessId || !witnessId.startsWith('witness_')) {
-        client.release();
-        return sendError(res, 400, 'INVALID_WITNESS_ID', 'Invalid witness ID format');
-      }
 
       await client.query('BEGIN');
 
@@ -377,7 +350,7 @@ const createWitnessesRoutes = (pool) => {
   });
 
   // DELETE /api/witnesses/:id - Delete witness
-  router.delete('/:id', async (req, res) => {
+  router.delete('/:id', validateParams(witnessIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -389,11 +362,6 @@ const createWitnessesRoutes = (pool) => {
       }
 
       const witnessId = req.params.id;
-
-      // Validate witnessId format
-      if (!witnessId || !witnessId.startsWith('witness_')) {
-        return sendError(res, 400, 'INVALID_WITNESS_ID', 'Invalid witness ID format');
-      }
 
       // Check if witness exists and belongs to user
       const witnessResult = await pool.query(
@@ -418,7 +386,7 @@ const createWitnessesRoutes = (pool) => {
   });
 
   // GET /api/witnesses/letter/:letterId - Get witnesses for a specific letter
-  router.get('/letter/:letterId', async (req, res) => {
+  router.get('/letter/:letterId', validateParams(letterIdParamSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');

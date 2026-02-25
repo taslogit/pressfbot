@@ -2,12 +2,27 @@
 const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
-const { z, validateBody } = require('../validation');
+const { z, validateBody, validateParams, validateQuery } = require('../validation');
 const { normalizeLegacyItem } = require('../services/legacyService');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const VALID_LEGACY_TYPES = ['enemy', 'loot', 'manifesto', 'ghost'];
 const VALID_LEGACY_SORT = ['created_at', 'severity', 'rarity', 'title'];
+
+const legacyIdParamsSchema = z.object({
+  id: z.string().min(1).max(120)
+});
+
+const legacyListQuerySchema = z.object({
+  limit: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(1).max(100).optional()).default(50),
+  offset: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(0).optional()).default(0),
+  type: z.enum(VALID_LEGACY_TYPES).optional(),
+  q: z.string().max(500).optional(),
+  isFavorite: z.preprocess((v) => (v === 'true' ? true : v === 'false' ? false : v), z.boolean().optional()),
+  sortBy: z.enum(VALID_LEGACY_SORT).optional().default('created_at'),
+  order: z.enum(['asc', 'desc']).optional().default('desc'),
+  isResolved: z.preprocess((v) => (v === 'true' ? true : v === 'false' ? false : v), z.boolean().optional())
+});
 
 const legacySchema = z.object({
   id: z.string().optional(),
@@ -27,7 +42,7 @@ const legacySchema = z.object({
 
 const createLegacyRoutes = (pool) => {
   // GET /api/legacy - Get all legacy items for user
-  router.get('/', async (req, res) => {
+  router.get('/', validateQuery(legacyListQuerySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -38,81 +53,7 @@ const createLegacyRoutes = (pool) => {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
       }
 
-      const limitRaw = req.query.limit;
-      const offsetRaw = req.query.offset;
-      const type = req.query.type;
-      const query = req.query.q;
-      const isFavoriteRaw = req.query.isFavorite;
-      const sortBy = req.query.sortBy || 'created_at';
-      const orderRaw = req.query.order || 'desc';
-      const order = String(orderRaw).toLowerCase();
-      const isResolvedRaw = req.query.isResolved;
-
-      const limit = limitRaw ? Number(limitRaw) : 50;
-      if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid limit', {
-          field: 'limit',
-          min: 1,
-          max: 100
-        });
-      }
-
-      const offset = offsetRaw ? Number(offsetRaw) : 0;
-      if (!Number.isInteger(offset) || offset < 0) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid offset', {
-          field: 'offset',
-          min: 0
-        });
-      }
-
-      if (type && !VALID_LEGACY_TYPES.includes(type)) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid type', {
-          field: 'type',
-          allowed: VALID_LEGACY_TYPES
-        });
-      }
-
-      let isFavorite;
-      if (isFavoriteRaw !== undefined) {
-        if (isFavoriteRaw === 'true') {
-          isFavorite = true;
-        } else if (isFavoriteRaw === 'false') {
-          isFavorite = false;
-        } else {
-          return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid isFavorite', {
-            field: 'isFavorite',
-            allowed: ['true', 'false']
-          });
-        }
-      }
-
-      if (!VALID_LEGACY_SORT.includes(sortBy)) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid sortBy', {
-          field: 'sortBy',
-          allowed: VALID_LEGACY_SORT
-        });
-      }
-
-      if (order !== 'asc' && order !== 'desc') {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid order', {
-          field: 'order',
-          allowed: ['asc', 'desc']
-        });
-      }
-
-      let isResolved;
-      if (isResolvedRaw !== undefined) {
-        if (isResolvedRaw === 'true') {
-          isResolved = true;
-        } else if (isResolvedRaw === 'false') {
-          isResolved = false;
-        } else {
-          return sendError(res, 400, 'VALIDATION_ERROR', 'Invalid isResolved', {
-            field: 'isResolved',
-            allowed: ['true', 'false']
-          });
-        }
-      }
+      const { limit, offset, type, q: query, isFavorite, sortBy, order, isResolved } = req.query;
 
       const conditions = ['user_id = $1'];
       const values = [userId];
@@ -150,7 +91,7 @@ const createLegacyRoutes = (pool) => {
 
       const items = result.rows.map(normalizeLegacyItem);
 
-      return res.json({ ok: true, items, meta: { limit, offset, sortBy, order, q: query || '' } });
+      return res.json({ ok: true, items, meta: { limit, offset, sortBy, order, q: query ?? '' } });
     } catch (error) {
       console.error('Get legacy error:', error);
       return sendError(res, 500, 'LEGACY_FETCH_FAILED', 'Failed to fetch legacy items');
@@ -223,7 +164,7 @@ const createLegacyRoutes = (pool) => {
   });
 
   // GET /api/legacy/:id - Get single legacy item
-  router.get('/:id', async (req, res) => {
+  router.get('/:id', validateParams(legacyIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -251,7 +192,7 @@ const createLegacyRoutes = (pool) => {
   });
 
   // PUT /api/legacy/:id - Update legacy item
-  router.put('/:id', validateBody(legacySchema), async (req, res) => {
+  router.put('/:id', validateParams(legacyIdParamsSchema), validateBody(legacySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -356,7 +297,7 @@ const createLegacyRoutes = (pool) => {
   });
 
   // DELETE /api/legacy/:id - Delete legacy item
-  router.delete('/:id', async (req, res) => {
+  router.delete('/:id', validateParams(legacyIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');

@@ -6,6 +6,7 @@ const express = require('express');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { trackBusiness } = require('../middleware/monitoring');
+const { z, validateBody } = require('../validation');
 
 // ─── Store Catalog ──────────────────────────────────
 const STORE_CATALOG = {
@@ -125,13 +126,21 @@ const handleStarsCatalog = (req, res) => {
   return res.json({ ok: true, catalog });
 };
 
+const invoiceBodySchema = z.object({
+  itemId: z.string().min(1),
+  recipientId: z.preprocess(
+    (v) => (v === undefined || v === null || v === '' ? undefined : Number(v)),
+    z.number().int().positive().optional()
+  )
+});
+
 const createStarsRoutes = (pool, bot) => {
   const router = express.Router();
   // ─── GET /api/stars/catalog (also served publicly in index.js) ───
   router.get('/catalog', handleStarsCatalog);
 
   // ─── POST /api/stars/invoice — Create Stars invoice ─
-  router.post('/invoice', async (req, res) => {
+  router.post('/invoice', validateBody(invoiceBodySchema), async (req, res) => {
     try {
       const userId = req.userId;
       if (!userId) {
@@ -139,7 +148,7 @@ const createStarsRoutes = (pool, bot) => {
       }
 
       const { itemId, recipientId } = req.body;
-      if (!itemId || !STORE_CATALOG[itemId]) {
+      if (!STORE_CATALOG[itemId]) {
         return sendError(res, 400, 'INVALID_ITEM', 'Item not found in catalog');
       }
 

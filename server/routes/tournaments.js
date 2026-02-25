@@ -4,17 +4,32 @@ const { v4: uuidv4 } = require('uuid');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { cache } = require('../utils/cache');
+const { validateParams, validateQuery } = require('../validation');
+const { z } = require('zod');
+
+const tournamentIdParamsSchema = z.object({
+  id: z.string().uuid('Invalid tournament ID format')
+});
+
+const tournamentsListQuerySchema = z.object({
+  status: z.enum(['active', 'upcoming', 'past', 'all']).optional()
+});
+
+const leaderboardQuerySchema = z.object({
+  limit: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(1).max(100).optional()).default(50),
+  offset: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(0).optional()).default(0)
+});
 
 const createTournamentsRoutes = (pool) => {
   // GET /api/tournaments - Get tournaments (active, upcoming, past)
-  router.get('/', async (req, res) => {
+  router.get('/', validateQuery(tournamentsListQuerySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
       }
 
       const userId = req.userId;
-      const { status } = req.query; // 'active', 'upcoming', 'past', 'all'
+      const { status } = req.query;
 
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
@@ -175,7 +190,7 @@ const createTournamentsRoutes = (pool) => {
   });
 
   // GET /api/tournaments/:id - Get tournament details
-  router.get('/:id', async (req, res) => {
+  router.get('/:id', validateParams(tournamentIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -186,12 +201,6 @@ const createTournamentsRoutes = (pool) => {
 
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
-      }
-
-      // Validate UUID format
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(tournamentId)) {
-        return sendError(res, 400, 'INVALID_TOURNAMENT_ID', 'Invalid tournament ID format');
       }
 
       // Get tournament
@@ -301,7 +310,7 @@ const createTournamentsRoutes = (pool) => {
   });
 
   // POST /api/tournaments/:id/register - Register for tournament
-  router.post('/:id/register', async (req, res) => {
+  router.post('/:id/register', validateParams(tournamentIdParamsSchema), async (req, res) => {
     const client = await pool?.connect();
     if (!client) {
       return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -313,12 +322,6 @@ const createTournamentsRoutes = (pool) => {
 
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
-      }
-
-      // Validate UUID format
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(tournamentId)) {
-        return sendError(res, 400, 'INVALID_TOURNAMENT_ID', 'Invalid tournament ID format');
       }
 
       // Start transaction
@@ -415,21 +418,14 @@ const createTournamentsRoutes = (pool) => {
   });
 
   // GET /api/tournaments/:id/leaderboard - Get tournament leaderboard
-  router.get('/:id/leaderboard', async (req, res) => {
+  router.get('/:id/leaderboard', validateParams(tournamentIdParamsSchema), validateQuery(leaderboardQuerySchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
       }
 
       const tournamentId = req.params.id;
-      const limit = parseInt(req.query.limit) || 50;
-      const offset = parseInt(req.query.offset) || 0;
-
-      // Validate UUID format
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(tournamentId)) {
-        return sendError(res, 400, 'INVALID_TOURNAMENT_ID', 'Invalid tournament ID format');
-      }
+      const { limit, offset } = req.query;
 
       // Get leaderboard
       const leaderboardResult = await pool.query(

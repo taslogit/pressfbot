@@ -5,9 +5,14 @@ const path = require('path');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { cache } = require('../utils/cache');
+const { z, validateParams } = require('../validation');
 
 // Path to avatars directory
 const AVATARS_DIR = path.join(__dirname, '..', 'static', 'avatars');
+
+const avatarIdParamsSchema = z.object({
+  id: z.string().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/)
+});
 
 // Ensure avatars directory exists
 if (!fs.existsSync(AVATARS_DIR)) {
@@ -73,7 +78,7 @@ const createAvatarsRoutes = () => {
   });
 
   // GET /api/avatars/:id - Get specific avatar info
-  router.get('/:id', async (req, res) => {
+  router.get('/:id', validateParams(avatarIdParamsSchema), async (req, res) => {
     try {
       const { id } = req.params;
       

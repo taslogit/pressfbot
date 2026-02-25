@@ -4,6 +4,21 @@ const { v4: uuidv4 } = require('uuid');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { cache } = require('../utils/cache');
+const { validateBody, validateParams } = require('../validation');
+const { z } = require('zod');
+
+const eventIdParamsSchema = z.object({
+  id: z.string().uuid('Invalid event ID format')
+});
+
+const progressBodySchema = z.object({
+  questType: z.string().min(1),
+  value: z.number().optional()
+});
+
+const claimBodySchema = z.object({
+  rewardId: z.string().min(1)
+});
 
 const createEventsRoutes = (pool) => {
   // GET /api/events/active - Get active seasonal events
@@ -94,7 +109,7 @@ const createEventsRoutes = (pool) => {
   });
 
   // GET /api/events/:id/progress - Get user progress for specific event
-  router.get('/:id/progress', async (req, res) => {
+  router.get('/:id/progress', validateParams(eventIdParamsSchema), async (req, res) => {
     try {
       if (!pool) {
         return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -105,12 +120,6 @@ const createEventsRoutes = (pool) => {
 
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
-      }
-
-      // Validate UUID format
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(eventId)) {
-        return sendError(res, 400, 'INVALID_EVENT_ID', 'Invalid event ID format');
       }
 
       // Get event
@@ -161,7 +170,7 @@ const createEventsRoutes = (pool) => {
   });
 
   // POST /api/events/:id/progress - Update event progress (internal endpoint)
-  router.post('/:id/progress', async (req, res) => {
+  router.post('/:id/progress', validateParams(eventIdParamsSchema), validateBody(progressBodySchema), async (req, res) => {
     try {
       if (!pool) {
         return res.json({ ok: false, error: 'Database not available' });
@@ -171,14 +180,8 @@ const createEventsRoutes = (pool) => {
       const eventId = req.params.id;
       const { questType, value } = req.body;
 
-      if (!userId || !eventId || !questType) {
+      if (!userId) {
         return res.json({ ok: false, error: 'Missing parameters' });
-      }
-
-      // Validate UUID format
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(eventId)) {
-        return res.json({ ok: false, error: 'Invalid event ID format' });
       }
 
       // Check if event is active
@@ -251,7 +254,7 @@ const createEventsRoutes = (pool) => {
   });
 
   // POST /api/events/:id/claim - Claim event reward
-  router.post('/:id/claim', async (req, res) => {
+  router.post('/:id/claim', validateParams(eventIdParamsSchema), validateBody(claimBodySchema), async (req, res) => {
     const client = await pool?.connect();
     if (!client) {
       return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
@@ -264,16 +267,6 @@ const createEventsRoutes = (pool) => {
 
       if (!userId) {
         return sendError(res, 401, 'AUTH_REQUIRED', 'User not authenticated');
-      }
-
-      if (!rewardId) {
-        return sendError(res, 400, 'VALIDATION_ERROR', 'Missing reward ID');
-      }
-
-      // Validate UUID format
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(eventId)) {
-        return sendError(res, 400, 'INVALID_EVENT_ID', 'Invalid event ID format');
       }
 
       // Start transaction

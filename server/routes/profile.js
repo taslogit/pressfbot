@@ -1,7 +1,7 @@
 // Profile API routes
 const express = require('express');
 const router = express.Router();
-const { z, validateBody, validateParams } = require('../validation');
+const { z, validateBody, validateParams, validateQuery } = require('../validation');
 const { normalizeProfile, normalizeSettings } = require('../services/profileService');
 const { sendError } = require('../utils/errors');
 const logger = require('../utils/logger');
@@ -38,6 +38,11 @@ const settingsUpdateSchema = z.object({
   checkinReminderIntervalMinutes: z.number().int().min(5).max(1440).optional(),
   avatarFrame: z.enum(VALID_AVATAR_FRAMES).optional(),
   duelTauntMessage: z.string().max(500).nullable().optional()
+});
+
+const streakLeaderboardQuerySchema = z.object({
+  limit: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(1).max(50).optional()).default(20),
+  offset: z.preprocess((v) => (v === undefined || v === '' ? undefined : Number(v)), z.number().int().min(0).optional()).default(0)
 });
 
 const createProfileRoutes = (pool, bot = null) => {
@@ -902,12 +907,11 @@ const createProfileRoutes = (pool, bot = null) => {
   });
 
   // GET /api/profile/streak-leaderboard — Top users by current streak (roadmap: Streak Leaderboard)
-  router.get('/streak-leaderboard', async (req, res) => {
+  router.get('/streak-leaderboard', validateQuery(streakLeaderboardQuerySchema), async (req, res) => {
     try {
       if (!pool) return sendError(res, 503, 'DB_UNAVAILABLE', 'Database not available');
 
-      const limit = Math.min(parseInt(req.query.limit) || 20, 50);
-      const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+      const { limit, offset } = req.query;
 
       const result = await pool.query(
         `SELECT us.user_id, us.current_streak, p.avatar, p.title

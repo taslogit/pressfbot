@@ -12,7 +12,7 @@ PRESS F — Telegram WebApp про цифровые тайники, споры �
 
 Функционал без воды. Письма-капсулы с датами открытия, история версий, экспорт. Дуэли и бифы с итогами и шерингом. Профиль, статка, уведомления, настройки. TON-часть для наследок, escrow и "вечных" планов хранения.
 
-Безопасность не на словах. Telegram initData проверяется на сервере, доступ к API только по sessionId, SSL от Let's Encrypt. Шифрование контента на стороне клиента (E2E) — в разработке. Мы не лезем в чужие записи, тут без сюрпризов 0)))
+Безопасность не на словах. Telegram initData проверяется на сервере, доступ к API только по sessionId, SSL от Let's Encrypt. Шифрование контента на стороне клиента (E2E, AES‑256‑GCM, ключ хранится локально) уже работает для писем. Мы не лезем в чужие записи, тут без сюрпризов 0)))
 
 По TON и блокчейну. Идея простая: часть фактов фиксируется on-chain, сам контент хранится off-chain. Это даёт доказуемость без лишнего раскрытия, плюс нормальную юридическую логику для наследок и эскроу. Безопасность в том, что факт и время можно подтвердить, а содержание остаётся закрытым.
 
@@ -32,7 +32,7 @@ The stack is straightforward: Vite and React on the front, Node and Express on t
 
 Core features in plain terms. Time-locked letters with version history and export. Duels with outcomes and sharing. Profile, stats, notifications, settings. TON layer for inheritance, escrow, and long-term storage plans.
 
-Security is taken seriously. Telegram initData is verified on the server, API access requires a sessionId, SSL is handled by Let's Encrypt. Client-side content encryption (E2E) is currently in development. We don't peek into your data, promise 0)))
+Security is taken seriously. Telegram initData is verified on the server, API access requires a sessionId, SSL is handled by Let's Encrypt. Client-side E2E encryption for letters (AES‑256‑GCM with per-letter keys stored locally) is enabled, so the backend only ever sees ciphertext. We don't peek into your data, promise 0)))
 
 TON and blockchain. The idea is simple: keep proofs on-chain and keep content off-chain. This gives verifiability without overexposure, and supports inheritance and escrow flows. Security comes from provable facts and timestamps while the content stays sealed.
 
