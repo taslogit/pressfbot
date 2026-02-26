@@ -83,7 +83,10 @@ const ActivityFeed: React.FC = () => {
   };
 
   const getActivityText = (activity: ActivityFeedItem) => {
-    const userName = activity.user.title || `Level ${activity.user.level || 1}`;
+    const isFriendsTab = tab === 'friends' || tab === 'referrals';
+    const userName = isFriendsTab
+      ? (activity.user.title || `Level ${activity.user.level || 1}`)
+      : (t('activity_someone') || 'Someone');
     
     switch (activity.activityType) {
       case 'letter_created':

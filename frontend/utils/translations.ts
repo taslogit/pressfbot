@@ -1057,6 +1057,7 @@ export const translations = {
     activity_friend_unlocked: "unlocked",
     activity_friend_won_duel: "won",
     activity_unknown: "performed an action",
+    activity_someone: "Someone",
     just_now: "just now",
     ago: "ago",
     load_more: "Load More"
@@ -2109,6 +2110,7 @@ export const translations = {
     activity_friend_unlocked: "получил",
     activity_friend_won_duel: "выиграл",
     activity_unknown: "выполнил действие",
+    activity_someone: "Кто-то",
     just_now: "только что",
     ago: "назад",
     load_more: "Загрузить еще"
